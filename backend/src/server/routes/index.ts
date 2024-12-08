@@ -1,5 +1,4 @@
 import { CronJob } from "cron";
-// import { Redis } from "ioredis";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -31,6 +30,8 @@ import { externalKmsServiceFactory } from "@app/ee/services/external-kms/externa
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
+import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { identityProjectAdditionalPrivilegeDALFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-dal";
 import { identityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { identityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
@@ -43,6 +44,8 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
+import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { projectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
@@ -198,6 +201,8 @@ import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admi
 import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
 import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { totpConfigDALFactory } from "@app/services/totp/totp-config-dal";
+import { totpServiceFactory } from "@app/services/totp/totp-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -221,10 +226,18 @@ export const registerRoutes = async (
   {
     auditLogDb,
     db,
+    hsmModule,
     smtp: smtpService,
     queue: queueService,
     keyStore
-  }: { auditLogDb?: Knex; db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory; keyStore: TKeyStoreFactory }
+  }: {
+    auditLogDb?: Knex;
+    db: Knex;
+    hsmModule: HsmModule;
+    smtp: TSmtpService;
+    queue: TQueueServiceFactory;
+    keyStore: TKeyStoreFactory;
+  }
 ) => {
   const appCfg = getConfig();
   await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
@@ -337,8 +350,11 @@ export const registerRoutes = async (
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
+  const totpConfigDAL = totpConfigDALFactory(db);
 
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
+
+  const projectTemplateDAL = projectTemplateDALFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -348,14 +364,21 @@ export const registerRoutes = async (
     projectDAL
   });
   const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL, keyStore });
+
+  const hsmService = hsmServiceFactory({
+    hsmModule
+  });
+
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
     keyStore,
     kmsDAL,
     internalKmsDAL,
     orgDAL,
-    projectDAL
+    projectDAL,
+    hsmService
   });
+
   const externalKmsService = externalKmsServiceFactory({
     kmsDAL,
     kmsService,
@@ -371,13 +394,14 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const auditLogQueue = auditLogQueueServiceFactory({
+  const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
     projectDAL,
     licenseService,
     auditLogStreamDAL
   });
+
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const auditLogStreamService = auditLogStreamServiceFactory({
     licenseService,
@@ -491,12 +515,19 @@ export const registerRoutes = async (
     projectMembershipDAL
   });
 
-  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL });
+  const totpService = totpServiceFactory({
+    totpConfigDAL,
+    userDAL,
+    kmsService
+  });
+
+  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService, orgDAL, totpService });
   const passwordService = authPaswordServiceFactory({
     tokenService,
     smtpService,
     authDAL,
-    userDAL
+    userDAL,
+    totpConfigDAL
   });
 
   const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
@@ -552,6 +583,7 @@ export const registerRoutes = async (
     userDAL,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
+    kmsRootConfigDAL,
     orgService,
     keyStore,
     licenseService,
@@ -732,6 +764,12 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const projectTemplateService = projectTemplateServiceFactory({
+    licenseService,
+    permissionService,
+    projectTemplateDAL
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
@@ -758,7 +796,8 @@ export const registerRoutes = async (
     projectBotDAL,
     certificateTemplateDAL,
     projectSlackConfigDAL,
-    slackIntegrationDAL
+    slackIntegrationDAL,
+    projectTemplateService
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -1087,7 +1126,6 @@ export const registerRoutes = async (
 
   const identityTokenAuthService = identityTokenAuthServiceFactory({
     identityTokenAuthDAL,
-    identityDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
     permissionService,
@@ -1096,7 +1134,6 @@ export const registerRoutes = async (
   const identityUaService = identityUaServiceFactory({
     identityOrgMembershipDAL,
     permissionService,
-    identityDAL,
     identityAccessTokenDAL,
     identityUaClientSecretDAL,
     identityUaDAL,
@@ -1106,7 +1143,6 @@ export const registerRoutes = async (
     identityKubernetesAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
-    identityDAL,
     orgBotDAL,
     permissionService,
     licenseService
@@ -1115,7 +1151,6 @@ export const registerRoutes = async (
     identityGcpAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
-    identityDAL,
     permissionService,
     licenseService
   });
@@ -1124,7 +1159,6 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     identityAwsAuthDAL,
     identityOrgMembershipDAL,
-    identityDAL,
     licenseService,
     permissionService
   });
@@ -1133,7 +1167,6 @@ export const registerRoutes = async (
     identityAzureAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
-    identityDAL,
     permissionService,
     licenseService
   });
@@ -1142,7 +1175,6 @@ export const registerRoutes = async (
     identityOidcAuthDAL,
     identityOrgMembershipDAL,
     identityAccessTokenDAL,
-    identityDAL,
     permissionService,
     licenseService,
     orgBotDAL
@@ -1257,9 +1289,12 @@ export const registerRoutes = async (
   });
 
   await superAdminService.initServerCfg();
-  //
+
   // setup the communication with license key server
   await licenseService.init();
+
+  // Start HSM service if it's configured/enabled.
+  await hsmService.startService();
 
   await telemetryQueue.startTelemetryCheck();
   await dailyResourceCleanUp.startCleanUp();
@@ -1338,12 +1373,15 @@ export const registerRoutes = async (
     secretSharing: secretSharingService,
     userEngagement: userEngagementService,
     externalKms: externalKmsService,
+    hsm: hsmService,
     cmek: cmekService,
     orgAdmin: orgAdminService,
     slack: slackService,
     workflowIntegration: workflowIntegrationService,
     migration: migrationService,
-    externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService
+    externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
+    projectTemplate: projectTemplateService,
+    totp: totpService
   });
 
   const cronJobs: CronJob[] = [];

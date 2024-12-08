@@ -128,6 +128,10 @@ type GetWorkSpacesResponse struct {
 	} `json:"workspaces"`
 }
 
+type GetProjectByIdResponse struct {
+	Project Project `json:"workspace"`
+}
+
 type GetOrganizationsResponse struct {
 	Organizations []struct {
 		ID   string `json:"id"`
@@ -136,8 +140,9 @@ type GetOrganizationsResponse struct {
 }
 
 type SelectOrganizationResponse struct {
-	Token string `json:"token"`
-	MfaEnabled bool `json:"isMfaEnabled"`
+	Token      string `json:"token"`
+	MfaEnabled bool   `json:"isMfaEnabled"`
+	MfaMethod  string `json:"mfaMethod"`
 }
 
 type SelectOrganizationRequest struct {
@@ -160,6 +165,12 @@ type Secret struct {
 	Type                    string `json:"type,omitempty"`
 	ID                      string `json:"id,omitempty"`
 	PlainTextKey            string `json:"plainTextKey"`
+}
+
+type Project struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 type RawSecret struct {
@@ -260,8 +271,9 @@ type GetLoginTwoV2Response struct {
 }
 
 type VerifyMfaTokenRequest struct {
-	Email    string `json:"email"`
-	MFAToken string `json:"mfaToken"`
+	Email     string `json:"email"`
+	MFAToken  string `json:"mfaToken"`
+	MFAMethod string `json:"mfaMethod"`
 }
 
 type VerifyMfaTokenResponse struct {

@@ -7,15 +7,17 @@ import {
   SiMicrosoftazure,
   SiMongodb,
   SiRabbitmq,
-  SiSap
+  SiSap,
+  SiSnowflake
 } from "react-icons/si";
 import { faAws } from "@fortawesome/free-brands-svg-icons";
-import { faDatabase } from "@fortawesome/free-solid-svg-icons";
+import { faClock, faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Modal, ModalContent } from "@app/components/v2";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { SnowflakeInputForm } from "@app/views/SecretMainPage/components/ActionBar/CreateDynamicSecretForm/SnowflakeInputForm";
 
 import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
@@ -27,8 +29,10 @@ import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
 import { MongoDBDatabaseInputForm } from "./MongoDBInputForm";
 import { RabbitMqInputForm } from "./RabbitMqInputForm";
 import { RedisInputForm } from "./RedisInputForm";
+import { SapAseInputForm } from "./SapAseInputForm";
 import { SapHanaInputForm } from "./SapHanaInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
+import { TotpInputForm } from "./TotpInputForm";
 
 type Props = {
   isOpen?: boolean;
@@ -103,6 +107,21 @@ const DYNAMIC_SECRET_LIST = [
     icon: <SiSap size="1.5rem" />,
     provider: DynamicSecretProviders.SapHana,
     title: "SAP HANA"
+  },
+  {
+    icon: <SiSap size="1.5rem" />,
+    provider: DynamicSecretProviders.SapAse,
+    title: "SAP ASE"
+  },
+  {
+    icon: <SiSnowflake size="1.5rem" />,
+    provider: DynamicSecretProviders.Snowflake,
+    title: "Snowflake"
+  },
+  {
+    icon: <FontAwesomeIcon icon={faClock} size="lg" />,
+    provider: DynamicSecretProviders.Totp,
+    title: "TOTP"
   }
 ];
 
@@ -372,6 +391,61 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <SapHanaInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
+
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.SapAse && (
+              <motion.div
+                key="dynamic-sap-ase-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+              >
+                <SapAseInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
+
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.Snowflake && (
+              <motion.div
+                key="dynamic-snowflake-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <SnowflakeInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environment={environment}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.Totp && (
+              <motion.div
+                key="dynamic-totp-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <TotpInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

@@ -129,7 +129,7 @@ export const licenseServiceFactory = ({
         }
       }
 
-      // this means this is self hosted oss version
+      // this means this is the self-hosted oss version
       // else it would reach catch statement
       isValidLicense = true;
     } catch (error) {
@@ -161,8 +161,8 @@ export const licenseServiceFactory = ({
       }
     } catch (error) {
       logger.error(
-        `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`,
-        error
+        error,
+        `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`
       );
       await keyStore.setItemWithExpiry(
         FEATURE_CACHE_KEY(orgId),

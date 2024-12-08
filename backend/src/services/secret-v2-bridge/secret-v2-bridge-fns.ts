@@ -10,9 +10,9 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
 
-const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/g;
+const INTERPOLATION_SYNTAX_REG = /\${([a-zA-Z0-9-_.]+)}/g;
 // akhilmhdh: JS regex with global save state in .test
-const INTERPOLATION_SYNTAX_REG_NON_GLOBAL = /\${([^}]+)}/;
+const INTERPOLATION_SYNTAX_REG_NON_GLOBAL = /\${([a-zA-Z0-9-_.]+)}/;
 
 export const shouldUseSecretV2Bridge = (version: number) => version === 3;
 
@@ -365,9 +365,8 @@ export const recursivelyGetSecretPaths = async ({
     folderId: p.folderId
   }));
 
-  const pathsInCurrentDirectory = paths.filter((folder) =>
-    folder.path.startsWith(currentPath === "/" ? "" : currentPath)
-  );
+  // path relative will start with ../ if its outside directory
+  const pathsInCurrentDirectory = paths.filter((folder) => !path.relative(currentPath, folder.path).startsWith(".."));
 
   return pathsInCurrentDirectory;
 };
@@ -518,7 +517,10 @@ export const expandSecretReferencesFactory = ({
           }
 
           if (referencedSecretValue) {
-            expandedValue = expandedValue.replaceAll(interpolationSyntax, referencedSecretValue);
+            expandedValue = expandedValue.replaceAll(
+              interpolationSyntax,
+              () => referencedSecretValue // prevents special characters from triggering replacement patterns
+            );
           }
         }
       }

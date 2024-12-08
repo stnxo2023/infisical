@@ -14,8 +14,11 @@ import { EditDynamicSecretMongoAtlasForm } from "./EditDynamicSecretMongoAtlasFo
 import { EditDynamicSecretMongoDBForm } from "./EditDynamicSecretMongoDBForm";
 import { EditDynamicSecretRabbitMqForm } from "./EditDynamicSecretRabbitMqForm";
 import { EditDynamicSecretRedisProviderForm } from "./EditDynamicSecretRedisProviderForm";
+import { EditDynamicSecretSapAseForm } from "./EditDynamicSecretSapAseForm";
 import { EditDynamicSecretSapHanaForm } from "./EditDynamicSecretSapHanaForm";
+import { EditDynamicSecretSnowflakeForm } from "./EditDynamicSecretSnowflakeForm";
 import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProviderForm";
+import { EditDynamicSecretTotpForm } from "./EditDynamicSecretTotpForm";
 
 type Props = {
   onClose: () => void;
@@ -250,6 +253,57 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretSapHanaForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.SapAse && (
+        <motion.div
+          key="sap-ase-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretSapAseForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.Snowflake && (
+        <motion.div
+          key="snowflake-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretSnowflakeForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.Totp && (
+        <motion.div
+          key="totp-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretTotpForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}
