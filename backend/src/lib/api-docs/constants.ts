@@ -391,7 +391,9 @@ export const PROJECTS = {
   CREATE: {
     organizationSlug: "The slug of the organization to create the project in.",
     projectName: "The name of the project to create.",
-    slug: "An optional slug for the project."
+    projectDescription: "An optional description label for the project.",
+    slug: "An optional slug for the project.",
+    template: "The name of the project template, if specified, to apply to this project."
   },
   DELETE: {
     workspaceId: "The ID of the project to delete."
@@ -402,6 +404,7 @@ export const PROJECTS = {
   UPDATE: {
     workspaceId: "The ID of the project to update.",
     name: "The new name of the project.",
+    projectDescription: "An optional description label for the project.",
     autoCapitalization: "Disable or enable auto-capitalization for the project."
   },
   GET_KEY: {
@@ -1029,6 +1032,9 @@ export const INTEGRATION_AUTH = {
   DELETE_BY_ID: {
     integrationAuthId: "The ID of integration authentication object to delete."
   },
+  UPDATE_BY_ID: {
+    integrationAuthId: "The ID of integration authentication object to update."
+  },
   CREATE_ACCESS_TOKEN: {
     workspaceId: "The ID of the project to create the integration auth for.",
     integration: "The slug of integration for the auth object.",
@@ -1079,16 +1085,19 @@ export const INTEGRATION = {
       shouldDisableDelete: "The flag to disable deletion of secrets in AWS Parameter Store.",
       shouldMaskSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Masked'.",
       shouldProtectSecrets: "Specifies if the secrets synced from Infisical to Gitlab should be marked as 'Protected'.",
-      shouldEnableDelete: "The flag to enable deletion of secrets."
+      shouldEnableDelete: "The flag to enable deletion of secrets.",
+      octopusDeployScopeValues: "Specifies the scope values to set on synced secrets to Octopus Deploy."
     }
   },
   UPDATE: {
     integrationId: "The ID of the integration object.",
+    region: "AWS region to sync secrets to.",
     app: "The name of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
     appId:
       "The ID of the external integration providers app entity that you want to sync secrets with. Used in Netlify, GitHub, Vercel integrations.",
     isActive: "Whether the integration should be active or disabled.",
     secretPath: "The path of the secrets to sync secrets from.",
+    path: "Path to save the synced secrets. Used by Gitlab, AWS Parameter Store, Vault.",
     owner: "External integration providers service entity owner. Used in Github.",
     targetEnvironment:
       "The target environment of the integration provider. Used in cloudflare pages, TeamCity, Gitlab integrations.",
@@ -1436,5 +1445,24 @@ export const KMS = {
   DECRYPT: {
     keyId: "The ID of the key to decrypt the data with.",
     ciphertext: "The ciphertext to be decrypted (base64 encoded)."
+  }
+};
+
+export const ProjectTemplates = {
+  CREATE: {
+    name: "The name of the project template to be created. Must be slug-friendly.",
+    description: "An optional description of the project template.",
+    roles: "The roles to be created when the template is applied to a project.",
+    environments: "The environments to be created when the template is applied to a project."
+  },
+  UPDATE: {
+    templateId: "The ID of the project template to be updated.",
+    name: "The updated name of the project template. Must be slug-friendly.",
+    description: "The updated description of the project template.",
+    roles: "The updated roles to be created when the template is applied to a project.",
+    environments: "The updated environments to be created when the template is applied to a project."
+  },
+  DELETE: {
+    templateId: "The ID of the project template to be deleted."
   }
 };

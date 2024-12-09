@@ -32,7 +32,10 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
+    "baseUrl": [
+      "https://app.infisical.com",
+      "http://localhost:8080"
+    ]
   },
   "topbarLinks": [
     {
@@ -73,7 +76,9 @@
         "documentation/getting-started/introduction",
         {
           "group": "Quickstart",
-          "pages": ["documentation/guides/local-development"]
+          "pages": [
+            "documentation/guides/local-development"
+          ]
         },
         {
           "group": "Guides",
@@ -82,7 +87,8 @@
             "documentation/guides/node",
             "documentation/guides/python",
             "documentation/guides/nextjs-vercel",
-            "documentation/guides/microsoft-power-apps"
+            "documentation/guides/microsoft-power-apps",
+            "documentation/guides/organization-structure"
           ]
         }
       ]
@@ -113,13 +119,21 @@
             "documentation/platform/pki/alerting"
           ]
         },
-        "documentation/platform/kms",
+        {
+          "group": "Key Management (KMS)",
+          "pages": [
+            "documentation/platform/kms/overview",
+            "documentation/platform/kms/hsm-integration",
+            "documentation/platform/kms/kubernetes-encryption"
+          ]
+        },
         {
           "group": "KMS Configuration",
           "pages": [
             "documentation/platform/kms-configuration/overview",
             "documentation/platform/kms-configuration/aws-kms",
-            "documentation/platform/kms-configuration/aws-hsm"
+            "documentation/platform/kms-configuration/aws-hsm",
+            "documentation/platform/kms-configuration/gcp-kms"
           ]
         },
         {
@@ -135,11 +149,11 @@
           "pages": [
             "documentation/platform/access-controls/overview",
             "documentation/platform/access-controls/role-based-access-controls",
+            "documentation/platform/access-controls/attribute-based-access-controls",
             "documentation/platform/access-controls/additional-privileges",
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
             "documentation/platform/pr-workflows",
-            "documentation/platform/audit-log-streams",
             "documentation/platform/groups"
           ]
         },
@@ -158,6 +172,7 @@
             "documentation/platform/secret-rotation/sendgrid",
             "documentation/platform/secret-rotation/postgres",
             "documentation/platform/secret-rotation/mysql",
+            "documentation/platform/secret-rotation/mssql",
             "documentation/platform/secret-rotation/aws-iam"
           ]
         },
@@ -179,9 +194,13 @@
             "documentation/platform/dynamic-secrets/mongo-db",
             "documentation/platform/dynamic-secrets/azure-entra-id",
             "documentation/platform/dynamic-secrets/ldap",
-            "documentation/platform/dynamic-secrets/sap-hana"
+            "documentation/platform/dynamic-secrets/sap-ase",
+            "documentation/platform/dynamic-secrets/sap-hana",
+            "documentation/platform/dynamic-secrets/snowflake",
+            "documentation/platform/dynamic-secrets/totp"
           ]
         },
+        "documentation/platform/project-templates",
         {
           "group": "Workflow Integrations",
           "pages": [
@@ -215,7 +234,8 @@
           "pages": [
             "documentation/platform/identities/oidc-auth/general",
             "documentation/platform/identities/oidc-auth/github",
-            "documentation/platform/identities/oidc-auth/circleci"
+            "documentation/platform/identities/oidc-auth/circleci",
+            "documentation/platform/identities/oidc-auth/gitlab"
           ]
         },
         "documentation/platform/mfa",
@@ -281,7 +301,10 @@
         },
         {
           "group": "Reference architectures",
-          "pages": ["self-hosting/reference-architectures/aws-ecs"]
+          "pages": [
+            "self-hosting/reference-architectures/aws-ecs",
+            "self-hosting/reference-architectures/linux-deployment-ha"
+          ]
         },
         "self-hosting/ee",
         "self-hosting/faq"
@@ -299,6 +322,7 @@
             "cli/commands/init",
             "cli/commands/run",
             "cli/commands/secrets",
+            "cli/commands/dynamic-secrets",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",
@@ -327,6 +351,7 @@
           "group": "Container orchestrators",
           "pages": [
             "integrations/platforms/kubernetes",
+            "integrations/platforms/kubernetes-csi",
             "integrations/platforms/docker-swarm-with-agent",
             "integrations/platforms/ecs-with-agent"
           ]
@@ -406,7 +431,8 @@
             "integrations/cicd/travisci",
             "integrations/cicd/rundeck",
             "integrations/cicd/codefresh",
-            "integrations/cloud/checkly"
+            "integrations/cloud/checkly",
+            "integrations/cicd/octopus-deploy"
           ]
         }
       ]
@@ -441,20 +467,24 @@
     },
     {
       "group": "Build Tool Integrations",
-      "pages": ["integrations/build-tools/gradle"]
+      "pages": [
+        "integrations/build-tools/gradle"
+      ]
     },
     {
       "group": "",
-      "pages": ["sdks/overview"]
+      "pages": [
+        "sdks/overview"
+      ]
     },
     {
       "group": "SDK's",
       "pages": [
         "sdks/languages/node",
         "sdks/languages/python",
+        "sdks/languages/java",
         "sdks/languages/go",
         "sdks/languages/ruby",
-        "sdks/languages/java",
         "sdks/languages/csharp"
       ]
     },
@@ -465,7 +495,9 @@
         "api-reference/overview/authentication",
         {
           "group": "Examples",
-          "pages": ["api-reference/overview/examples/integration"]
+          "pages": [
+            "api-reference/overview/examples/integration"
+          ]
         }
       ]
     },
@@ -636,6 +668,16 @@
           ]
         },
         {
+          "group": "Project Templates",
+          "pages": [
+            "api-reference/endpoints/project-templates/create",
+            "api-reference/endpoints/project-templates/update",
+            "api-reference/endpoints/project-templates/delete",
+            "api-reference/endpoints/project-templates/get-by-id",
+            "api-reference/endpoints/project-templates/list"
+          ]
+        },
+        {
           "group": "Environments",
           "pages": [
             "api-reference/endpoints/environments/create",
@@ -730,11 +772,15 @@
         },
         {
           "group": "Service Tokens",
-          "pages": ["api-reference/endpoints/service-tokens/get"]
+          "pages": [
+            "api-reference/endpoints/service-tokens/get"
+          ]
         },
         {
           "group": "Audit Logs",
-          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+          "pages": [
+            "api-reference/endpoints/audit-logs/export-audit-log"
+          ]
         }
       ]
     },
@@ -833,7 +879,9 @@
     },
     {
       "group": "",
-      "pages": ["changelog/overview"]
+      "pages": [
+        "changelog/overview"
+      ]
     },
     {
       "group": "Contributing",
@@ -857,7 +905,9 @@
         },
         {
           "group": "Contributing to SDK",
-          "pages": ["contributing/sdk/developing"]
+          "pages": [
+            "contributing/sdk/developing"
+          ]
         }
       ]
     }
@@ -881,13 +931,22 @@
       {
         "title": "PRODUCT",
         "links": [
-          { "label": "Secret Management", "url": "https://infisical.com/" },
-          { "label": "Secret Scanning", "url": "https://infisical.com/radar" },
+          {
+            "label": "Secret Management",
+            "url": "https://infisical.com/"
+          },
+          {
+            "label": "Secret Scanning",
+            "url": "https://infisical.com/radar"
+          },
           {
             "label": "Share Secrets",
             "url": "https://app.infisical.com/share-secret"
           },
-          { "label": "Pricing", "url": "https://infisical.com/pricing" },
+          {
+            "label": "Pricing",
+            "url": "https://infisical.com/pricing"
+          },
           {
             "label": "Security",
             "url": "https://infisical.com/docs/internals/security"

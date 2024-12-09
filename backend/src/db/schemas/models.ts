@@ -41,6 +41,7 @@ export enum TableName {
   ProjectUserAdditionalPrivilege = "project_user_additional_privilege",
   ProjectUserMembershipRole = "project_user_membership_roles",
   ProjectKeys = "project_keys",
+  ProjectTemplates = "project_templates",
   Secret = "secrets",
   SecretReference = "secret_references",
   SecretSharing = "secret_sharing",
@@ -116,6 +117,7 @@ export enum TableName {
   ExternalKms = "external_kms",
   InternalKms = "internal_kms",
   InternalKmsKeyVersion = "internal_kms_key_version",
+  TotpConfig = "totp_configs",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
   WorkflowIntegrations = "workflow_integrations",
@@ -189,7 +191,7 @@ export enum ProjectUpgradeStatus {
 
 export enum IdentityAuthMethod {
   TOKEN_AUTH = "token-auth",
-  Univeral = "universal-auth",
+  UNIVERSAL_AUTH = "universal-auth",
   KUBERNETES_AUTH = "kubernetes-auth",
   GCP_AUTH = "gcp-auth",
   AWS_AUTH = "aws-auth",

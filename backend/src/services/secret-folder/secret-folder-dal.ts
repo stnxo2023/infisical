@@ -6,7 +6,10 @@ import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { groupBy, removeTrailingSlash } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
+import { isValidSecretPath } from "@app/lib/validator";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
+
+import { TFindFoldersDeepByParentIdsDTO } from "./secret-folder-types";
 
 export const validateFolderName = (folderName: string) => {
   const validNameRegex = /^[a-zA-Z0-9-_]+$/;
@@ -212,6 +215,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   const secretFolderOrm = ormify(db, TableName.SecretFolder);
 
   const findBySecretPath = async (projectId: string, environment: string, path: string, tx?: Knex) => {
+    const isValidPath = isValidSecretPath(path);
+    if (!isValidPath)
+      throw new BadRequestError({
+        message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
+      });
+
     try {
       const folder = await sqlFindFolderByPathQuery(
         tx || db.replicaNode(),
@@ -234,6 +243,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
 
   // finds folders by path for multiple envs
   const findBySecretPathMultiEnv = async (projectId: string, environments: string[], path: string, tx?: Knex) => {
+    const isValidPath = isValidSecretPath(path);
+    if (!isValidPath)
+      throw new BadRequestError({
+        message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
+      });
+
     try {
       const pathDepth = removeTrailingSlash(path).split("/").filter(Boolean).length + 1;
 
@@ -265,6 +280,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   // even if its the original given /path1/path2
   // it will stop automatically at /path2
   const findClosestFolder = async (projectId: string, environment: string, path: string, tx?: Knex) => {
+    const isValidPath = isValidSecretPath(path);
+    if (!isValidPath)
+      throw new BadRequestError({
+        message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
+      });
+
     try {
       const folder = await sqlFindFolderByPathQuery(
         tx || db.replicaNode(),
@@ -444,6 +465,48 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByEnvsDeep = async ({ parentIds }: TFindFoldersDeepByParentIdsDTO, tx?: Knex) => {
+    try {
+      const folders = await (tx || db.replicaNode())
+        .withRecursive("parents", (qb) =>
+          qb
+            .select(
+              selectAllTableCols(TableName.SecretFolder),
+              db.raw("0 as depth"),
+              db.raw(`'/' as path`),
+              db.ref(`${TableName.Environment}.slug`).as("environment")
+            )
+            .from(TableName.SecretFolder)
+            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+            .whereIn(`${TableName.SecretFolder}.id`, parentIds)
+            .union((un) => {
+              void un
+                .select(
+                  selectAllTableCols(TableName.SecretFolder),
+                  db.raw("parents.depth + 1 as depth"),
+                  db.raw(
+                    `CONCAT(
+                        CASE WHEN parents.path = '/' THEN '' ELSE parents.path END, 
+                        CASE WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN '' ELSE CONCAT('/', secret_folders.name) END
+                    )`
+                  ),
+                  db.ref("parents.environment")
+                )
+                .from(TableName.SecretFolder)
+                .join("parents", `${TableName.SecretFolder}.parentId`, "parents.id");
+            })
+        )
+        .select<(TSecretFolders & { path: string; depth: number; environment: string })[]>("*")
+        .from("parents")
+        .orderBy("depth")
+        .orderBy(`name`);
+
+      return folders;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByEnvsDeep" });
+    }
+  };
+
   return {
     ...secretFolderOrm,
     update,
@@ -454,6 +517,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     findSecretPathByFolderIds,
     findClosestFolder,
     findByProjectId,
-    findByMultiEnv
+    findByMultiEnv,
+    findByEnvsDeep
   };
 };
