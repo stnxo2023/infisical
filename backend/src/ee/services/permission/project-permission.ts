@@ -1,10 +1,10 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
-import { conditionsMatcher } from "@app/lib/casl";
+import { conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
 import { UnpackedPermissionSchema } from "@app/server/routes/santizedSchemas/permission";
 
-import { PermissionConditionOperators, PermissionConditionSchema } from "./permission-types";
+import { PermissionConditionSchema } from "./permission-types";
 
 export enum ProjectPermissionActions {
   Read = "read",
@@ -82,6 +82,10 @@ export type SecretImportSubjectFields = {
   secretPath: string;
 };
 
+export type IdentityManagementSubjectFields = {
+  identityId: string;
+};
+
 export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
@@ -121,7 +125,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
-  | [ProjectPermissionActions, ProjectPermissionSub.Identity]
+  | [
+      ProjectPermissionActions,
+      ProjectPermissionSub.Identity | (ForcedSubject<ProjectPermissionSub.Identity> & IdentityManagementSubjectFields)
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.Certificates]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
@@ -213,6 +220,21 @@ const SecretConditionV2Schema = z
   })
   .partial();
 
+const IdentityManagementConditionSchema = z
+  .object({
+    identityId: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
 const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretApproval).describe("The entity this permission pertains to."),
@@ -258,12 +280,6 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Webhooks).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
@@ -373,6 +389,12 @@ export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     )
   }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
   ...GeneralPermissionSchema
 ]);
 
@@ -414,6 +436,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     ),
     conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Identity).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: IdentityManagementConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
@@ -694,31 +726,35 @@ export const buildServiceTokenProjectPermission = (
   const canRead = permission.includes("read");
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
   scopes.forEach(({ secretPath, environment }) => {
-    if (canWrite) {
-      // TODO: @Akhi
-      // @ts-expect-error type
-      can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets, {
-        secretPath: { $glob: secretPath },
-        environment
-      });
-      // @ts-expect-error type
-      can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets, {
-        secretPath: { $glob: secretPath },
-        environment
-      });
-      // @ts-expect-error type
-      can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets, {
-        secretPath: { $glob: secretPath },
-        environment
-      });
-    }
-    if (canRead) {
-      // @ts-expect-error type
-      can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets, {
-        secretPath: { $glob: secretPath },
-        environment
-      });
-    }
+    [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+      (subject) => {
+        if (canWrite) {
+          can(ProjectPermissionActions.Edit, subject, {
+            // TODO: @Akhi
+            // @ts-expect-error type
+            secretPath: { $glob: secretPath },
+            environment
+          });
+          can(ProjectPermissionActions.Create, subject, {
+            // @ts-expect-error type
+            secretPath: { $glob: secretPath },
+            environment
+          });
+          can(ProjectPermissionActions.Delete, subject, {
+            // @ts-expect-error type
+            secretPath: { $glob: secretPath },
+            environment
+          });
+        }
+        if (canRead) {
+          can(ProjectPermissionActions.Read, subject, {
+            // @ts-expect-error type
+            secretPath: { $glob: secretPath },
+            environment
+          });
+        }
+      }
+    );
   });
 
   return build({ conditionsMatcher });

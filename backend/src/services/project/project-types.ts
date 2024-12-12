@@ -29,9 +29,11 @@ export type TCreateProjectDTO = {
   actorId: string;
   actorOrgId?: string;
   workspaceName: string;
+  workspaceDescription?: string;
   slug?: string;
   kmsKeyId?: string;
   createDefaultEnvs?: boolean;
+  template?: string;
   tx?: Knex;
 };
 
@@ -68,6 +70,7 @@ export type TUpdateProjectDTO = {
   filter: Filter;
   update: {
     name?: string;
+    description?: string;
     autoCapitalization?: boolean;
   };
 } & Omit<TProjectPermission, "projectId">;

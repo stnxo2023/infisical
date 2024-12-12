@@ -1,3 +1,4 @@
+import { MfaMethod } from "../auth/types";
 import { UserWsKeyPair } from "../keys/types";
 import { ProjectUserMembershipTemporaryMode } from "../workspace/types";
 
@@ -11,7 +12,8 @@ export enum AuthMethod {
   JUMPCLOUD_SAML = "jumpcloud-saml",
   KEYCLOAK_SAML = "keycloak-saml",
   LDAP = "ldap",
-  OIDC = "oidc"
+  OIDC = "oidc",
+  SAML = "saml"
 }
 
 export type User = {
@@ -25,6 +27,7 @@ export type User = {
   authProvider?: AuthMethod;
   authMethods: AuthMethod[];
   isMfaEnabled: boolean;
+  selectedMfaMethod?: MfaMethod;
   seenIps: string[];
   id: string;
 };

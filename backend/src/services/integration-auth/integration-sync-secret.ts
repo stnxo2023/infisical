@@ -32,14 +32,14 @@ import { z } from "zod";
 import { SecretType, TIntegrationAuths, TIntegrations } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
 import { IntegrationAuthMetadataSchema } from "./integration-auth-schema";
-import { TIntegrationsWithEnvironment } from "./integration-auth-types";
+import { OctopusDeployScope, TIntegrationsWithEnvironment, TOctopusDeployVariableSet } from "./integration-auth-types";
 import {
   IntegrationInitialSyncBehavior,
   IntegrationMappingBehavior,
@@ -473,7 +473,7 @@ const syncSecretsAzureKeyVault = async ({
     id: string; // secret URI
     value: string;
     attributes: {
-      enabled: true;
+      enabled: boolean;
       created: number;
       updated: number;
       recoveryLevel: string;
@@ -509,10 +509,19 @@ const syncSecretsAzureKeyVault = async ({
 
   const getAzureKeyVaultSecrets = await paginateAzureKeyVaultSecrets(`${integration.app}/secrets?api-version=7.3`);
 
+  const enabledAzureKeyVaultSecrets = getAzureKeyVaultSecrets.filter((secret) => secret.attributes.enabled);
+
+  // disabled keys to skip sending updates to
+  const disabledAzureKeyVaultSecretKeys = getAzureKeyVaultSecrets
+    .filter(({ attributes }) => !attributes.enabled)
+    .map((getAzureKeyVaultSecret) => {
+      return getAzureKeyVaultSecret.id.substring(getAzureKeyVaultSecret.id.lastIndexOf("/") + 1);
+    });
+
   let lastSlashIndex: number;
   const res = (
     await Promise.all(
-      getAzureKeyVaultSecrets.map(async (getAzureKeyVaultSecret) => {
+      enabledAzureKeyVaultSecrets.map(async (getAzureKeyVaultSecret) => {
         if (!lastSlashIndex) {
           lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf("/");
         }
@@ -658,6 +667,7 @@ const syncSecretsAzureKeyVault = async ({
   }) => {
     let isSecretSet = false;
     let maxTries = 6;
+    if (disabledAzureKeyVaultSecretKeys.includes(key)) return;
 
     while (!isSecretSet && maxTries > 0) {
       // try to set secret
@@ -2540,9 +2550,9 @@ const syncSecretsAzureDevops = async ({
 
   const { groupId, groupName } = await getEnvGroupId(integration.app, integration.appId, integration.environment.name);
 
-  const variables: Record<string, { value: string }> = {};
+  const variables: Record<string, { value: string; isSecret: boolean }> = {};
   for (const key of Object.keys(secrets)) {
-    variables[key] = { value: secrets[key].value };
+    variables[key] = { value: secrets[key].value, isSecret: true };
   }
 
   if (!groupId) {
@@ -3075,7 +3085,7 @@ const syncSecretsTerraformCloud = async ({
 }) => {
   // get secrets from Terraform Cloud
   const terraformSecrets = (
-    await request.get<{ data: { attributes: { key: string; value: string }; id: string }[] }>(
+    await request.get<{ data: { attributes: { key: string; value: string; sensitive: boolean }; id: string }[] }>(
       `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`,
       {
         headers: {
@@ -3089,7 +3099,7 @@ const syncSecretsTerraformCloud = async ({
       ...obj,
       [secret.attributes.key]: secret
     }),
-    {} as Record<string, { attributes: { key: string; value: string }; id: string }>
+    {} as Record<string, { attributes: { key: string; value: string; sensitive: boolean }; id: string }>
   );
 
   const secretsToAdd: { [key: string]: string } = {};
@@ -3170,7 +3180,8 @@ const syncSecretsTerraformCloud = async ({
             attributes: {
               key,
               value: secrets[key]?.value,
-              category: integration.targetService
+              category: integration.targetService,
+              sensitive: true
             }
           }
         },
@@ -3183,7 +3194,11 @@ const syncSecretsTerraformCloud = async ({
         }
       );
       // case: secret exists in Terraform Cloud
-    } else if (secrets[key]?.value !== terraformSecrets[key].attributes.value) {
+    } else if (
+      // we now set secrets to sensitive in Terraform Cloud, this checks if existing secrets are not sensitive and updates them accordingly
+      !terraformSecrets[key].attributes.sensitive ||
+      secrets[key]?.value !== terraformSecrets[key].attributes.value
+    ) {
       // -> update secret
       await request.patch(
         `${IntegrationUrls.TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${terraformSecrets[key].id}`,
@@ -3193,7 +3208,8 @@ const syncSecretsTerraformCloud = async ({
             id: terraformSecrets[key].id,
             attributes: {
               ...terraformSecrets[key],
-              value: secrets[key]?.value
+              value: secrets[key]?.value,
+              sensitive: true
             }
           }
         },
@@ -3631,7 +3647,14 @@ const syncSecretsBitBucket = async ({
   const res: { [key: string]: BitbucketVariable } = {};
 
   let hasNextPage = true;
-  let variablesUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/pipelines_config/variables`;
+
+  const rootUrl = integration.targetServiceId
+    ? // scope: deployment environment
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/deployments_config/environments/${integration.targetServiceId}/variables`
+    : // scope: repository
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/pipelines_config/variables`;
+
+  let variablesUrl = rootUrl;
 
   while (hasNextPage) {
     const { data }: { data: VariablesResponse } = await request.get(variablesUrl, {
@@ -3658,7 +3681,7 @@ const syncSecretsBitBucket = async ({
     if (key in res) {
       // update existing secret
       await request.put(
-        `${variablesUrl}/${res[key].uuid}`,
+        `${rootUrl}/${res[key].uuid}`,
         {
           key,
           value: secrets[key].value,
@@ -3674,7 +3697,7 @@ const syncSecretsBitBucket = async ({
     } else {
       // create new secret
       await request.post(
-        variablesUrl,
+        rootUrl,
         {
           key,
           value: secrets[key].value,
@@ -4188,6 +4211,61 @@ const syncSecretsRundeck = async ({
   }
 };
 
+const syncSecretsOctopusDeploy = async ({
+  integration,
+  integrationAuth,
+  secrets,
+  accessToken
+}: {
+  integration: TIntegrations;
+  integrationAuth: TIntegrationAuths;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  let url: string;
+  switch (integration.scope) {
+    case OctopusDeployScope.Project:
+      url = `${integrationAuth.url}/api/${integration.targetEnvironmentId}/projects/${integration.appId}/variables`;
+      break;
+    // future support tenant, variable set, etc.
+    default:
+      throw new InternalServerError({ message: `Unhandled Octopus Deploy scope: ${integration.scope}` });
+  }
+
+  // SDK doesn't support variable set...
+  const { data: variableSet } = await request.get<TOctopusDeployVariableSet>(url, {
+    headers: {
+      "X-NuGet-ApiKey": accessToken,
+      Accept: "application/json"
+    }
+  });
+
+  await request.put(
+    url,
+    {
+      ...variableSet,
+      Variables: Object.entries(secrets).map(([key, value]) => ({
+        Name: key,
+        Value: value.value,
+        Description: value.comment ?? "",
+        Scope:
+          (integration.metadata as { octopusDeployScopeValues: TOctopusDeployVariableSet["ScopeValues"] })
+            ?.octopusDeployScopeValues ?? {},
+        IsEditable: false,
+        Prompt: null,
+        Type: "String",
+        IsSensitive: true
+      }))
+    } as unknown as TOctopusDeployVariableSet,
+    {
+      headers: {
+        "X-NuGet-ApiKey": accessToken,
+        Accept: "application/json"
+      }
+    }
+  );
+};
+
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
  *
@@ -4496,6 +4574,14 @@ export const syncIntegrationSecrets = async ({
     case Integrations.RUNDECK:
       await syncSecretsRundeck({
         integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case Integrations.OCTOPUS_DEPLOY:
+      await syncSecretsOctopusDeploy({
+        integration,
+        integrationAuth,
         secrets,
         accessToken
       });

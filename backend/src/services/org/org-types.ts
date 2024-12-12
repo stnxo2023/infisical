@@ -1,6 +1,6 @@
 import { TOrgPermission } from "@app/lib/types";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType, MfaMethod } from "../auth/auth-type";
 
 export type TUpdateOrgMembershipDTO = {
   userId: string;
@@ -65,6 +65,7 @@ export type TUpdateOrgDTO = {
     scimEnabled: boolean;
     defaultMembershipRoleSlug: string;
     enforceMfa: boolean;
+    selectedMfaMethod: MfaMethod;
   }>;
 } & TOrgPermission;
 
@@ -73,3 +74,8 @@ export type TGetOrgGroupsDTO = TOrgPermission;
 export type TListProjectMembershipsByOrgMembershipIdDTO = {
   orgMembershipId: string;
 } & TOrgPermission;
+
+export enum OrgAuthMethod {
+  OIDC = "oidc",
+  SAML = "saml"
+}
