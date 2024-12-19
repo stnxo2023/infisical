@@ -29,8 +29,11 @@ import {
   useSelectOrganization,
   verifySignupInvite
 } from "@app/hooks/api/auth/queries";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { navigateUserToOrg } from "@app/views/Login/Login.utils";
+import { Mfa } from "@app/views/Login/Mfa";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -59,6 +62,7 @@ export default function SignupInvite() {
   const [errors, setErrors] = useState<Errors>({});
 
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
@@ -184,12 +188,19 @@ export default function SignupInvite() {
               if (!orgId) throw new Error("You are not part of any organization");
 
               const completeSignupFlow = async () => {
-                const { token: mfaToken, isMfaEnabled } = await selectOrganization({
+                const {
+                  token: mfaToken,
+                  isMfaEnabled,
+                  mfaMethod
+                } = await selectOrganization({
                   organizationId: orgId
                 });
 
                 if (isMfaEnabled) {
                   SecurityClient.setMfaToken(mfaToken);
+                  if (mfaMethod) {
+                    setRequiredMfaMethod(mfaMethod);
+                  }
                   toggleShowMfa.on();
                   setMfaSuccessCallback(() => completeSignupFlow);
                   return;
@@ -376,7 +387,7 @@ export default function SignupInvite() {
               setBackupKeyError,
               setBackupKeyIssued
             });
-            router.push(`/org/${organizationId}/overview`);
+            router.push(`/org/${organizationId}/${ProjectType.SecretManager}/overview`);
           }}
           size="lg"
         />
@@ -390,12 +401,23 @@ export default function SignupInvite() {
         <title>Sign Up</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <Link href="/">
-        <div className="mb-4 mt-20 flex justify-center">
-          <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
-        </div>
-      </Link>
-      {step === 1 ? stepConfirmEmail : step === 2 ? main : step4}
+      {shouldShowMfa ? (
+        <Mfa
+          email={email}
+          successCallback={mfaSuccessCallback}
+          method={requiredMfaMethod}
+          closeMfa={() => toggleShowMfa.off()}
+        />
+      ) : (
+        <>
+          <Link href="/">
+            <div className="mb-4 mt-20 flex justify-center">
+              <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
+            </div>
+          </Link>
+          {step === 1 ? stepConfirmEmail : step === 2 ? main : step4}
+        </>
+      )}
     </div>
   );
 }

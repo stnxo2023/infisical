@@ -26,11 +26,12 @@ export enum OrgPermissionSubjects {
   Identity = "identity",
   Kms = "kms",
   AdminConsole = "organization-admin-console",
-  AuditLogs = "audit-logs"
+  AuditLogs = "audit-logs",
+  ProjectTemplates = "project-templates",
+  AppConnections = "app-connections"
 }
 
 export type OrgPermissionSet =
-  | [OrgPermissionActions.Read, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
@@ -45,12 +46,13 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
+  | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
+  | [OrgPermissionActions, OrgPermissionSubjects.AppConnections]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole];
 
 const buildAdminPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
   // ws permissions
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   // role permission
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
@@ -118,6 +120,16 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.AuditLogs);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.AuditLogs);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.AppConnections);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.AppConnections);
+
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
   return rules;
@@ -128,7 +140,6 @@ export const orgAdminPermissions = buildAdminPermission();
 const buildMemberPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Groups);
@@ -148,6 +159,8 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.AppConnections);
 
   return rules;
 };

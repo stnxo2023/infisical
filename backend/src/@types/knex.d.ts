@@ -98,6 +98,9 @@ import {
   TIdentityGcpAuths,
   TIdentityGcpAuthsInsert,
   TIdentityGcpAuthsUpdate,
+  TIdentityJwtAuths,
+  TIdentityJwtAuthsInsert,
+  TIdentityJwtAuthsUpdate,
   TIdentityKubernetesAuths,
   TIdentityKubernetesAuthsInsert,
   TIdentityKubernetesAuthsUpdate,
@@ -199,7 +202,13 @@ import {
   TProjectSlackConfigs,
   TProjectSlackConfigsInsert,
   TProjectSlackConfigsUpdate,
+  TProjectSplitBackfillIds,
+  TProjectSplitBackfillIdsInsert,
+  TProjectSplitBackfillIdsUpdate,
   TProjectsUpdate,
+  TProjectTemplates,
+  TProjectTemplatesInsert,
+  TProjectTemplatesUpdate,
   TProjectUserAdditionalPrivilege,
   TProjectUserAdditionalPrivilegeInsert,
   TProjectUserAdditionalPrivilegeUpdate,
@@ -308,9 +317,27 @@ import {
   TSlackIntegrations,
   TSlackIntegrationsInsert,
   TSlackIntegrationsUpdate,
+  TSshCertificateAuthorities,
+  TSshCertificateAuthoritiesInsert,
+  TSshCertificateAuthoritiesUpdate,
+  TSshCertificateAuthoritySecrets,
+  TSshCertificateAuthoritySecretsInsert,
+  TSshCertificateAuthoritySecretsUpdate,
+  TSshCertificateBodies,
+  TSshCertificateBodiesInsert,
+  TSshCertificateBodiesUpdate,
+  TSshCertificates,
+  TSshCertificatesInsert,
+  TSshCertificatesUpdate,
+  TSshCertificateTemplates,
+  TSshCertificateTemplatesInsert,
+  TSshCertificateTemplatesUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
+  TTotpConfigs,
+  TTotpConfigsInsert,
+  TTotpConfigsUpdate,
   TTrustedIps,
   TTrustedIpsInsert,
   TTrustedIpsUpdate,
@@ -336,6 +363,7 @@ import {
   TWorkflowIntegrationsInsert,
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
+import { TAppConnections, TAppConnectionsInsert, TAppConnectionsUpdate } from "@app/db/schemas/app-connections";
 import {
   TExternalGroupOrgRoleMappings,
   TExternalGroupOrgRoleMappingsInsert,
@@ -366,6 +394,31 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.SshCertificateAuthority]: KnexOriginal.CompositeTableType<
+      TSshCertificateAuthorities,
+      TSshCertificateAuthoritiesInsert,
+      TSshCertificateAuthoritiesUpdate
+    >;
+    [TableName.SshCertificateAuthoritySecret]: KnexOriginal.CompositeTableType<
+      TSshCertificateAuthoritySecrets,
+      TSshCertificateAuthoritySecretsInsert,
+      TSshCertificateAuthoritySecretsUpdate
+    >;
+    [TableName.SshCertificateTemplate]: KnexOriginal.CompositeTableType<
+      TSshCertificateTemplates,
+      TSshCertificateTemplatesInsert,
+      TSshCertificateTemplatesUpdate
+    >;
+    [TableName.SshCertificate]: KnexOriginal.CompositeTableType<
+      TSshCertificates,
+      TSshCertificatesInsert,
+      TSshCertificatesUpdate
+    >;
+    [TableName.SshCertificateBody]: KnexOriginal.CompositeTableType<
+      TSshCertificateBodies,
+      TSshCertificateBodiesInsert,
+      TSshCertificateBodiesUpdate
+    >;
     [TableName.CertificateAuthority]: KnexOriginal.CompositeTableType<
       TCertificateAuthorities,
       TCertificateAuthoritiesInsert,
@@ -583,6 +636,11 @@ declare module "knex/types/tables" {
       TIdentityOidcAuths,
       TIdentityOidcAuthsInsert,
       TIdentityOidcAuthsUpdate
+    >;
+    [TableName.IdentityJwtAuth]: KnexOriginal.CompositeTableType<
+      TIdentityJwtAuths,
+      TIdentityJwtAuthsInsert,
+      TIdentityJwtAuthsUpdate
     >;
     [TableName.IdentityUaClientSecret]: KnexOriginal.CompositeTableType<
       TIdentityUaClientSecrets,
@@ -817,6 +875,22 @@ declare module "knex/types/tables" {
       TExternalGroupOrgRoleMappings,
       TExternalGroupOrgRoleMappingsInsert,
       TExternalGroupOrgRoleMappingsUpdate
+    >;
+    [TableName.ProjectTemplates]: KnexOriginal.CompositeTableType<
+      TProjectTemplates,
+      TProjectTemplatesInsert,
+      TProjectTemplatesUpdate
+    >;
+    [TableName.TotpConfig]: KnexOriginal.CompositeTableType<TTotpConfigs, TTotpConfigsInsert, TTotpConfigsUpdate>;
+    [TableName.ProjectSplitBackfillIds]: KnexOriginal.CompositeTableType<
+      TProjectSplitBackfillIds,
+      TProjectSplitBackfillIdsInsert,
+      TProjectSplitBackfillIdsUpdate
+    >;
+    [TableName.AppConnection]: KnexOriginal.CompositeTableType<
+      TAppConnections,
+      TAppConnectionsInsert,
+      TAppConnectionsUpdate
     >;
   }
 }

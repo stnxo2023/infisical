@@ -28,7 +28,7 @@ const integrationSlugNameMapping: Mapping = {
   "cloudflare-workers": "Cloudflare Workers",
   codefresh: "Codefresh",
   "digital-ocean-app-platform": "Digital Ocean App Platform",
-  bitbucket: "BitBucket",
+  bitbucket: "Bitbucket",
   "cloud-66": "Cloud 66",
   northflank: "Northflank",
   windmill: "Windmill",
@@ -36,7 +36,8 @@ const integrationSlugNameMapping: Mapping = {
   "hasura-cloud": "Hasura Cloud",
   rundeck: "Rundeck",
   "azure-devops": "Azure DevOps",
-  "azure-app-configuration": "Azure App Configuration"
+  "azure-app-configuration": "Azure App Configuration",
+  "octopus-deploy": "Octopus Deploy"
 };
 
 const envMapping: Mapping = {

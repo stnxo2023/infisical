@@ -127,14 +127,15 @@ export const permissionDALFactory = (db: TDbClient) => {
 
   const getProjectPermission = async (userId: string, projectId: string) => {
     try {
+      const subQueryUserGroups = db(TableName.UserGroupMembership).where("userId", userId).select("groupId");
       const docs = await db
         .replicaNode()(TableName.Users)
         .where(`${TableName.Users}.id`, userId)
-        .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.GroupProjectMembership, (queryBuilder) => {
           void queryBuilder
             .on(`${TableName.GroupProjectMembership}.projectId`, db.raw("?", [projectId]))
-            .andOn(`${TableName.GroupProjectMembership}.groupId`, `${TableName.UserGroupMembership}.groupId`);
+            // @ts-expect-error akhilmhdh: this is valid knexjs query. Its just ts type argument is missing it
+            .andOnIn(`${TableName.GroupProjectMembership}.groupId`, subQueryUserGroups);
         })
         .leftJoin(
           TableName.GroupProjectMembershipRole,
@@ -268,6 +269,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue"),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
           db.ref("orgId").withSchema(TableName.Project),
+          db.ref("type").withSchema(TableName.Project).as("projectType"),
           db.ref("id").withSchema(TableName.Project).as("projectId")
         );
 
@@ -283,13 +285,15 @@ export const permissionDALFactory = (db: TDbClient) => {
           membershipCreatedAt,
           groupMembershipCreatedAt,
           groupMembershipUpdatedAt,
-          membershipUpdatedAt
+          membershipUpdatedAt,
+          projectType
         }) => ({
           orgId,
           orgAuthEnforced,
           userId,
           projectId,
           username,
+          projectType,
           id: membershipId || groupMembershipId,
           createdAt: membershipCreatedAt || groupMembershipCreatedAt,
           updatedAt: membershipUpdatedAt || groupMembershipUpdatedAt
@@ -448,6 +452,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.IdentityProjectMembership).as("membershipId"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("orgId").withSchema(TableName.Project).as("orgId"), // Now you can select orgId from Project
+          db.ref("type").withSchema(TableName.Project).as("projectType"),
           db.ref("createdAt").withSchema(TableName.IdentityProjectMembership).as("membershipCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.IdentityProjectMembership).as("membershipUpdatedAt"),
           db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug"),
@@ -479,7 +484,14 @@ export const permissionDALFactory = (db: TDbClient) => {
       const permission = sqlNestRelationships({
         data: docs,
         key: "membershipId",
-        parentMapper: ({ membershipId, membershipCreatedAt, membershipUpdatedAt, orgId, identityName }) => ({
+        parentMapper: ({
+          membershipId,
+          membershipCreatedAt,
+          membershipUpdatedAt,
+          orgId,
+          identityName,
+          projectType
+        }) => ({
           id: membershipId,
           identityId,
           username: identityName,
@@ -487,6 +499,7 @@ export const permissionDALFactory = (db: TDbClient) => {
           createdAt: membershipCreatedAt,
           updatedAt: membershipUpdatedAt,
           orgId,
+          projectType,
           // just a prefilled value
           orgAuthEnforced: false
         }),

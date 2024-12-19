@@ -2,12 +2,12 @@ import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { TSecretFoldersInsert } from "@app/db/schemas";
+import { ProjectType, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrderByDirection } from "@app/lib/types";
+import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -17,6 +17,7 @@ import {
   TDeleteFolderDTO,
   TGetFolderByIdDTO,
   TGetFolderDTO,
+  TGetFoldersDeepByEnvsDTO,
   TUpdateFolderDTO,
   TUpdateManyFoldersDTO
 } from "./secret-folder-types";
@@ -51,13 +52,14 @@ export const secretFolderServiceFactory = ({
     environment,
     path: secretPath
   }: TCreateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -149,13 +151,14 @@ export const secretFolderServiceFactory = ({
       throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       project.id,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     folders.forEach(({ environment, path: secretPath }) => {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -258,13 +261,14 @@ export const secretFolderServiceFactory = ({
     path: secretPath,
     id
   }: TUpdateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
@@ -338,13 +342,14 @@ export const secretFolderServiceFactory = ({
     path: secretPath,
     idOrName
   }: TDeleteFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -511,6 +516,30 @@ export const secretFolderServiceFactory = ({
     };
   };
 
+  const getFoldersDeepByEnvs = async (
+    { projectId, environments, secretPath }: TGetFoldersDeepByEnvsDTO,
+    actor: OrgServiceActor
+  ) => {
+    // folder list is allowed to be read by anyone
+    // permission to check does user have access
+    await permissionService.getProjectPermission(actor.type, actor.id, projectId, actor.authMethod, actor.orgId);
+
+    const envs = await projectEnvDAL.findBySlugs(projectId, environments);
+
+    if (!envs.length)
+      throw new NotFoundError({
+        message: `Environments '${environments.join(", ")}' not found`,
+        name: "GetFoldersDeep"
+      });
+
+    const parentFolders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    if (!parentFolders.length) return [];
+
+    const folders = await folderDAL.findByEnvsDeep({ parentIds: parentFolders.map((parent) => parent.id) });
+
+    return folders;
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -519,6 +548,7 @@ export const secretFolderServiceFactory = ({
     getFolders,
     getFolderById,
     getProjectFolderCount,
-    getFoldersMultiEnv
+    getFoldersMultiEnv,
+    getFoldersDeepByEnvs
   };
 };

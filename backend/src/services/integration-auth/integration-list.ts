@@ -34,7 +34,8 @@ export enum Integrations {
   HASURA_CLOUD = "hasura-cloud",
   RUNDECK = "rundeck",
   AZURE_DEVOPS = "azure-devops",
-  AZURE_APP_CONFIGURATION = "azure-app-configuration"
+  AZURE_APP_CONFIGURATION = "azure-app-configuration",
+  OCTOPUS_DEPLOY = "octopus-deploy"
 }
 
 export enum IntegrationType {
@@ -75,7 +76,6 @@ export enum IntegrationUrls {
   RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2",
   FLYIO_API_URL = "https://api.fly.io/graphql",
   CIRCLECI_API_URL = "https://circleci.com/api",
-  DATABRICKS_API_URL = "https:/xxxx.com/api",
   TRAVISCI_API_URL = "https://api.travis-ci.com",
   SUPABASE_API_URL = "https://api.supabase.com",
   LARAVELFORGE_API_URL = "https://forge.laravel.com",
@@ -217,9 +217,9 @@ export const getIntegrationOptions = async () => {
       docsLink: ""
     },
     {
-      name: "Circle CI",
+      name: "CircleCI",
       slug: "circleci",
-      image: "Circle CI.png",
+      image: "CircleCI.png",
       isAvailable: true,
       type: "pat",
       clientId: "",
@@ -334,7 +334,7 @@ export const getIntegrationOptions = async () => {
       docsLink: ""
     },
     {
-      name: "BitBucket",
+      name: "Bitbucket",
       slug: "bitbucket",
       image: "BitBucket.png",
       isAvailable: true,
@@ -411,6 +411,15 @@ export const getIntegrationOptions = async () => {
       image: "Microsoft Azure.png",
       isAvailable: true,
       type: "pat",
+      clientId: "",
+      docsLink: ""
+    },
+    {
+      name: "Octopus Deploy",
+      slug: "octopus-deploy",
+      image: "Octopus Deploy.png",
+      isAvailable: true,
+      type: "sat",
       clientId: "",
       docsLink: ""
     }

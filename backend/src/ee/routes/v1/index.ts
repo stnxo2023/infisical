@@ -1,3 +1,5 @@
+import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
+
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
@@ -23,6 +25,9 @@ import { registerSecretRotationRouter } from "./secret-rotation-router";
 import { registerSecretScanningRouter } from "./secret-scanning-router";
 import { registerSecretVersionRouter } from "./secret-version-router";
 import { registerSnapshotRouter } from "./snapshot-router";
+import { registerSshCaRouter } from "./ssh-certificate-authority-router";
+import { registerSshCertRouter } from "./ssh-certificate-router";
+import { registerSshCertificateTemplateRouter } from "./ssh-certificate-template-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
 
@@ -67,6 +72,15 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(
+    async (sshRouter) => {
+      await sshRouter.register(registerSshCaRouter, { prefix: "/ca" });
+      await sshRouter.register(registerSshCertRouter, { prefix: "/certificates" });
+      await sshRouter.register(registerSshCertificateTemplateRouter, { prefix: "/certificate-templates" });
+    },
+    { prefix: "/ssh" }
+  );
+
+  await server.register(
     async (ssoRouter) => {
       await ssoRouter.register(registerSamlRouter);
       await ssoRouter.register(registerOidcRouter, { prefix: "/oidc" });
@@ -92,4 +106,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerExternalKmsRouter, {
     prefix: "/external-kms"
   });
+
+  await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
 };

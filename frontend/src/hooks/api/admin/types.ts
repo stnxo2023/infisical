@@ -19,6 +19,8 @@ export type TServerConfig = {
   isSecretScanningDisabled: boolean;
   defaultAuthOrgSlug: string | null;
   defaultAuthOrgId: string | null;
+  defaultAuthOrgAuthMethod?: string | null;
+  defaultAuthOrgAuthEnforced?: boolean | null;
   enabledLoginMethods: LoginMethod[];
 };
 
@@ -52,3 +54,15 @@ export type AdminSlackConfig = {
   clientId: string;
   clientSecret: string;
 };
+
+export type TGetServerRootKmsEncryptionDetails = {
+  strategies: {
+    strategy: RootKeyEncryptionStrategy;
+    enabled: boolean;
+  }[];
+};
+
+export enum RootKeyEncryptionStrategy {
+  Software = "SOFTWARE",
+  HSM = "HSM"
+}

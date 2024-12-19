@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
@@ -7,6 +8,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal, EmptyState, Spinner } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import {
@@ -47,7 +49,7 @@ export const IdentityDetailsPage = withProjectPermission(
           type: "success"
         });
         handlePopUpClose("deleteIdentity");
-        router.push(`/project/${workspaceId}/members?selectedTab=identities`);
+        router.push(`/${currentWorkspace?.type}/${workspaceId}/members?selectedTab=identities`);
       } catch (err) {
         console.error(err);
         const error = err as any;
@@ -76,11 +78,14 @@ export const IdentityDetailsPage = withProjectPermission(
             type="submit"
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
             onClick={() => {
-              router.push(`/project/${workspaceId}/members?selectedTab=identities`);
+              router.push(
+                `/${currentWorkspace?.type}/${workspaceId}/members?selectedTab=identities`
+              );
             }}
             className="mb-4"
           >
-            Project Access Control
+            {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"} Access
+            Control
           </Button>
         </div>
         {identityMembershipDetails ? (
@@ -94,7 +99,9 @@ export const IdentityDetailsPage = withProjectPermission(
                   <div>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Delete}
-                      a={ProjectPermissionSub.Identity}
+                      a={subject(ProjectPermissionSub.Identity, {
+                        identityId: identityMembershipDetails?.identity?.id
+                      })}
                       renderTooltip
                       allowedLabel="Remove from project"
                     >

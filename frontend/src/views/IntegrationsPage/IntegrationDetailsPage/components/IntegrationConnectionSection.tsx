@@ -1,6 +1,7 @@
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
 import { FormLabel } from "@app/components/v2";
+import { CircleCiScope } from "@app/hooks/api/integrationAuth/types";
 import { IntegrationMappingBehavior, TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
 
 type Props = {
@@ -46,6 +47,11 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
         case "qovery":
           return integration.scope;
         case "circleci":
+          if (integration.scope === CircleCiScope.Context) {
+            return "Context";
+          }
+
+          return "Project";
         case "terraform-cloud":
           return "Project";
         case "aws-secret-manager":
@@ -53,6 +59,10 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
         case "aws-parameter-store":
         case "rundeck":
           return "Path";
+        case "bitbucket":
+          return "Repository";
+        case "octopus-deploy":
+          return "Project";
         case "github":
           if (["github-env", "github-repo"].includes(integration.scope!)) {
             return "Repository";
@@ -73,7 +83,6 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
             return `${integration.owner}`;
           }
           return `${integration.owner}/${integration.app}`;
-
         case "aws-parameter-store":
         case "rundeck":
           return `${integration.path}`;
@@ -92,10 +101,28 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
   };
 
   const targetEnvironmentDetails = () => {
+    if (integration.integration === "bitbucket") {
+      return (
+        <div className="flex flex-col">
+          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Workspace" />
+          <div className="text-sm text-mineshaft-300">
+            {integration.targetEnvironment || integration.targetEnvironmentId}
+          </div>
+        </div>
+      );
+    }
+
+    if (integration.integration === "octopus-deploy") {
+      return (
+        <div>
+          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Space" />
+          <div className="text-sm text-mineshaft-300">{integration.targetEnvironment}</div>
+        </div>
+      );
+    }
+
     if (
-      ["vercel", "netlify", "railway", "gitlab", "teamcity", "bitbucket"].includes(
-        integration.integration
-      ) ||
+      ["vercel", "netlify", "railway", "gitlab", "teamcity"].includes(integration.integration) ||
       (integration.integration === "github" && integration.scope === "github-env")
     ) {
       return (
@@ -149,6 +176,18 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
           <div className="text-sm text-mineshaft-300">
             {integration?.metadata?.secretSuffix || "-"}
           </div>
+        </div>
+      );
+    }
+
+    if (integration.integration === "bitbucket" && integration.targetServiceId) {
+      return (
+        <div>
+          <FormLabel
+            className="text-sm font-semibold text-mineshaft-300"
+            label="Deployment Environment"
+          />
+          <div className="text-sm text-mineshaft-300">{integration.targetService}</div>
         </div>
       );
     }

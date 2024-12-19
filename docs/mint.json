@@ -82,7 +82,8 @@
             "documentation/guides/node",
             "documentation/guides/python",
             "documentation/guides/nextjs-vercel",
-            "documentation/guides/microsoft-power-apps"
+            "documentation/guides/microsoft-power-apps",
+            "documentation/guides/organization-structure"
           ]
         }
       ]
@@ -113,13 +114,22 @@
             "documentation/platform/pki/alerting"
           ]
         },
-        "documentation/platform/kms",
+        "documentation/platform/ssh",
+        {
+          "group": "Key Management (KMS)",
+          "pages": [
+            "documentation/platform/kms/overview",
+            "documentation/platform/kms/hsm-integration",
+            "documentation/platform/kms/kubernetes-encryption"
+          ]
+        },
         {
           "group": "KMS Configuration",
           "pages": [
             "documentation/platform/kms-configuration/overview",
             "documentation/platform/kms-configuration/aws-kms",
-            "documentation/platform/kms-configuration/aws-hsm"
+            "documentation/platform/kms-configuration/aws-hsm",
+            "documentation/platform/kms-configuration/gcp-kms"
           ]
         },
         {
@@ -135,11 +145,11 @@
           "pages": [
             "documentation/platform/access-controls/overview",
             "documentation/platform/access-controls/role-based-access-controls",
+            "documentation/platform/access-controls/attribute-based-access-controls",
             "documentation/platform/access-controls/additional-privileges",
             "documentation/platform/access-controls/temporary-access",
             "documentation/platform/access-controls/access-requests",
             "documentation/platform/pr-workflows",
-            "documentation/platform/audit-log-streams",
             "documentation/platform/groups"
           ]
         },
@@ -158,6 +168,7 @@
             "documentation/platform/secret-rotation/sendgrid",
             "documentation/platform/secret-rotation/postgres",
             "documentation/platform/secret-rotation/mysql",
+            "documentation/platform/secret-rotation/mssql",
             "documentation/platform/secret-rotation/aws-iam"
           ]
         },
@@ -179,9 +190,13 @@
             "documentation/platform/dynamic-secrets/mongo-db",
             "documentation/platform/dynamic-secrets/azure-entra-id",
             "documentation/platform/dynamic-secrets/ldap",
-            "documentation/platform/dynamic-secrets/sap-hana"
+            "documentation/platform/dynamic-secrets/sap-ase",
+            "documentation/platform/dynamic-secrets/sap-hana",
+            "documentation/platform/dynamic-secrets/snowflake",
+            "documentation/platform/dynamic-secrets/totp"
           ]
         },
+        "documentation/platform/project-templates",
         {
           "group": "Workflow Integrations",
           "pages": [
@@ -210,12 +225,14 @@
         "documentation/platform/identities/gcp-auth",
         "documentation/platform/identities/azure-auth",
         "documentation/platform/identities/aws-auth",
+        "documentation/platform/identities/jwt-auth",
         {
           "group": "OIDC Auth",
           "pages": [
             "documentation/platform/identities/oidc-auth/general",
             "documentation/platform/identities/oidc-auth/github",
-            "documentation/platform/identities/oidc-auth/circleci"
+            "documentation/platform/identities/oidc-auth/circleci",
+            "documentation/platform/identities/oidc-auth/gitlab"
           ]
         },
         "documentation/platform/mfa",
@@ -281,7 +298,10 @@
         },
         {
           "group": "Reference architectures",
-          "pages": ["self-hosting/reference-architectures/aws-ecs"]
+          "pages": [
+            "self-hosting/reference-architectures/aws-ecs",
+            "self-hosting/reference-architectures/linux-deployment-ha"
+          ]
         },
         "self-hosting/ee",
         "self-hosting/faq"
@@ -299,6 +319,7 @@
             "cli/commands/init",
             "cli/commands/run",
             "cli/commands/secrets",
+            "cli/commands/dynamic-secrets",
             "cli/commands/export",
             "cli/commands/token",
             "cli/commands/service-token",
@@ -321,12 +342,21 @@
       ]
     },
     {
+      "group": "App Connections",
+      "pages": [
+        "integrations/app-connections/overview",
+        "integrations/app-connections/aws",
+        "integrations/app-connections/github"
+      ]
+    },
+    {
       "group": "Infrastructure Integrations",
       "pages": [
         {
           "group": "Container orchestrators",
           "pages": [
             "integrations/platforms/kubernetes",
+            "integrations/platforms/kubernetes-csi",
             "integrations/platforms/docker-swarm-with-agent",
             "integrations/platforms/ecs-with-agent"
           ]
@@ -406,7 +436,8 @@
             "integrations/cicd/travisci",
             "integrations/cicd/rundeck",
             "integrations/cicd/codefresh",
-            "integrations/cloud/checkly"
+            "integrations/cloud/checkly",
+            "integrations/cicd/octopus-deploy"
           ]
         }
       ]
@@ -452,9 +483,9 @@
       "pages": [
         "sdks/languages/node",
         "sdks/languages/python",
+        "sdks/languages/java",
         "sdks/languages/go",
         "sdks/languages/ruby",
-        "sdks/languages/java",
         "sdks/languages/csharp"
       ]
     },
@@ -562,6 +593,16 @@
           ]
         },
         {
+          "group": "JWT Auth",
+          "pages": [
+            "api-reference/endpoints/jwt-auth/login",
+            "api-reference/endpoints/jwt-auth/attach",
+            "api-reference/endpoints/jwt-auth/retrieve",
+            "api-reference/endpoints/jwt-auth/update",
+            "api-reference/endpoints/jwt-auth/revoke"
+          ]
+        },
+        {
           "group": "Groups",
           "pages": [
             "api-reference/endpoints/groups/create",
@@ -633,6 +674,16 @@
             "api-reference/endpoints/project-roles/delete",
             "api-reference/endpoints/project-roles/get-by-slug",
             "api-reference/endpoints/project-roles/list"
+          ]
+        },
+        {
+          "group": "Project Templates",
+          "pages": [
+            "api-reference/endpoints/project-templates/create",
+            "api-reference/endpoints/project-templates/update",
+            "api-reference/endpoints/project-templates/delete",
+            "api-reference/endpoints/project-templates/get-by-id",
+            "api-reference/endpoints/project-templates/list"
           ]
         },
         {
@@ -712,6 +763,33 @@
             "api-reference/endpoints/identity-specific-privilege/delete",
             "api-reference/endpoints/identity-specific-privilege/find-by-slug",
             "api-reference/endpoints/identity-specific-privilege/list"
+          ]
+        },
+        {
+          "group": "App Connections",
+          "pages": [
+            "api-reference/endpoints/app-connections/list",
+            "api-reference/endpoints/app-connections/options",
+            { "group":  "AWS",
+              "pages": [
+                "api-reference/endpoints/app-connections/aws/list",
+                "api-reference/endpoints/app-connections/aws/get-by-id",
+                "api-reference/endpoints/app-connections/aws/get-by-name",
+                "api-reference/endpoints/app-connections/aws/create",
+                "api-reference/endpoints/app-connections/aws/update",
+                "api-reference/endpoints/app-connections/aws/delete"
+              ]
+            },
+            { "group":  "GitHub",
+              "pages": [
+                "api-reference/endpoints/app-connections/github/list",
+                "api-reference/endpoints/app-connections/github/get-by-id",
+                "api-reference/endpoints/app-connections/github/get-by-name",
+                "api-reference/endpoints/app-connections/github/create",
+                "api-reference/endpoints/app-connections/github/update",
+                "api-reference/endpoints/app-connections/github/delete"
+              ]
+            }
           ]
         },
         {
@@ -805,6 +883,40 @@
       ]
     },
     {
+      "group": "Infisical SSH",
+      "pages": [
+        {
+          "group": "Certificates",
+          "pages": [
+            "api-reference/endpoints/ssh/certificates/issue-credentials",
+            "api-reference/endpoints/ssh/certificates/sign-key"
+          ]
+        },
+        {
+          "group": "Certificate Authorities",
+          "pages": [
+            "api-reference/endpoints/ssh/ca/list",
+            "api-reference/endpoints/ssh/ca/create",
+            "api-reference/endpoints/ssh/ca/read",
+            "api-reference/endpoints/ssh/ca/update",
+            "api-reference/endpoints/ssh/ca/delete",
+            "api-reference/endpoints/ssh/ca/public-key",
+            "api-reference/endpoints/ssh/ca/list-certificate-templates"
+          ]
+        },
+        {
+          "group": "Certificate Templates",
+          "pages": [
+            "api-reference/endpoints/ssh/certificate-templates/list",
+            "api-reference/endpoints/ssh/certificate-templates/create",
+            "api-reference/endpoints/ssh/certificate-templates/read",
+            "api-reference/endpoints/ssh/certificate-templates/update",
+            "api-reference/endpoints/ssh/certificate-templates/delete"
+          ]
+        }
+      ]
+    },
+    {
       "group": "Infisical KMS",
       "pages": [
         {
@@ -881,13 +993,22 @@
       {
         "title": "PRODUCT",
         "links": [
-          { "label": "Secret Management", "url": "https://infisical.com/" },
-          { "label": "Secret Scanning", "url": "https://infisical.com/radar" },
+          {
+            "label": "Secret Management",
+            "url": "https://infisical.com/"
+          },
+          {
+            "label": "Secret Scanning",
+            "url": "https://infisical.com/radar"
+          },
           {
             "label": "Share Secrets",
             "url": "https://app.infisical.com/share-secret"
           },
-          { "label": "Pricing", "url": "https://infisical.com/pricing" },
+          {
+            "label": "Pricing",
+            "url": "https://infisical.com/pricing"
+          },
           {
             "label": "Security",
             "url": "https://infisical.com/docs/internals/security"
