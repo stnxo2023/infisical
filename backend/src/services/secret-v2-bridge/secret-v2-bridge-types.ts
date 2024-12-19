@@ -33,6 +33,7 @@ export type TGetSecretsDTO = {
   offset?: number;
   limit?: number;
   search?: string;
+  keys?: string[];
 } & TProjectPermission;
 
 export type TGetASecretDTO = {
@@ -285,3 +286,21 @@ export type TGetSecretReferencesTreeDTO = {
   environment: string;
   secretPath: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TFindSecretsByFolderIdsFilter = {
+  limit?: number;
+  offset?: number;
+  orderBy?: SecretsOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+  tagSlugs?: string[];
+  includeTagsInSearch?: boolean;
+  keys?: string[];
+};
+
+export type TGetSecretsRawByFolderMappingsDTO = {
+  projectId: string;
+  folderMappings: { folderId: string; path: string; environment: string }[];
+  userId: string;
+  filters: TFindSecretsByFolderIdsFilter;
+};

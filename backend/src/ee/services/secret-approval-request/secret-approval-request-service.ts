@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import {
   ProjectMembershipRole,
+  ProjectType,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
@@ -232,10 +233,10 @@ export const secretApprovalRequestServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const encrypedSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
+      const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
         secretApprovalRequest.id
       );
-      secrets = encrypedSecrets.map((el) => ({
+      secrets = encryptedSecrets.map((el) => ({
         ...el,
         secretKey: el.key,
         id: el.id,
@@ -267,14 +268,15 @@ export const secretApprovalRequestServiceFactory = ({
                 : "",
               secretComment: el.secretVersion.encryptedComment
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
-                : ""
+                : "",
+              tags: el.secretVersion.tags
             }
           : undefined
       }));
     } else {
       if (!botKey) throw new NotFoundError({ message: `Project bot key not found`, name: "BotKeyNotFound" }); // CLI depends on this error message. TODO(daniel): Make API check for name BotKeyNotFound instead of message
-      const encrypedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
-      secrets = encrypedSecrets.map((el) => ({
+      const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
+      secrets = encryptedSecrets.map((el) => ({
         ...el,
         ...decryptSecretWithBot(el, botKey),
         secret: el.secret
@@ -322,6 +324,12 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { policy } = secretApprovalRequest;
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+
     const { hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
@@ -382,6 +390,12 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { policy } = secretApprovalRequest;
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+
     const { hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
@@ -432,6 +446,12 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { policy, folderId, projectId } = secretApprovalRequest;
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+
     const { hasRole } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
@@ -571,7 +591,7 @@ export const secretApprovalRequestServiceFactory = ({
                     reminderNote: el.reminderNote,
                     skipMultilineEncoding: el.skipMultilineEncoding,
                     key: el.key,
-                    tagIds: el?.tags.map(({ id }) => id),
+                    tags: el?.tags.map(({ id }) => id),
                     ...encryptedValue
                   }
                 };
@@ -856,13 +876,14 @@ export const secretApprovalRequestServiceFactory = ({
   }: TGenerateSecretApprovalRequestDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -1136,14 +1157,14 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE || actor === ActorType.Machine)
       throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
-
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({

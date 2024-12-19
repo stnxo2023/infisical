@@ -53,6 +53,13 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
   const smtp = createTransport(cfg);
   const isSmtpOn = Boolean(cfg.host);
 
+  handlebars.registerHelper("emailFooter", () => {
+    const { SITE_URL } = getConfig();
+    return new handlebars.SafeString(
+      `<p style="font-size: 12px;">Email sent via Infisical at <a href="${SITE_URL}">${SITE_URL}</a></p>`
+    );
+  });
+
   const sendMail = async ({ substitutions, recipients, template, subjectLine }: TSmtpSendMail) => {
     const appCfg = getConfig();
     const html = await fs.readFile(path.resolve(__dirname, "./templates/", template), "utf8");
@@ -77,5 +84,21 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
     }
   };
 
-  return { sendMail };
+  const verify = async () => {
+    const isConnected = smtp
+      .verify()
+      .then(async () => {
+        logger.info("SMTP connected");
+        return true;
+      })
+      .catch((err: Error) => {
+        logger.error("SMTP error");
+        logger.error(err);
+        return false;
+      });
+
+    return isConnected;
+  };
+
+  return { sendMail, verify };
 };

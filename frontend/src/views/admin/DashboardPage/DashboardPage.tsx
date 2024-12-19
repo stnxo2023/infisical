@@ -22,15 +22,22 @@ import {
   Tabs
 } from "@app/components/v2";
 import { useOrganization, useServerConfig, useUser } from "@app/context";
-import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
+import {
+  useGetOrganizations,
+  useGetServerRootKmsEncryptionDetails,
+  useUpdateServerConfig
+} from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AuthPanel } from "./AuthPanel";
+import { EncryptionPanel } from "./EncryptionPanel";
 import { IntegrationPanel } from "./IntegrationPanel";
 import { RateLimitPanel } from "./RateLimitPanel";
 import { UserPanel } from "./UserPanel";
 
 enum TabSections {
   Settings = "settings",
+  Encryption = "encryption",
   Auth = "auth",
   RateLimit = "rate-limit",
   Integrations = "integrations",
@@ -55,6 +62,7 @@ type TDashboardForm = z.infer<typeof formSchema>;
 export const AdminDashboardPage = () => {
   const router = useRouter();
   const data = useServerConfig();
+  const { data: serverRootKmsDetails } = useGetServerRootKmsEncryptionDetails();
   const { config } = data;
 
   const {
@@ -91,7 +99,7 @@ export const AdminDashboardPage = () => {
     if (isNotAllowed && !isUserLoading) {
       if (orgs?.length) {
         localStorage.setItem("orgData.id", orgs?.[0]?.id);
-        router.push(`/org/${orgs?.[0]?.id}/overview`);
+        router.push(`/org/${orgs?.[0]?.id}/${ProjectType.SecretManager}/overview`);
       }
     }
   }, [isNotAllowed, isUserLoading]);
@@ -137,6 +145,7 @@ export const AdminDashboardPage = () => {
             <TabList>
               <div className="flex w-full flex-row border-b border-mineshaft-600">
                 <Tab value={TabSections.Settings}>General</Tab>
+                <Tab value={TabSections.Encryption}>Encryption</Tab>
                 <Tab value={TabSections.Auth}>Authentication</Tab>
                 <Tab value={TabSections.RateLimit}>Rate Limit</Tab>
                 <Tab value={TabSections.Integrations}>Integrations</Tab>
@@ -212,8 +221,9 @@ export const AdminDashboardPage = () => {
                     Default organization
                   </div>
                   <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
-                    Select the default organization you want to set for SAML/LDAP based logins. When
-                    selected, user logins will be automatically scoped to the selected organization.
+                    Select the default organization you want to set for SAML/LDAP/OIDC based logins.
+                    When selected, user logins will be automatically scoped to the selected
+                    organization.
                   </div>
                   <Controller
                     control={control}
@@ -319,6 +329,9 @@ export const AdminDashboardPage = () => {
                   Save
                 </Button>
               </form>
+            </TabPanel>
+            <TabPanel value={TabSections.Encryption}>
+              <EncryptionPanel rootKmsDetails={serverRootKmsDetails} />
             </TabPanel>
             <TabPanel value={TabSections.Auth}>
               <AuthPanel />

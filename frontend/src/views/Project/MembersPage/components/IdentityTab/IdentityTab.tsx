@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import {
   faArrowDown,
   faArrowUp,
@@ -181,7 +182,7 @@ export const IdentityTab = withProjectPermission(
                   onClick={() => handlePopUpOpen("identity")}
                   isDisabled={!isAllowed}
                 >
-                  Add identity
+                  Add Identity
                 </Button>
               )}
             </ProjectPermissionCan>
@@ -243,10 +244,10 @@ export const IdentityTab = withProjectPermission(
                         tabIndex={0}
                         onKeyDown={(evt) => {
                           if (evt.key === "Enter") {
-                            router.push(`/project/${workspaceId}/identities/${id}`);
+                            router.push(`/${currentWorkspace?.type}/${workspaceId}/identities/${id}`);
                           }
                         }}
-                        onClick={() => router.push(`/project/${workspaceId}/identities/${id}`)}
+                        onClick={() => router.push(`/${currentWorkspace?.type}/${workspaceId}/identities/${id}`)}
                       >
                         <Td>{name}</Td>
 
@@ -349,7 +350,9 @@ export const IdentityTab = withProjectPermission(
                         <Td className="flex justify-end space-x-2 opacity-0 duration-300 group-hover:opacity-100">
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}
-                            a={ProjectPermissionSub.Identity}
+                            a={subject(ProjectPermissionSub.Identity, {
+                              identityId: id
+                            })}
                           >
                             {(isAllowed) => (
                               <IconButton

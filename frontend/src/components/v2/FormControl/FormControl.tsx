@@ -1,4 +1,4 @@
-import { cloneElement, ReactNode } from "react";
+import { cloneElement, ReactElement, ReactNode } from "react";
 import { faExclamationTriangle, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Label from "@radix-ui/react-label";
@@ -82,7 +82,8 @@ export type FormControlProps = {
   children: JSX.Element;
   className?: string;
   icon?: ReactNode;
-  tooltipText?: string;
+  tooltipText?: ReactElement | string;
+  tooltipClassName?: string;
 };
 
 export const FormControl = ({
@@ -96,7 +97,8 @@ export const FormControl = ({
   isError,
   icon,
   className,
-  tooltipText
+  tooltipText,
+  tooltipClassName
 }: FormControlProps): JSX.Element => {
   return (
     <div className={twMerge("mb-4", className)}>
@@ -108,6 +110,7 @@ export const FormControl = ({
           id={id}
           icon={icon}
           tooltipText={tooltipText}
+          tooltipClassName={tooltipClassName}
         />
       ) : (
         label

@@ -123,7 +123,7 @@ export const groupServiceFactory = ({
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.groups)
       throw new BadRequestError({
-        message: "Failed to update group due to plan restrictio Upgrade plan to update group."
+        message: "Failed to update group due to plan restriction Upgrade plan to update group."
       });
 
     const group = await groupDAL.findOne({ orgId: actorOrgId, id });
@@ -222,7 +222,8 @@ export const groupServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    search
+    search,
+    filter
   }: TListGroupUsersDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
@@ -251,7 +252,8 @@ export const groupServiceFactory = ({
       offset,
       limit,
       username,
-      search
+      search,
+      filter
     });
 
     return { users: members, totalCount };
@@ -283,8 +285,8 @@ export const groupServiceFactory = ({
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, groupRolePermission);
-    if (!hasRequiredPriviledges)
+    const hasRequiredPrivileges = isAtLeastAsPrivileged(permission, groupRolePermission);
+    if (!hasRequiredPrivileges)
       throw new ForbiddenRequestError({ message: "Failed to add user to more privileged group" });
 
     const user = await userDAL.findOne({ username });
@@ -338,8 +340,8 @@ export const groupServiceFactory = ({
     const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
 
     // check if user has broader or equal to privileges than group
-    const hasRequiredPriviledges = isAtLeastAsPrivileged(permission, groupRolePermission);
-    if (!hasRequiredPriviledges)
+    const hasRequiredPrivileges = isAtLeastAsPrivileged(permission, groupRolePermission);
+    if (!hasRequiredPrivileges)
       throw new ForbiddenRequestError({ message: "Failed to delete user from more privileged group" });
 
     const user = await userDAL.findOne({ username });

@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import { faFolder, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
@@ -50,11 +51,34 @@ export const IdentityRoleDetailsSection = ({
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
     try {
-      const updatedRole = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
+      const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
       await updateIdentityWorkspaceRole({
         workspaceId: currentWorkspace?.id || "",
         identityId: identityMembershipDetails.identity.id,
-        roles: updatedRole
+        roles: updatedRoles.map(
+          ({
+            role,
+            customRoleSlug,
+            isTemporary,
+            temporaryMode,
+            temporaryRange,
+            temporaryAccessStartTime,
+            temporaryAccessEndTime
+          }) => ({
+            role: role === "custom" ? customRoleSlug : role,
+            ...(isTemporary
+              ? {
+                  isTemporary,
+                  temporaryMode,
+                  temporaryRange,
+                  temporaryAccessStartTime,
+                  temporaryAccessEndTime
+                }
+              : {
+                  isTemporary
+                })
+          })
+        )
       });
       createNotification({ type: "success", text: "Successfully removed role" });
       handlePopUpClose("deleteRole");
@@ -70,7 +94,9 @@ export const IdentityRoleDetailsSection = ({
         <h3 className="text-lg font-semibold text-mineshaft-100">Project Roles</h3>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Edit}
-          a={ProjectPermissionSub.Identity}
+          a={subject(ProjectPermissionSub.Identity, {
+            identityId: identityMembershipDetails.identity.id
+          })}
           renderTooltip
           allowedLabel="Edit Role(s)"
         >
@@ -152,7 +178,9 @@ export const IdentityRoleDetailsSection = ({
                         <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Edit}
-                            a={ProjectPermissionSub.Member}
+                            a={subject(ProjectPermissionSub.Identity, {
+                              identityId: identityMembershipDetails.identity.id
+                            })}
                             renderTooltip
                             allowedLabel="Remove Role"
                           >

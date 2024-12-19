@@ -21,7 +21,7 @@ const adminConsolePermissionSchmea = z
 
 export const formSchema = z.object({
   name: z.string().trim(),
-  description: z.string().trim().optional(),
+  description: z.string().trim().nullish(),
   slug: z
     .string()
     .trim()
@@ -48,7 +48,8 @@ export const formSchema = z.object({
       billing: generalPermissionSchema,
       identity: generalPermissionSchema,
       "organization-admin-console": adminConsolePermissionSchmea,
-      [OrgPermissionSubjects.Kms]: generalPermissionSchema
+      [OrgPermissionSubjects.Kms]: generalPermissionSchema,
+      [OrgPermissionSubjects.ProjectTemplates]: generalPermissionSchema
     })
     .optional()
 });
