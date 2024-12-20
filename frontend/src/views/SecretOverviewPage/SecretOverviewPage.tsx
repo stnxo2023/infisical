@@ -14,7 +14,6 @@ import {
   faFolderPlus,
   faKey,
   faList,
-  faMagnifyingGlass,
   faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -33,7 +32,6 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   IconButton,
-  Input,
   Modal,
   ModalContent,
   Pagination,
@@ -61,6 +59,7 @@ import {
   useCreateSecretV3,
   useDeleteSecretV3,
   useGetImportedSecretsAllEnvs,
+  useGetWsTags,
   useUpdateSecretV3
 } from "@app/hooks/api";
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
@@ -69,13 +68,14 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
 import { useDynamicSecretOverview, useFolderOverview, useSecretOverview } from "@app/hooks/utils";
 import { SecretOverviewDynamicSecretRow } from "@app/views/SecretOverviewPage/components/SecretOverviewDynamicSecretRow";
 import {
   SecretNoAccessOverviewTableRow,
   SecretOverviewTableRow
 } from "@app/views/SecretOverviewPage/components/SecretOverviewTableRow";
+import { SecretSearchInput } from "@app/views/SecretOverviewPage/components/SecretSearchInput";
 import { SecretTableResourceCount } from "@app/views/SecretOverviewPage/components/SecretTableResourceCount";
 
 import { FolderForm } from "../SecretMainPage/components/ActionBar/FolderForm";
@@ -170,7 +170,7 @@ export const SecretOverviewPage = () => {
 
   useEffect(() => {
     if (!isWorkspaceLoading && !workspaceId && router.isReady) {
-      router.push(`/org/${currentOrg?.id}/overview`);
+      router.push(`/org/${currentOrg?.id}/${ProjectType.SecretManager}/overview`);
     }
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
@@ -186,7 +186,7 @@ export const SecretOverviewPage = () => {
     useGetImportedSecretsAllEnvs({
       projectId: workspaceId,
       path: secretPath,
-      environments: userAvailableEnvs.map(({ slug }) => slug)
+      environments: (userAvailableEnvs || []).map(({ slug }) => slug)
     });
 
   const { isLoading: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
@@ -231,6 +231,9 @@ export const SecretOverviewPage = () => {
     useDynamicSecretOverview(dynamicSecrets);
 
   const { secKeys, getSecretByKey, getEnvSecretKeyCount } = useSecretOverview(secrets);
+  const { data: tags } = useGetWsTags(
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? workspaceId : ""
+  );
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
@@ -505,7 +508,7 @@ export const SecretOverviewPage = () => {
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       router.push({
-        pathname: "/project/[id]/secrets/[env]",
+        pathname: `/${ProjectType.SecretManager}/[id]/secrets/[env]`,
         query
       });
     }
@@ -601,7 +604,21 @@ export const SecretOverviewPage = () => {
     setSelectedEntries(newChecks);
   };
 
-  if (isWorkspaceLoading || (isProjectV3 && isOverviewLoading)) {
+  useEffect(() => {
+    if (router.query.search) {
+      const { search, ...query } = router.query;
+      // temp workaround until we transition state to query params
+      router.push({
+        pathname: router.pathname,
+        query
+      });
+      setFilter(DEFAULT_FILTER_STATE);
+      setSearchFilter(router.query.search as string);
+      setDebouncedSearchFilter(router.query.search as string);
+    }
+  }, [router.query.search]);
+
+  if (isWorkspaceLoading || (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading)) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
         <img
@@ -640,47 +657,49 @@ export const SecretOverviewPage = () => {
           <NavHeader pageName={t("dashboard.title")} isProjectRelated />
         </div>
         <div className="space-y-8">
-          <div className="mt-6">
-            <p className="text-3xl font-semibold text-bunker-100">Secrets Overview</p>
-            <p className="text-md text-bunker-300">
-              Inject your secrets using
-              <a
-                className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                href="https://infisical.com/docs/cli/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Infisical CLI
-              </a>
-              ,
-              <a
-                className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                href="https://infisical.com/docs/documentation/getting-started/api"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Infisical API
-              </a>
-              ,
-              <a
-                className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                href="https://infisical.com/docs/sdks/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Infisical SDKs
-              </a>
-              , and
-              <a
-                className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                href="https://infisical.com/docs/documentation/getting-started/introduction"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                more
-              </a>
-              .
-            </p>
+          <div className="flex w-full items-baseline justify-between">
+            <div className="mt-6">
+              <p className="text-3xl font-semibold text-bunker-100">Secrets Overview</p>
+              <p className="text-md text-bunker-300">
+                Inject your secrets using
+                <a
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  href="https://infisical.com/docs/cli/overview"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Infisical CLI
+                </a>
+                ,
+                <a
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  href="https://infisical.com/docs/documentation/getting-started/api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Infisical API
+                </a>
+                ,
+                <a
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  href="https://infisical.com/docs/sdks/overview"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Infisical SDKs
+                </a>
+                , and
+                <a
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  href="https://infisical.com/docs/documentation/getting-started/introduction"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  more
+                </a>
+                .
+              </p>
+            </div>
           </div>
           <div className="flex items-center justify-between">
             <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
@@ -703,26 +722,6 @@ export const SecretOverviewPage = () => {
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
-                    {userAvailableEnvs.map((availableEnv) => {
-                      const { id: envId, name } = availableEnv;
-
-                      const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
-                      return (
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleEnvSelect(envId);
-                          }}
-                          key={envId}
-                          disabled={visibleEnvs?.length === 1}
-                          icon={isEnvSelected && <FontAwesomeIcon icon={faCheckCircle} />}
-                          iconPos="right"
-                        >
-                          <div className="flex items-center">{name}</div>
-                        </DropdownMenuItem>
-                      );
-                    })}
                     {/* <DropdownMenuItem className="px-1.5" asChild>
                     <Button
                       size="xs"
@@ -777,23 +776,36 @@ export const SecretOverviewPage = () => {
                         <span>Secrets</span>
                       </div>
                     </DropdownMenuItem>
+                    <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
+                    {userAvailableEnvs.map((availableEnv) => {
+                      const { id: envId, name } = availableEnv;
+
+                      const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
+                      return (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleEnvSelect(envId);
+                          }}
+                          key={envId}
+                          disabled={visibleEnvs?.length === 1}
+                          icon={isEnvSelected && <FontAwesomeIcon icon={faCheckCircle} />}
+                          iconPos="right"
+                        >
+                          <div className="flex items-center">{name}</div>
+                        </DropdownMenuItem>
+                      );
+                    })}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <div className="w-80">
-                <Input
-                  className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-                  placeholder="Search by secret/folder name..."
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  leftIcon={
-                    <FontAwesomeIcon
-                      icon={faMagnifyingGlass}
-                      className={searchFilter ? "text-primary" : ""}
-                    />
-                  }
-                />
-              </div>
+              <SecretSearchInput
+                value={searchFilter}
+                tags={tags}
+                onChange={setSearchFilter}
+                environments={userAvailableEnvs}
+                projectId={currentWorkspace?.id!}
+              />
               {userAvailableEnvs.length > 0 && (
                 <div>
                   <Button
@@ -855,7 +867,7 @@ export const SecretOverviewPage = () => {
         <div className="thin-scrollbar mt-4">
           <TableContainer
             onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
-            className="thin-scrollbar"
+            className="thin-scrollbar rounded-b-none"
           >
             <Table>
               <THead>
@@ -1104,13 +1116,23 @@ export const SecretOverviewPage = () => {
           )}
         </div>
       </div>
-      <CreateSecretForm
-        secretPath={secretPath}
+      <Modal
         isOpen={popUp.addSecretsInAllEnvs.isOpen}
-        getSecretByKey={getSecretByKey}
-        onTogglePopUp={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
-        onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
-      />
+        onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
+      >
+        <ModalContent
+          className="max-h-[80vh]"
+          bodyClassName="overflow-visible"
+          title="Create Secrets"
+          subTitle="Create a secret across multiple environments"
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
+          <CreateSecretForm
+            secretPath={secretPath}
+            onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
+          />
+        </ModalContent>
+      </Modal>
       <Modal
         isOpen={popUp.addFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addFolder", isOpen)}

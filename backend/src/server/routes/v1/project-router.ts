@@ -5,6 +5,7 @@ import {
   ProjectMembershipsSchema,
   ProjectRolesSchema,
   ProjectSlackConfigsSchema,
+  ProjectType,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -135,7 +136,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         includeRoles: z
           .enum(["true", "false"])
           .default("false")
-          .transform((value) => value === "true")
+          .transform((value) => value === "true"),
+        type: z
+          .enum([ProjectType.SecretManager, ProjectType.KMS, ProjectType.CertificateManager, ProjectType.SSH, "all"])
+          .optional()
       }),
       response: {
         200: z.object({
@@ -154,7 +158,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        type: req.query.type
       });
       return { workspaces };
     }
@@ -296,6 +301,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .max(64, { message: "Name must be 64 or fewer characters" })
           .optional()
           .describe(PROJECTS.UPDATE.name),
+        description: z
+          .string()
+          .trim()
+          .max(256, { message: "Description must be 256 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization)
       }),
       response: {
@@ -313,6 +324,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         },
         update: {
           name: req.body.name,
+          description: req.body.description,
           autoCapitalization: req.body.autoCapitalization
         },
         actorAuthMethod: req.permission.authMethod,

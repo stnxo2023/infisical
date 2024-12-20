@@ -23,6 +23,7 @@ export type SubscriptionPlan = {
   workspacesUsed: number;
   environmentLimit: number;
   samlSSO: boolean;
+  hsm: boolean;
   oidcSSO: boolean;
   scim: boolean;
   ldap: boolean;
@@ -43,4 +44,6 @@ export type SubscriptionPlan = {
   externalKms: boolean;
   pkiEst: boolean;
   enforceMfa: boolean;
+  projectTemplates: boolean;
+  appConnections: boolean; // TODO: remove once released
 };

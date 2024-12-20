@@ -1,11 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { useEffect, useState } from "react";
 import { Control, Controller, UseFormReset, UseFormSetValue, UseFormWatch } from "react-hook-form";
-import {
-  faCheckCircle,
-  faChevronDown,
-  faFilterCircleXmark
-} from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faCheckCircle, faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -16,11 +12,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  FilterableSelect,
   FormControl,
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useOrganization, useWorkspace } from "@app/context";
 import { useGetAuditLogActorFilterOpts } from "@app/hooks/api";
 import { eventToNameMap, userAgentTTypeoNameMap } from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType } from "@app/hooks/api/auditLogs/enums";
@@ -60,11 +57,15 @@ export const LogsFilter = ({
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
 
   const { currentWorkspace, workspaces } = useWorkspace();
+  const { currentOrg } = useOrganization();
+
+  const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);
+
   const { data, isLoading } = useGetAuditLogActorFilterOpts(currentWorkspace?.id ?? "");
 
   useEffect(() => {
-    if (workspaces.length) {
-      setValue("projectId", workspaces[0].id);
+    if (workspacesInOrg.length) {
+      setValue("project", workspacesInOrg[0]);
     }
   }, [workspaces]);
 
@@ -111,11 +112,34 @@ export const LogsFilter = ({
   return (
     <div
       className={twMerge(
-        "sticky top-20 z-10 flex items-center justify-between bg-bunker-800",
+        "sticky top-20 z-10 flex flex-wrap items-center justify-between bg-bunker-800",
         className
       )}
     >
-      <div className="flex items-center space-x-2">
+      {isOrgAuditLogs && workspacesInOrg.length > 0 && (
+        <Controller
+          control={control}
+          name="project"
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <FormControl
+              label="Project"
+              errorText={error?.message}
+              isError={Boolean(error)}
+              className="mr-12 w-64"
+            >
+              <FilterableSelect
+                value={value}
+                onChange={onChange}
+                placeholder="Select a project..."
+                options={workspacesInOrg.map(({ name, id }) => ({ name, id }))}
+                getOptionValue={(option) => option.id}
+                getOptionLabel={(option) => option.name}
+              />
+            </FormControl>
+          )}
+        />
+      )}
+      <div className="mt-1 flex items-center space-x-2">
         <Controller
           control={control}
           name="eventType"
@@ -123,14 +147,14 @@ export const LogsFilter = ({
             <FormControl label="Events">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                  <div className="inline-flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
                     {selectedEventTypes?.length === 1
                       ? eventTypes.find((eventType) => eventType.value === selectedEventTypes[0])
                           ?.label
                       : selectedEventTypes?.length === 0
                       ? "All events"
                       : `${selectedEventTypes?.length} events selected`}
-                    <FontAwesomeIcon icon={faChevronDown} className="ml-2 text-xs" />
+                    <FontAwesomeIcon icon={faCaretDown} className="ml-2 text-xs" />
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="z-[100] max-h-80 overflow-hidden">
@@ -221,10 +245,7 @@ export const LogsFilter = ({
                   if (e === "all") onChange(undefined);
                   else onChange(e);
                 }}
-                className={twMerge(
-                  "w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100",
-                  value === undefined && "text-mineshaft-400"
-                )}
+                className={twMerge("w-full border border-mineshaft-500 bg-mineshaft-700")}
               >
                 <SelectItem value="all" key="all">
                   All sources
@@ -238,37 +259,6 @@ export const LogsFilter = ({
             </FormControl>
           )}
         />
-
-        {isOrgAuditLogs && workspaces.length > 0 && (
-          <Controller
-            control={control}
-            name="projectId"
-            render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Project"
-                errorText={error?.message}
-                isError={Boolean(error)}
-                className="w-40"
-              >
-                <Select
-                  value={value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className={twMerge(
-                    "w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100",
-                    value === undefined && "text-mineshaft-400"
-                  )}
-                >
-                  {workspaces.map((project) => (
-                    <SelectItem value={String(project.id || "")} key={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-        )}
         <Controller
           name="startDate"
           control={control}
@@ -277,10 +267,8 @@ export const LogsFilter = ({
               <FormControl label="Start date" errorText={error?.message} isError={Boolean(error)}>
                 <DatePicker
                   value={field.value || undefined}
-                  onChange={(date) => {
-                    onChange(date);
-                    setIsStartDatePickerOpen(false);
-                  }}
+                  onChange={onChange}
+                  dateFormat="P"
                   popUpProps={{
                     open: isStartDatePickerOpen,
                     onOpenChange: setIsStartDatePickerOpen
@@ -299,11 +287,8 @@ export const LogsFilter = ({
               <FormControl label="End date" errorText={error?.message} isError={Boolean(error)}>
                 <DatePicker
                   value={field.value || undefined}
-                  onChange={(pickedDate) => {
-                    pickedDate?.setHours(23, 59, 59, 999); // we choose the end of today not the start of it (going off of aws cloud watch)
-                    onChange(pickedDate);
-                    setIsEndDatePickerOpen(false);
-                  }}
+                  onChange={onChange}
+                  dateFormat="P"
                   popUpProps={{
                     open: isEndDatePickerOpen,
                     onOpenChange: setIsEndDatePickerOpen
@@ -314,27 +299,27 @@ export const LogsFilter = ({
             );
           }}
         />
+        <Button
+          isLoading={false}
+          colorSchema="primary"
+          variant="outline_bg"
+          className="mt-[0.45rem]"
+          type="submit"
+          leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} />}
+          onClick={() =>
+            reset({
+              eventType: presets?.eventType || [],
+              actor: presets?.actorId,
+              userAgentType: undefined,
+              startDate: undefined,
+              endDate: undefined,
+              project: null
+            })
+          }
+        >
+          Clear filters
+        </Button>
       </div>
-      <Button
-        isLoading={false}
-        colorSchema="primary"
-        variant="outline_bg"
-        className="mt-1.5"
-        type="submit"
-        leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} />}
-        onClick={() =>
-          reset({
-            eventType: presets?.eventType || [],
-            actor: presets?.actorId,
-            userAgentType: undefined,
-            startDate: undefined,
-            endDate: undefined,
-            projectId: undefined
-          })
-        }
-      >
-        Clear filters
-      </Button>
     </div>
   );
 };

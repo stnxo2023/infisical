@@ -1,11 +1,18 @@
+import { ParsedUrlQuery } from "querystring";
+
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faAngleRight, faLock } from "@fortawesome/free-solid-svg-icons";
+import { faAngleRight, faCheck, faCopy, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { useOrganization, useWorkspace } from "@app/context";
+import { useToggle } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
-import { Select, SelectItem, Tooltip } from "../v2";
+import { createNotification } from "../notifications";
+import { IconButton, Select, SelectItem, Tooltip } from "../v2";
 
 type Props = {
   pageName: string;
@@ -50,6 +57,10 @@ export default function NavHeader({
 }: Props): JSX.Element {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
+
+  const [isCopied, { timedToggle: toggleIsCopied }] = useToggle(false);
+  const [isHoveringCopyButton, setIsHoveringCopyButton] = useState(false);
+
   const router = useRouter();
 
   const secretPathSegments = secretPath.split("/").filter(Boolean);
@@ -59,7 +70,11 @@ export default function NavHeader({
       <div className="mr-2 flex h-5 w-5 min-w-[1.25rem] items-center justify-center rounded-md bg-primary text-sm text-black">
         {currentOrg?.name?.charAt(0)}
       </div>
-      <Link passHref legacyBehavior href={`/org/${currentOrg?.id}/overview`}>
+      <Link
+        passHref
+        legacyBehavior
+        href={`/org/${currentOrg?.id}/${ProjectType.SecretManager}/overview`}
+      >
         <a className="truncate pl-0.5 text-sm font-semibold text-primary/80 hover:text-primary">
           {currentOrg?.name}
         </a>
@@ -83,7 +98,10 @@ export default function NavHeader({
         <Link
           passHref
           legacyBehavior
-          href={{ pathname: "/project/[id]/secrets/overview", query: { id: router.query.id } }}
+          href={{
+            pathname: `/${ProjectType.SecretManager}/[id]/secrets/overview`,
+            query: { id: router.query.id }
+          }}
         >
           <a className="text-sm font-semibold text-primary/80 hover:text-primary">{pageName}</a>
         </Link>
@@ -120,7 +138,7 @@ export default function NavHeader({
             passHref
             legacyBehavior
             href={{
-              pathname: "/project/[id]/secrets/[env]",
+              pathname: `/${ProjectType.SecretManager}/[id]/secrets/[env]`,
               query: { id: router.query.id, env: router.query.env }
             }}
           >
@@ -132,8 +150,10 @@ export default function NavHeader({
       )}
       {isFolderMode &&
         secretPathSegments?.map((folderName, index) => {
-          const query = { ...router.query };
-          query.secretPath = `/${secretPathSegments.slice(0, index + 1).join("/")}`;
+          const query: ParsedUrlQuery & { secretPath: string } = {
+            ...router.query,
+            secretPath: `/${secretPathSegments.slice(0, index + 1).join("/")}`
+          };
 
           return (
             <div
@@ -142,14 +162,62 @@ export default function NavHeader({
             >
               <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
               {index + 1 === secretPathSegments?.length ? (
-                <span className="text-sm font-semibold text-bunker-300">{folderName}</span>
+                <div className="flex items-center space-x-2">
+                  <span
+                    className={twMerge(
+                      "text-sm font-semibold transition-all",
+                      isHoveringCopyButton ? "text-bunker-200" : "text-bunker-300"
+                    )}
+                  >
+                    {folderName}
+                  </span>
+                  <Tooltip
+                    className="relative right-2"
+                    position="bottom"
+                    content="Copy secret path"
+                  >
+                    <IconButton
+                      variant="plain"
+                      ariaLabel="copy"
+                      onMouseEnter={() => setIsHoveringCopyButton(true)}
+                      onMouseLeave={() => setIsHoveringCopyButton(false)}
+                      onClick={() => {
+                        if (isCopied) return;
+
+                        navigator.clipboard.writeText(query.secretPath);
+
+                        createNotification({
+                          text: "Copied secret path to clipboard",
+                          type: "info"
+                        });
+
+                        toggleIsCopied(2000);
+                      }}
+                      className="hover:bg-bunker-100/10"
+                    >
+                      <FontAwesomeIcon
+                        icon={!isCopied ? faCopy : faCheck}
+                        size="sm"
+                        className="cursor-pointer"
+                      />
+                    </IconButton>
+                  </Tooltip>
+                </div>
               ) : (
                 <Link
                   passHref
                   legacyBehavior
-                  href={{ pathname: "/project/[id]/secrets/[env]", query }}
+                  href={{
+                    pathname: `/${ProjectType.SecretManager}/[id]/secrets/[env]`,
+                    query
+                  }}
                 >
-                  <a className="text-sm font-semibold text-primary/80 hover:text-primary">
+                  <a
+                    className={twMerge(
+                      "text-sm font-semibold transition-all hover:text-primary",
+                      isHoveringCopyButton ? "text-primary" : "text-primary/80"
+                    )}
+                  >
                     {folderName}
                   </a>
                 </Link>

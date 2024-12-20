@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
+import { ProjectType, SecretKeyEncoding } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
@@ -9,7 +9,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrderByDirection } from "@app/lib/types";
+import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
@@ -22,6 +22,7 @@ import {
   TDeleteDynamicSecretDTO,
   TDetailsDynamicSecretDTO,
   TGetDynamicSecretsCountDTO,
+  TListDynamicSecretsByFolderMappingsDTO,
   TListDynamicSecretsDTO,
   TListDynamicSecretsMultiEnvDTO,
   TUpdateDynamicSecretDTO
@@ -72,13 +73,14 @@ export const dynamicSecretServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -143,13 +145,14 @@ export const dynamicSecretServiceFactory = ({
 
     const projectId = project.id;
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.EditRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -226,13 +229,14 @@ export const dynamicSecretServiceFactory = ({
 
     const projectId = project.id;
 
-    const { permission } = await permissionService.getProjectPermission(
+    const { permission, ForbidOnInvalidProjectType } = await permissionService.getProjectPermission(
       actor,
       actorId,
       projectId,
       actorAuthMethod,
       actorOrgId
     );
+    ForbidOnInvalidProjectType(ProjectType.SecretManager);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.DeleteRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path })
@@ -454,8 +458,44 @@ export const dynamicSecretServiceFactory = ({
     return dynamicSecretCfg;
   };
 
+  const listDynamicSecretsByFolderIds = async (
+    { folderMappings, filters, projectId }: TListDynamicSecretsByFolderMappingsDTO,
+    actor: OrgServiceActor
+  ) => {
+    const { permission } = await permissionService.getProjectPermission(
+      actor.type,
+      actor.id,
+      projectId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    const userAccessibleFolderMappings = folderMappings.filter(({ path, environment }) =>
+      permission.can(
+        ProjectPermissionDynamicSecretActions.ReadRootCredential,
+        subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath: path })
+      )
+    );
+
+    const groupedFolderMappings = new Map(userAccessibleFolderMappings.map((path) => [path.folderId, path]));
+
+    const dynamicSecrets = await dynamicSecretDAL.listDynamicSecretsByFolderIds({
+      folderIds: userAccessibleFolderMappings.map(({ folderId }) => folderId),
+      ...filters
+    });
+
+    return dynamicSecrets.map((dynamicSecret) => {
+      const { environment, path } = groupedFolderMappings.get(dynamicSecret.folderId)!;
+      return {
+        ...dynamicSecret,
+        environment,
+        path
+      };
+    });
+  };
+
   // get dynamic secrets for multiple envs
-  const listDynamicSecretsByFolderIds = async ({
+  const listDynamicSecretsByEnvs = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
@@ -521,9 +561,10 @@ export const dynamicSecretServiceFactory = ({
     deleteByName,
     getDetails,
     listDynamicSecretsByEnv,
-    listDynamicSecretsByFolderIds,
+    listDynamicSecretsByEnvs,
     getDynamicSecretCount,
     getCountMultiEnv,
-    fetchAzureEntraIdUsers
+    fetchAzureEntraIdUsers,
+    listDynamicSecretsByFolderIds
   };
 };

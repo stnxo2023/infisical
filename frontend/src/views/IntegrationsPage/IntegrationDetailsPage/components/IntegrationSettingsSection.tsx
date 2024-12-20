@@ -1,4 +1,5 @@
 import { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
+import { OctopusDeployScopeValues } from "@app/views/IntegrationsPage/IntegrationDetailsPage/components/OctopusDeployScopeValues";
 
 type Props = {
   integration: TIntegrationWithEnv;
@@ -13,6 +14,7 @@ const metadataMappings: Record<keyof NonNullable<TIntegrationWithEnv["metadata"]
   githubVisibilityRepoIds: "Github Visibility Repo Ids",
   shouldAutoRedeploy: "Auto Redeploy Target Application When Secrets Change",
   secretAWSTag: "Tags For Secrets Stored In AWS",
+  azureLabel: "Azure Label",
   kmsKeyId: "AWS KMS Key ID",
   secretSuffix: "Secret Suffix",
   secretPrefix: "Secret Prefix",
@@ -26,12 +28,18 @@ const metadataMappings: Record<keyof NonNullable<TIntegrationWithEnv["metadata"]
   shouldDisableDelete: "AWS Secret Deletion Disabled",
   shouldMaskSecrets: "GitLab Secrets Masking Enabled",
   shouldProtectSecrets: "GitLab Secret Protection Enabled",
-  shouldEnableDelete: "GitHub Secret Deletion Enabled"
+  shouldEnableDelete: "GitHub Secret Deletion Enabled",
+  octopusDeployScopeValues: "Octopus Deploy Scope Values",
+  awsIamRole: "AWS IAM Role",
+  region: "Region"
 } as const;
 
 export const IntegrationSettingsSection = ({ integration }: Props) => {
   const renderValue = <K extends MetadataKey>(key: K, value: MetadataValue<K>) => {
     if (!value) return null;
+
+    if (key === "octopusDeployScopeValues")
+      return <OctopusDeployScopeValues integration={integration} />;
 
     // If it's a boolean, we render a generic "Yes" or "No" response.
     if (typeof value === "boolean") {
@@ -49,7 +57,7 @@ export const IntegrationSettingsSection = ({ integration }: Props) => {
       }
 
       if (key === "githubVisibilityRepoIds") {
-        return value.join(", ");
+        return (value as string[]).join(", ");
       }
     }
 
@@ -79,7 +87,7 @@ export const IntegrationSettingsSection = ({ integration }: Props) => {
           Object.entries(integration.metadata).map(([key, value]) => (
             <div key={key} className="flex flex-col">
               <p className="text-sm text-gray-400">
-                {metadataMappings[key as keyof typeof metadataMappings]}
+                {!!value && metadataMappings[key as keyof typeof metadataMappings]}
               </p>
               <p className="text-sm text-gray-200">{renderValue(key as MetadataKey, value)}</p>
             </div>

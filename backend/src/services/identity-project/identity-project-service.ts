@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import ms from "ms";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
@@ -61,7 +61,12 @@ export const identityProjectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Identity, {
+        identityId
+      })
+    );
 
     const existingIdentity = await identityProjectDAL.findOne({ identityId, projectId });
     if (existingIdentity)
@@ -161,7 +166,10 @@ export const identityProjectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Identity, { identityId })
+    );
 
     const projectIdentity = await identityProjectDAL.findOne({ identityId, projectId });
     if (!projectIdentity)
@@ -182,7 +190,12 @@ export const identityProjectServiceFactory = ({
 
     // validate custom roles input
     const customInputRoles = roles.filter(
-      ({ role }) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
+      ({ role }) =>
+        !Object.values(ProjectMembershipRole)
+          // we don't want to include custom in this check;
+          // this unintentionally enables setting slug to custom which is reserved
+          .filter((r) => r !== ProjectMembershipRole.Custom)
+          .includes(role as ProjectMembershipRole)
     );
     const hasCustomRole = Boolean(customInputRoles.length);
     const customRoles = hasCustomRole
@@ -248,7 +261,11 @@ export const identityProjectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.Identity, { identityId })
+    );
+
     const { permission: identityRolePermission } = await permissionService.getProjectPermission(
       ActorType.IDENTITY,
       identityId,
@@ -312,7 +329,11 @@ export const identityProjectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Identity, { identityId })
+    );
 
     const [identityMembership] = await identityProjectDAL.findByProjectId(projectId, { identityId });
     if (!identityMembership)

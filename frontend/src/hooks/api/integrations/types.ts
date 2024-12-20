@@ -41,6 +41,7 @@ export type TIntegration = {
       key: string;
       value: string;
     }[];
+    azureLabel?: string;
 
     kmsKeyId?: string;
     secretSuffix?: string;
@@ -57,7 +58,20 @@ export type TIntegration = {
     shouldMaskSecrets?: boolean;
     shouldProtectSecrets?: boolean;
     shouldEnableDelete?: boolean;
+
+    octopusDeployScopeValues?: TOctopusDeployScopeValues;
+    awsIamRole?: string;
+    region?: string;
   };
+};
+
+export type TOctopusDeployScopeValues = {
+  Environment?: string[];
+  Action?: string[];
+  Channel?: string[];
+  Machine?: string[];
+  ProcessOwner?: string[];
+  Role?: string[];
 };
 
 export type TIntegrationWithEnv = TIntegration & {

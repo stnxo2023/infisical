@@ -27,7 +27,10 @@ export enum DynamicSecretProviders {
   RabbitMq = "rabbit-mq",
   AzureEntraId = "azure-entra-id",
   Ldap = "ldap",
-  SapHana = "sap-hana"
+  SapHana = "sap-hana",
+  Snowflake = "snowflake",
+  Totp = "totp",
+  SapAse = "sap-ase"
 }
 
 export enum SqlProviders {
@@ -198,9 +201,11 @@ export type TDynamicSecretProvider =
         binddn: string;
         bindpass: string;
         ca?: string | undefined;
-        creationLdif: string;
-        revocationLdif: string;
+        credentialType: string;
+        creationLdif?: string;
+        revocationLdif?: string;
         rollbackLdif?: string;
+        rotationLdif?: string;
       };
     }
   | {
@@ -215,6 +220,45 @@ export type TDynamicSecretProvider =
         renewStatement?: string;
         ca?: string | undefined;
       };
+    }
+  | {
+      type: DynamicSecretProviders.SapAse;
+      inputs: {
+        host: string;
+        port: number;
+        username: string;
+        database: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Snowflake;
+      inputs: {
+        orgId: string;
+        accountId: string;
+        username: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
+        renewStatement?: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Totp;
+      inputs:
+        | {
+            configType: "url";
+            url: string;
+          }
+        | {
+            configType: "manual";
+            secret: string;
+            period?: number;
+            algorithm?: string;
+            digits?: number;
+          };
     };
 export type TCreateDynamicSecretDTO = {
   projectSlug: string;
