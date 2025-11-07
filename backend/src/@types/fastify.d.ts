@@ -101,10 +101,12 @@ import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-r
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
+import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { TPkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
+import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
@@ -294,6 +296,7 @@ declare module "fastify" {
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
+      pkiAcme: TPkiAcmeServiceFactory;
       certificateEstV3: TCertificateEstV3ServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
       pkiSubscriber: TPkiSubscriberServiceFactory;
@@ -353,6 +356,7 @@ declare module "fastify" {
       role: TRoleServiceFactory;
       convertor: TConvertorServiceFactory;
       subOrganization: TSubOrgServiceFactory;
+      pkiAlertV2: TPkiAlertV2ServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
