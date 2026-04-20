@@ -94,7 +94,7 @@ const upsertDevinSecret = async ({
     const status = error instanceof AxiosError ? error.response?.status : undefined;
     const existing = existingSecretsByKey.get(key);
 
-    if (!existing || (status !== 409 && status !== 422)) {
+    if (!existing || status !== 409) {
       throw new SecretSyncError({ error, secretKey: key });
     }
 
