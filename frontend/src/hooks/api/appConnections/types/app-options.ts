@@ -232,6 +232,9 @@ export type TExternalInfisicalConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.ExternalInfisical;
 };
 
+export type TDopplerConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Doppler;
+};
 export type TNetScalerConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.NetScaler;
 };
@@ -299,6 +302,7 @@ export type TAppConnectionOption =
   | TAzureEntraIdConnectionOption
   | TVenafiConnectionOption
   | TExternalInfisicalConnectionOption
+  | TDopplerConnectionOption
   | TNetScalerConnectionOption
   | TAnthropicConnectionOption
   | TDevinConnectionOption;
@@ -358,6 +362,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;
   [AppConnection.Venafi]: TVenafiConnectionOption;
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
+  [AppConnection.Doppler]: TDopplerConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
   [AppConnection.Devin]: TDevinConnectionOption;

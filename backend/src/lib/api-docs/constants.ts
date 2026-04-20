@@ -2959,7 +2959,9 @@ export const SecretSyncs = {
       teamName:
         "The name of the team to sync the secrets to. This is an optional field only intended for display purposes.",
       targetEnvironments: "An optional array of Vercel environments to add shared environment variables to.",
-      targetProjects: "An optional array of Vercel projects to add shared environment variables to."
+      targetProjects: "An optional array of Vercel projects to add shared environment variables to.",
+      sensitive:
+        "Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment."
     },
     LARAVEL_FORGE: {
       orgSlug: "The slug of the Laravel Forge org to sync secrets to.",

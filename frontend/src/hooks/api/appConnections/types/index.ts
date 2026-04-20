@@ -22,6 +22,7 @@ import { TDbtConnection } from "./dbt-connection";
 import { TDevinConnection } from "./devin-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
+import { TDopplerConnection } from "./doppler-connection";
 import { TExternalInfisicalConnection } from "./external-infisical-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
@@ -78,6 +79,7 @@ export * from "./databricks-connection";
 export * from "./dbt-connection";
 export * from "./devin-connection";
 export * from "./dns-made-easy-connection";
+export * from "./doppler-connection";
 export * from "./external-infisical-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
@@ -170,6 +172,7 @@ export type TAppConnection =
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TExternalInfisicalConnection
+  | TDopplerConnection
   | TNetScalerConnection
   | TDevinConnection;
 

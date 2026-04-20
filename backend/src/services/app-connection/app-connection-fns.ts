@@ -119,6 +119,7 @@ import {
   getDNSMadeEasyConnectionListItem,
   validateDNSMadeEasyConnectionCredentials
 } from "./dns-made-easy/dns-made-easy-connection-fns";
+import { DopplerConnectionMethod, getDopplerConnectionListItem, validateDopplerConnectionCredentials } from "./doppler";
 import {
   ExternalInfisicalConnectionMethod,
   getExternalInfisicalConnectionListItem,
@@ -294,6 +295,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
     getExternalInfisicalConnectionListItem(),
+    getDopplerConnectionListItem(),
     getNetScalerConnectionListItem()
   ]
     .filter((option) => {
@@ -446,7 +448,8 @@ export const validateAppConnectionCredentials = async (
       validateExternalInfisicalConnectionCredentials(
         config as TExternalInfisicalConnectionConfig,
         deps.identityUaDAL
-      )) as TAppConnectionCredentialsValidator
+      )) as TAppConnectionCredentialsValidator,
+    [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -542,6 +545,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
+    case DopplerConnectionMethod.ApiToken:
+      return "API Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -652,6 +657,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
+  [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
   [AppConnection.NetScaler]: platformManagedCredentialsNotSupported
 };
 

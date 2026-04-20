@@ -48,6 +48,9 @@ export const VercelSyncDestinationSection = ({ secretSync }: Props) => {
         <GenericFieldLabel label="Target Projects">
           {selectedProjects?.map((project) => project?.name).join(", ")}
         </GenericFieldLabel>
+        <GenericFieldLabel label="Sensitive">
+          {destinationConfig.sensitive ? "Yes" : "No"}
+        </GenericFieldLabel>
       </>
     );
   }
@@ -62,6 +65,9 @@ export const VercelSyncDestinationSection = ({ secretSync }: Props) => {
         </GenericFieldLabel>
         <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
         <GenericFieldLabel label="Preview Branch">{destinationConfig.branch}</GenericFieldLabel>
+        <GenericFieldLabel label="Sensitive">
+          {destinationConfig.sensitive ? "Yes" : "No"}
+        </GenericFieldLabel>
       </>
     );
   } else {
@@ -72,6 +78,9 @@ export const VercelSyncDestinationSection = ({ secretSync }: Props) => {
           {destinationConfig.appName || destinationConfig.app}
         </GenericFieldLabel>
         <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
+        <GenericFieldLabel label="Sensitive">
+          {destinationConfig.sensitive ? "Yes" : "No"}
+        </GenericFieldLabel>
       </>
     );
   }

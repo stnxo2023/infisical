@@ -36,6 +36,7 @@ import { DbtConnectionForm } from "./DbtConnectionForm";
 import { DevinConnectionForm } from "./DevinConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
+import { DopplerConnectionForm } from "./DopplerConnectionForm";
 import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
@@ -277,6 +278,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <AzureEntraIdConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ExternalInfisical:
         return <ExternalInfisicalConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Doppler:
+        return <DopplerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
       default:
@@ -490,6 +493,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return (
           <ExternalInfisicalConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
         );
+      case AppConnection.Doppler:
+        return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
