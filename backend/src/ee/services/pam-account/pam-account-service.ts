@@ -849,10 +849,6 @@ export const pamAccountServiceFactory = ({
       kmsService
     );
 
-    // Temporarily disable access to Windows Server
-    if (resourceType === PamResource.Windows)
-      throw new BadRequestError({ message: `Windows resources cannot be accessed at this time` });
-
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
@@ -1184,6 +1180,27 @@ export const pamAccountServiceFactory = ({
           sessionStarted
         };
       }
+    }
+
+    // Windows connection details store the target as `hostname`; every other
+    // resource type (and the gateway's handler code) reads `host`. Remap
+    // before returning so the gateway never has to special-case it.
+    if (decryptedResource.resourceType === PamResource.Windows) {
+      const { hostname, ...rest } = decryptedResource.connectionDetails as {
+        hostname: string;
+        [key: string]: unknown;
+      };
+      return {
+        credentials: {
+          ...rest,
+          host: hostname,
+          ...decryptedAccount.credentials
+        },
+        policyRules,
+        projectId: project.id,
+        account,
+        sessionStarted
+      };
     }
 
     return {

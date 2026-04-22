@@ -121,6 +121,20 @@ export const SanitizedWindowsAccountWithResourceSchema = BasePamAccountSchemaWit
 });
 
 // Sessions
-export const WindowsSessionCredentialsSchema = WindowsResourceConnectionDetailsSchema.and(
-  WindowsAccountCredentialsSchema
-);
+// Note the `host` field here: resource-facing schemas use `hostname` (matches
+// Windows / AD terminology), but the session-credentials endpoint remaps it to
+// `host` before responding so the gateway's handler dispatch can share one
+// code path across every resource type (all other resource types already
+// return `host`). See getSessionCredentials in pam-account-service.
+export const WindowsSessionCredentialsSchema = z
+  .object({
+    protocol: z.literal(WindowsProtocol.RDP),
+    host: z.string().trim().min(1).max(255),
+    port: z.coerce.number().int().min(1).max(65535),
+    winrmPort: z.coerce.number().int().min(1).max(65535),
+    useWinrmHttps: z.boolean(),
+    winrmRejectUnauthorized: z.boolean(),
+    winrmCaCert: z.string().optional(),
+    winrmTlsServerName: z.string().optional()
+  })
+  .and(WindowsAccountCredentialsSchema);
