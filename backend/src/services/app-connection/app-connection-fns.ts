@@ -179,6 +179,7 @@ import {
   OpenRouterConnectionMethod,
   validateOpenRouterConnectionCredentials
 } from "./open-router";
+import { getOvhConnectionListItem, OVHConnectionMethod, validateOvhConnectionCredentials } from "./ovh";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
@@ -294,7 +295,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getVenafiConnectionListItem(),
     getExternalInfisicalConnectionListItem(),
     getDopplerConnectionListItem(),
-    getNetScalerConnectionListItem()
+    getNetScalerConnectionListItem(),
+    getOvhConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -446,7 +448,8 @@ export const validateAppConnectionCredentials = async (
         config as TExternalInfisicalConnectionConfig,
         deps.identityUaDAL
       )) as TAppConnectionCredentialsValidator,
-    [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OVH]: validateOvhConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -543,6 +546,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Machine Identity - Universal Auth";
     case DopplerConnectionMethod.ApiToken:
       return "API Token";
+    case OVHConnectionMethod.Pkcs12Certificate:
+      return "PKCS#12 Certificate";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -653,7 +658,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
-  [AppConnection.NetScaler]: platformManagedCredentialsNotSupported
+  [AppConnection.NetScaler]: platformManagedCredentialsNotSupported,
+  [AppConnection.OVH]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

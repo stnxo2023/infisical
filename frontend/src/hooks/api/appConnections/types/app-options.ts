@@ -243,6 +243,10 @@ export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Anthropic;
 };
 
+export type TOvhConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OVH;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -300,7 +304,8 @@ export type TAppConnectionOption =
   | TExternalInfisicalConnectionOption
   | TDopplerConnectionOption
   | TNetScalerConnectionOption
-  | TAnthropicConnectionOption;
+  | TAnthropicConnectionOption
+  | TOvhConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -360,4 +365,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Doppler]: TDopplerConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
+  [AppConnection.OVH]: TOvhConnectionOption;
 };

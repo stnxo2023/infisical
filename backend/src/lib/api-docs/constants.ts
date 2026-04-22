@@ -2793,6 +2793,15 @@ export const AppConnections = {
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
     },
+    OVH: {
+      pkcs12Certificate:
+        "The base64-encoded contents of the PKCS#12 (.p12/.pfx) bundle issued by OVH OKMS, containing the client certificate and private key.",
+      pkcs12Passphrase:
+        "The passphrase that protects the PKCS#12 bundle. Leave empty if the bundle was exported without a passphrase.",
+      okmsDomain:
+        "The OKMS base URL, including any path prefix (e.g., 'https://ca-east-bhs.okms.ovh.net/api'). The OKMS ID and API version are appended automatically.",
+      okmsId: "The OKMS instance identifier from the OVH Control Panel, used as a path segment in all API calls."
+    },
     VENAFI: {
       apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
       region: "The region of your Venafi TLS Protect Cloud instance (e.g., 'us', 'eu')."

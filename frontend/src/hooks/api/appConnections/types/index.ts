@@ -44,6 +44,7 @@ import { TOctopusDeployConnection } from "./octopus-deploy-connection";
 import { TOktaConnection } from "./okta-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
+import { TOvhConnection } from "./ovh-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
@@ -100,6 +101,7 @@ export * from "./octopus-deploy-connection";
 export * from "./okta-connection";
 export * from "./open-router-connection";
 export * from "./oracledb-connection";
+export * from "./ovh-connection";
 export * from "./postgres-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
@@ -171,7 +173,8 @@ export type TAppConnection =
   | TVenafiConnection
   | TExternalInfisicalConnection
   | TDopplerConnection
-  | TNetScalerConnection;
+  | TNetScalerConnection
+  | TOvhConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
