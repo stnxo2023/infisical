@@ -36,17 +36,11 @@ export const OvhSyncSchema = BaseSecretSyncSchema(SecretSync.OVH, OvhSyncOptions
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.OVH] }));
 
-export const CreateOvhSyncSchema = GenericCreateSecretSyncFieldsSchema(
-  SecretSync.OVH,
-  OvhSyncOptionsConfig
-).extend({
+export const CreateOvhSyncSchema = GenericCreateSecretSyncFieldsSchema(SecretSync.OVH, OvhSyncOptionsConfig).extend({
   destinationConfig: OvhSyncDestinationConfigSchema
 });
 
-export const UpdateOvhSyncSchema = GenericUpdateSecretSyncFieldsSchema(
-  SecretSync.OVH,
-  OvhSyncOptionsConfig
-).extend({
+export const UpdateOvhSyncSchema = GenericUpdateSecretSyncFieldsSchema(SecretSync.OVH, OvhSyncOptionsConfig).extend({
   destinationConfig: OvhSyncDestinationConfigSchema.optional()
 });
 
