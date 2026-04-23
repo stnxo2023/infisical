@@ -11,6 +11,7 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import { TDevinListSecretsResponse, TDevinSecret, TDevinSyncWithCredentials } from "./devin-sync-types";
 
 const DEVIN_LIST_PAGE_SIZE = 200;
+const DEVIN_LIST_MAX_PAGES = 50;
 
 const buildAuthHeaders = (apiKey: string) => ({
   Authorization: `Bearer ${apiKey}`,
@@ -25,7 +26,7 @@ const listAllDevinSecrets = async ({ apiKey, orgId }: { apiKey: string; orgId: s
   const secrets: TDevinSecret[] = [];
   let cursor: string | null = null;
 
-  do {
+  for (let page = 0; page < DEVIN_LIST_MAX_PAGES; page += 1) {
     const params: Record<string, string | number> = { first: DEVIN_LIST_PAGE_SIZE };
     if (cursor) params.after = cursor;
 
@@ -35,10 +36,14 @@ const listAllDevinSecrets = async ({ apiKey, orgId }: { apiKey: string; orgId: s
     });
 
     secrets.push(...data.items);
-    cursor = data.has_next_page ? data.end_cursor : null;
-  } while (cursor);
 
-  return secrets;
+    if (!data.has_next_page) return secrets;
+    cursor = data.end_cursor;
+  }
+
+  throw new Error(
+    `Devin secrets listing exceeded the maximum of ${DEVIN_LIST_MAX_PAGES} pages (${DEVIN_LIST_MAX_PAGES * DEVIN_LIST_PAGE_SIZE} secrets).`
+  );
 };
 
 const deleteDevinSecret = async ({ apiKey, orgId, secretId }: { apiKey: string; orgId: string; secretId: string }) => {
