@@ -52,6 +52,9 @@ description: "Learn how to configure a Devin Sync for Infisical."
                     <Note>
                         Devin Sync does not support importing existing secrets from Devin into Infisical. Only **Overwrite Destination Secrets** is available as an initial sync behavior.
                     </Note>
+                    <Warning>
+                        Infisical syncs all secrets to Devin as **key-value** secrets. If a TOTP or Cookie secret in your Devin organization shares a key with a secret being synced, it will be replaced with a key-value secret. Likewise, TOTP or Cookie secrets matching your **Key Schema** will be removed during sync unless **Disable Secret Deletion** is enabled.
+                    </Warning>
                 - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
                 <Note>
                     We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
