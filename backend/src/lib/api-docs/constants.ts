@@ -2471,6 +2471,10 @@ export const KMS = {
     keyId: "The ID of the key to export the private key or key material for."
   },
 
+  BULK_EXPORT_PRIVATE_KEYS: {
+    keyIds: "An array of KMS key IDs to export. Maximum 100 keys per request."
+  },
+
   SIGN: {
     keyId: "The ID of the key to sign the data with.",
     data: "The data in string format to be signed (base64 encoded).",
@@ -2554,6 +2558,12 @@ export const CertificateAuthorities = {
       appConnectionId: `The ID of the AWS App Connection to use for authenticating with AWS Private Certificate Authority (PCA). This connection must have permissions to issue, get, and revoke certificates from the specified PCA.`,
       certificateAuthorityArn: `The ARN of the AWS Private Certificate Authority to use for issuing certificates.`,
       region: `The AWS region where the Private Certificate Authority is located.`
+    },
+    AWS_ACM_PUBLIC_CA: {
+      appConnectionId: `The ID of the AWS App Connection to use for authenticating with AWS Certificate Manager (ACM). This connection must have permissions to request, describe, export, renew, and delete certificates.`,
+      dnsAppConnectionId: `The ID of the AWS App Connection to use for creating and managing Route 53 CNAME records required for ACM domain validation.`,
+      hostedZoneId: `The Route 53 hosted zone ID to use for ACM DNS validation CNAME records.`,
+      region: `The AWS region to use for the ACM API calls.`
     },
     INTERNAL: {
       type: "The type of CA to create.",

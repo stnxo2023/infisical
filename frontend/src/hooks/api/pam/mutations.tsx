@@ -137,9 +137,9 @@ export const useSetPamResourceFavorite = () => {
 export const useCreatePamAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ resourceType, ...params }: TCreatePamAccountDTO) => {
+    mutationFn: async ({ parentType, ...params }: TCreatePamAccountDTO) => {
       const { data } = await apiRequest.post<{ account: TPamAccount }>(
-        `/api/v1/pam/accounts/${resourceType}`,
+        `/api/v1/pam/accounts/${parentType}`,
         params
       );
 
@@ -154,9 +154,9 @@ export const useCreatePamAccount = () => {
 export const useUpdatePamAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ resourceType, accountId, ...params }: TUpdatePamAccountDTO) => {
+    mutationFn: async ({ parentType, accountId, ...params }: TUpdatePamAccountDTO) => {
       const { data } = await apiRequest.patch<{ account: TPamAccount }>(
-        `/api/v1/pam/accounts/${resourceType}/${accountId}`,
+        `/api/v1/pam/accounts/${parentType}/${accountId}`,
         params
       );
 
@@ -172,9 +172,9 @@ export const useUpdatePamAccount = () => {
 export const useDeletePamAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ resourceType, accountId }: TDeletePamAccountDTO) => {
+    mutationFn: async ({ parentType, accountId }: TDeletePamAccountDTO) => {
       const { data } = await apiRequest.delete<{ account: TPamAccount }>(
-        `/api/v1/pam/accounts/${resourceType}/${accountId}`
+        `/api/v1/pam/accounts/${parentType}/${accountId}`
       );
 
       return data.account;
@@ -191,6 +191,7 @@ export type TAccessPamAccountDTO = {
   accountName: string;
   projectId: string;
   duration: string;
+  reason?: string;
 };
 
 export type TAccessPamAccountResponse = {
@@ -214,7 +215,8 @@ export const useAccessPamAccount = () => {
       resourceName,
       accountName,
       projectId,
-      duration
+      duration,
+      reason
     }: TAccessPamAccountDTO) => {
       const { data } = await apiRequest.post<TAccessPamAccountResponse>(
         "/api/v1/pam/accounts/access",
@@ -223,7 +225,8 @@ export const useAccessPamAccount = () => {
           resourceName,
           accountName,
           projectId,
-          duration
+          duration,
+          reason
         }
       );
 

@@ -837,6 +837,7 @@
                   "documentation/platform/pki/ca/sectigo",
                   "documentation/platform/pki/ca/azure-adcs",
                   "documentation/platform/pki/ca/aws-pca",
+                  "documentation/platform/pki/ca/aws-acm-public-ca",
                   "documentation/platform/pki/ca/venafi"
                 ]
               }
@@ -2972,6 +2973,16 @@
                     ]
                   },
                   {
+                    "group": "AWS ACM Public CA",
+                    "pages": [
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/list",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/create",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/read",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/update",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/delete"
+                    ]
+                  },
+                  {
                     "group": "Internal",
                     "pages": [
                       "api-reference/endpoints/certificate-authorities/internal/list",
@@ -3280,7 +3291,8 @@
                   "api-reference/endpoints/kms/keys/update",
                   "api-reference/endpoints/kms/keys/delete",
                   "api-reference/endpoints/kms/keys/public-key",
-                  "api-reference/endpoints/kms/keys/private-key"
+                  "api-reference/endpoints/kms/keys/private-key",
+                  "api-reference/endpoints/kms/keys/bulk-export-private-keys"
                 ]
               },
               {

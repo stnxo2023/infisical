@@ -7,7 +7,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - MCP SDK uses ESM with .js extensions which don't resolve types with moduleResolution: "Node"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import axios from "axios";
+import { isAxiosError } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -86,12 +86,12 @@ const refreshOAuthToken = async (
   try {
     // First try: origin-only format
     const originOnlyUrl = `${serverUrlObj.origin}/.well-known/oauth-authorization-server`;
-    const { data } = await request.get<TOAuthAuthorizationServerMetadata>(originOnlyUrl);
+    const { data } = await ssrfSafeGet<TOAuthAuthorizationServerMetadata>(originOnlyUrl);
     serverMetadata = data;
   } catch {
     // Second try: origin + pathname format
     const pathnameUrl = `${serverUrlObj.origin}/.well-known/oauth-authorization-server${serverUrlObj.pathname !== "/" ? serverUrlObj.pathname : ""}`;
-    const { data } = await request.get<TOAuthAuthorizationServerMetadata>(pathnameUrl);
+    const { data } = await ssrfSafeGet<TOAuthAuthorizationServerMetadata>(pathnameUrl);
     serverMetadata = data;
   }
 
@@ -106,7 +106,7 @@ const refreshOAuthToken = async (
     tokenParams.client_secret = clientSecret;
   }
 
-  const { data: tokenResponse } = await request.post<TOAuthTokenResponse>(
+  const { data: tokenResponse } = await ssrfSafePost<TOAuthTokenResponse>(
     serverMetadata.token_endpoint,
     new URLSearchParams(tokenParams).toString(),
     {
@@ -441,7 +441,7 @@ export const aiMcpServerServiceFactory = ({
         }
       } catch (err) {
         // Log non-404 errors for debugging, but still fall through
-        if (!axios.isAxiosError(err) || err.response?.status !== 404) {
+        if (!isAxiosError(err) || err.response?.status !== 404) {
           logger.warn(err, "Failed to fetch OAuth authorization server metadata");
         }
       }
