@@ -17,7 +17,6 @@ import {
   OVHConnectionMethod,
   TOvhConnection
 } from "@app/hooks/api/appConnections/types/ovh-connection";
-import { isBase64 } from "@app/lib/fn/base64";
 
 import {
   genericAppConnectionFieldsSchema,
@@ -33,16 +32,28 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.OVH)
 });
 
+const pemPrivateKey = z
+  .string()
+  .trim()
+  .min(1, "Private key required")
+  .refine((val) => val.startsWith("-----BEGIN "), {
+    message: "Private key must be in PEM format (starts with -----BEGIN ...-----)"
+  });
+
+const pemCertificate = z
+  .string()
+  .trim()
+  .min(1, "Certificate required")
+  .refine((val) => val.startsWith("-----BEGIN CERTIFICATE-----"), {
+    message: "Certificate must be in PEM format (starts with -----BEGIN CERTIFICATE-----)"
+  });
+
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(OVHConnectionMethod.Pkcs12Certificate),
+    method: z.literal(OVHConnectionMethod.Certificate),
     credentials: z.object({
-      pkcs12Certificate: z
-        .string()
-        .trim()
-        .min(1, "PKCS#12 certificate required")
-        .refine(isBase64, { message: "Value must be a valid base64 string" }),
-      pkcs12Passphrase: z.string().optional(),
+      privateKey: pemPrivateKey,
+      certificate: pemCertificate,
       okmsDomain: z.string().trim().min(1, "OKMS domain required"),
       okmsId: z.string().trim().min(1, "OKMS ID required")
     })
@@ -61,16 +72,16 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           ...appConnection,
           credentials: {
             ...appConnection.credentials,
-            pkcs12Certificate: "",
-            pkcs12Passphrase: ""
+            privateKey: "",
+            certificate: ""
           }
         }
       : {
           app: AppConnection.OVH,
-          method: OVHConnectionMethod.Pkcs12Certificate,
+          method: OVHConnectionMethod.Certificate,
           credentials: {
-            pkcs12Certificate: "",
-            pkcs12Passphrase: "",
+            privateKey: "",
+            certificate: "",
             okmsDomain: "",
             okmsId: ""
           }
@@ -117,20 +128,15 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           )}
         />
         <Controller
-          name="credentials.pkcs12Certificate"
+          name="credentials.privateKey"
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="PKCS#12 Certificate (Base64)"
-              helperText={
-                isUpdate
-                  ? "Paste the base64-encoded PKCS#12 bundle to replace the existing certificate. Generate it locally with: base64 -w 0 cert.p12"
-                  : "Paste the base64-encoded contents of your .p12/.pfx bundle. Generate it locally with: base64 -w 0 cert.p12"
-              }
-              tooltipText="The PKCS#12 bundle must be base64-encoded (no line breaks). It will be used for mTLS authentication with OVH OKMS."
+              label="Private Key (PEM)"
+              tooltipText="Paste the PEM-encoded private key issued by OVH OKMS, including the -----BEGIN/END PRIVATE KEY----- markers."
             >
               <SecretInput
                 containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
@@ -141,20 +147,19 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           )}
         />
         <Controller
-          name="credentials.pkcs12Passphrase"
+          name="credentials.certificate"
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="PKCS#12 Passphrase"
-              isOptional
-              tooltipText="The passphrase set when exporting the PKCS#12 bundle. Leave empty if the bundle has no passphrase."
+              label="Certificate (PEM)"
+              tooltipText="Paste the PEM-encoded public certificate issued by OVH OKMS, including the -----BEGIN/END CERTIFICATE----- markers."
             >
               <SecretInput
                 containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value ?? ""}
+                value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
             </FormControl>

@@ -32,6 +32,7 @@ import { NetlifySyncFields } from "./NetlifySyncFields";
 import { NorthflankSyncFields } from "./NorthflankSyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { OctopusDeploySyncFields } from "./OctopusDeploySyncFields";
+import { OvhSyncFields } from "./OvhSyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
 import { SupabaseSyncFields } from "./SupabaseSyncFields";
@@ -121,6 +122,8 @@ export const SecretSyncDestinationFields = () => {
       return <AzureEntraIdScimSyncFields />;
     case SecretSync.ExternalInfisical:
       return <ExternalInfisicalSyncFields />;
+    case SecretSync.OVH:
+      return <OvhSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

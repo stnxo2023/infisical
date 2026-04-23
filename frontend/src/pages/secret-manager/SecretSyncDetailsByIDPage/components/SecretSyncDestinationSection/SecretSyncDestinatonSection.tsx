@@ -39,6 +39,7 @@ import { NetlifySyncDestinationSection } from "./NetlifySyncDestinationSection";
 import { NorthflankSyncDestinationSection } from "./NorthflankSyncDestinationSection";
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
 import { OctopusDeploySyncDestinationSection } from "./OctopusDeploySyncDestinationSection";
+import { OvhSyncDestinationSection } from "./OvhSyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
 import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
@@ -174,6 +175,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.ExternalInfisical:
       DestinationComponents = <ExternalInfisicalSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.OVH:
+      DestinationComponents = <OvhSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

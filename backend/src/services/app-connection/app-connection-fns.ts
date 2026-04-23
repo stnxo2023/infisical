@@ -546,8 +546,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Machine Identity - Universal Auth";
     case DopplerConnectionMethod.ApiToken:
       return "API Token";
-    case OVHConnectionMethod.Pkcs12Certificate:
-      return "PKCS#12 Certificate";
+    case OVHConnectionMethod.Certificate:
+      return "Certificate";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);

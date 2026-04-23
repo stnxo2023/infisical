@@ -29,6 +29,7 @@ import { NetlifySyncDestinationCol } from "./NetlifySyncDestinationCol";
 import { NorthflankSyncDestinationCol } from "./NorthflankSyncDestinationCol";
 import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { OctopusDeploySyncDestinationCol } from "./OctopusDeploySyncDestinationCol";
+import { OvhSyncDestinationCol } from "./OvhSyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
 import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
@@ -118,6 +119,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <AzureEntraIdScimSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.ExternalInfisical:
       return <ExternalInfisicalSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.OVH:
+      return <OvhSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

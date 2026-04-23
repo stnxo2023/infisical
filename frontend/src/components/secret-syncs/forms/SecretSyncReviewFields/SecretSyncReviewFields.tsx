@@ -45,6 +45,7 @@ import { NorthflankSyncReviewFields } from "./NorthflankSyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OctopusDeploySyncReviewFields } from "./OctopusDeploySyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
+import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
 import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
@@ -197,6 +198,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.ExternalInfisical:
       DestinationFieldsComponent = <ExternalInfisicalSyncReviewFields />;
+      break;
+    case SecretSync.OVH:
+      DestinationFieldsComponent = <OvhSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

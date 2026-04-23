@@ -2794,10 +2794,10 @@ export const AppConnections = {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
     },
     OVH: {
-      pkcs12Certificate:
-        "The base64-encoded contents of the PKCS#12 (.p12/.pfx) bundle issued by OVH OKMS, containing the client certificate and private key.",
-      pkcs12Passphrase:
-        "The passphrase that protects the PKCS#12 bundle. Leave empty if the bundle was exported without a passphrase.",
+      privateKey:
+        "The PEM-encoded private key issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
+      certificate:
+        "The PEM-encoded public certificate issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
       okmsDomain:
         "The OKMS base URL, including any path prefix (e.g., 'https://ca-east-bhs.okms.ovh.net/api'). The OKMS ID and API version are appended automatically.",
       okmsId: "The OKMS instance identifier from the OVH Control Panel, used as a path segment in all API calls."
@@ -2998,6 +2998,9 @@ export const SecretSyncs = {
     HC_VAULT: {
       mount: "The Hashicorp Vault Secrets Engine Mount to sync secrets to.",
       path: "The Hashicorp Vault path to sync secrets to."
+    },
+    OVH: {
+      path: "The path in OVH OKMS where secrets will be stored as key/value pairs."
     },
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",

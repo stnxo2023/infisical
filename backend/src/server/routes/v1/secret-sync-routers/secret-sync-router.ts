@@ -58,6 +58,7 @@ import { LaravelForgeSyncListItemSchema, LaravelForgeSyncSchema } from "@app/ser
 import { NetlifySyncListItemSchema, NetlifySyncSchema } from "@app/services/secret-sync/netlify";
 import { NorthflankSyncListItemSchema, NorthflankSyncSchema } from "@app/services/secret-sync/northflank";
 import { OctopusDeploySyncListItemSchema, OctopusDeploySyncSchema } from "@app/services/secret-sync/octopus-deploy";
+import { OvhSyncListItemSchema, OvhSyncSchema } from "@app/services/secret-sync/ovh";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
@@ -104,7 +105,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   OctopusDeploySyncSchema,
   CircleCISyncSchema,
   AzureEntraIdScimSyncSchema,
-  ExternalInfisicalSyncSchema
+  ExternalInfisicalSyncSchema,
+  OvhSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -144,7 +146,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   OctopusDeploySyncListItemSchema,
   CircleCISyncListItemSchema,
   AzureEntraIdScimSyncListItemSchema,
-  ExternalInfisicalSyncListItemSchema
+  ExternalInfisicalSyncListItemSchema,
+  OvhSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

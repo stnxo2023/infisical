@@ -30,6 +30,7 @@ import { TNetlifySync } from "./netlify-sync";
 import { TNorthflankSync } from "./northflank-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TOctopusDeploySync } from "./octopus-deploy-sync";
+import { TOvhSync } from "./ovh-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
 import { TSupabaseSync } from "./supabase";
@@ -86,7 +87,8 @@ export type TSecretSync =
   | TOctopusDeploySync
   | TCircleCISync
   | TAzureEntraIdScimSync
-  | TExternalInfisicalSync;
+  | TExternalInfisicalSync
+  | TOvhSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

@@ -29,6 +29,7 @@ import { NetlifySyncDestinationSchema } from "./netlify-sync-destination-schema"
 import { NorthflankSyncDestinationSchema } from "./northflank-sync-destination-schema";
 import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
 import { OctopusDeploySyncDestinationSchema } from "./octopus-deploy-sync-destination-schema";
+import { OvhSyncDestinationSchema } from "./ovh-sync-destination-schema";
 import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
 import { SupabaseSyncDestinationSchema } from "./supabase-sync-destination-schema";
@@ -75,7 +76,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   ChefSyncDestinationSchema,
   CircleCISyncDestinationSchema,
   AzureEntraIdScimSyncDestinationSchema,
-  ExternalInfisicalSyncDestinationSchema
+  ExternalInfisicalSyncDestinationSchema,
+  OvhSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

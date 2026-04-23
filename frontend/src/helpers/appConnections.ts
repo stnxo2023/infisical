@@ -271,8 +271,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
-    case OVHConnectionMethod.Pkcs12Certificate:
-      return { name: "PKCS#12 Certificate", icon: faCertificate };
+    case OVHConnectionMethod.Certificate:
+      return { name: "Certificate", icon: faCertificate };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
