@@ -445,6 +445,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect Doppler for migrating data from Doppler to Infisical.",
       category: "DevOps Tools",
+    }, 
+    {
+      name: "OVH",
+      slug: "ovh",
+      path: "/integrations/app-connections/ovh",
+      description:
+        "Learn how to connect OVH Cloud to pull secrets from OVH Secret Manager to Infisical.",
+      category: "Cloud Providers",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

@@ -13,21 +13,42 @@ Infisical authenticates to [OVHcloud Key Management Service (OKMS)](https://www.
 
     ![OKMS Dashboard](/images/app-connections/ovh/okms-dashboard.png)
   </Step>
-  <Step title="Select your OKMS domain">
-    Select the OKMS domain you want to use (or create a new one). Take note of the following values — you will paste them into Infisical in a later step:
+
+  <Step title="Create a OKMS Domain">
+    Click on **Order an OKMS Domain** 
+
+    ![OKMS Dashboard](/images/app-connections/ovh/okms-order-domain.png)
+  </Step>
+  <Step title="Select your OKMS region">
+    Select the OKMS region that you want to use. You will also need to confirm by accepting the terms  
+
+    ![OKMS Region](/images/app-connections/ovh/okms-select-region.png)
+
+    ![OKMS Activate Region](/images/app-connections/ovh/okms-activate-region.png)
+  </Step>
+
+  <Step title="Check your summary">
+    On your summary, the desired domain by clicking on it. 
+
+    ![OKMS Summary](/images/app-connections/ovh/okms-summary.png)
+
+    You will need to get the following values to create a connection. 
 
     - **OKMS ID** — the UUID-style identifier shown on the OKMS summary page.
     - **REST API endpoint** — the base URL of the OKMS REST API (e.g. `https://ca-east-bhs.okms.ovh.net/api`). This is the **OKMS Domain** value in Infisical.
 
-    ![OKMS Summary](/images/app-connections/ovh/okms-summary.png)
+    ![OKMS Details](/images/app-connections/ovh/okms-details.png)
   </Step>
   <Step title="Generate an access certificate">
     Open the **Access certificate** tab and generate a new certificate. Download the two PEM files offered:
+
+    ![Access Certificate Tab](/images/app-connections/ovh/okms-certificate-tab.png)
 
     - `*_privatekey.pem` — the private key.
     - `*_certificate.pem` — the public certificate.
 
     ![Generate Access Certificate](/images/app-connections/ovh/generate-access-certificate.png)
+    ![Create Access Certificate](/images/app-connections/ovh/okms-create-certificate.png)
 
     <Warning>
       Infisical does **not** support the PKCS12 (`.p12`) format. If OVH offers a PKCS12 download or asks you to convert the PEM files with `openssl pkcs12`, ignore those options and keep the PEM files as-is. Node.js's TLS layer (used by Infisical's HTTP client) cannot parse PKCS12 bundles and returns `Unsupported PKCS12 PFX data.` when one is provided.
