@@ -129,25 +129,23 @@ const updateSecret = async (
 
 const applyUpdate = async (
   secretSync: TOvhSyncWithCredentials,
-  mutate: (existing: Record<string, string>) => { next: Record<string, string>; tainted: boolean }
+  computeUpdate: (existing: Record<string, string>) => { desiredData: Record<string, string>; needsWrite: boolean }
 ) => {
-  const {
-    connection,
-    destinationConfig: { path }
-  } = secretSync;
+  const { connection, destinationConfig } = secretSync;
+  const path = String(destinationConfig.path);
   const { okmsDomain, okmsId } = connection.credentials;
   const httpsAgent = getOvhHttpsAgent(connection);
 
   try {
     const { exists, data: existingData, currentVersion } = await readSecret(okmsDomain, okmsId, path, httpsAgent);
 
-    const { next, tainted } = mutate(existingData);
-    if (!tainted) return;
+    const { desiredData, needsWrite } = computeUpdate(existingData);
+    if (!needsWrite) return;
 
     if (exists) {
-      await updateSecret(okmsDomain, okmsId, path, next, currentVersion, httpsAgent);
+      await updateSecret(okmsDomain, okmsId, path, desiredData, currentVersion, httpsAgent);
     } else {
-      await createSecret(okmsDomain, okmsId, path, next, httpsAgent);
+      await createSecret(okmsDomain, okmsId, path, desiredData, httpsAgent);
     }
   } catch (error) {
     throw new SecretSyncError({ error: sanitizeOvhError(error) });
@@ -157,41 +155,38 @@ const applyUpdate = async (
 export const OvhSyncFns = {
   syncSecrets: async (secretSync: TOvhSyncWithCredentials, secretMap: TSecretMap) => {
     const {
-      environment,
-      syncOptions: { disableSecretDeletion, keySchema }
+      syncOptions: { disableSecretDeletion }
     } = secretSync;
 
     await applyUpdate(secretSync, (existing) => {
-      const next = { ...existing };
-      let tainted = false;
+      const desiredData = { ...existing };
+      let needsWrite = false;
 
       for (const [key, { value }] of Object.entries(secretMap)) {
-        if (value !== next[key]) {
-          next[key] = value;
-          tainted = true;
+        if (value !== desiredData[key]) {
+          desiredData[key] = value;
+          needsWrite = true;
         }
       }
 
       if (!disableSecretDeletion) {
-        for (const key of Object.keys(next)) {
+        for (const key of Object.keys(desiredData)) {
           // eslint-disable-next-line no-continue
-          if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
+          if (!matchesSchema(key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
           if (!(key in secretMap)) {
-            delete next[key];
-            tainted = true;
+            delete desiredData[key];
+            needsWrite = true;
           }
         }
       }
 
-      return { next, tainted };
+      return { desiredData, needsWrite };
     });
   },
 
   getSecrets: async (secretSync: TOvhSyncWithCredentials): Promise<TSecretMap> => {
-    const {
-      connection,
-      destinationConfig: { path }
-    } = secretSync;
+    const { connection, destinationConfig } = secretSync;
+    const path = String(destinationConfig.path);
     const { okmsDomain, okmsId } = connection.credentials;
     const httpsAgent = getOvhHttpsAgent(connection);
 
@@ -205,15 +200,15 @@ export const OvhSyncFns = {
 
   removeSecrets: async (secretSync: TOvhSyncWithCredentials, secretMap: TSecretMap) => {
     await applyUpdate(secretSync, (existing) => {
-      const next = { ...existing };
-      let tainted = false;
+      const desiredData = { ...existing };
+      let needsWrite = false;
       for (const key of Object.keys(secretMap)) {
-        if (key in next) {
-          delete next[key];
-          tainted = true;
+        if (key in desiredData) {
+          delete desiredData[key];
+          needsWrite = true;
         }
       }
-      return { next, tainted };
+      return { desiredData, needsWrite };
     });
   }
 };

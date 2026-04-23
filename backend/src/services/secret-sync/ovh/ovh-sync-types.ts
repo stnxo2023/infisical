@@ -2,9 +2,18 @@ import { z } from "zod";
 
 import { TOvhConnection } from "@app/services/app-connection/ovh";
 
-import { CreateOvhSyncSchema, OvhSyncListItemSchema, OvhSyncSchema } from "./ovh-sync-schemas";
+import {
+  CreateOvhSyncSchema,
+  OvhSyncDestinationConfigSchema,
+  OvhSyncListItemSchema,
+  OvhSyncSchema
+} from "./ovh-sync-schemas";
 
-export type TOvhSync = z.infer<typeof OvhSyncSchema>;
+export type TOvhSyncDestinationConfig = z.infer<typeof OvhSyncDestinationConfigSchema>;
+
+export type TOvhSync = Omit<z.infer<typeof OvhSyncSchema>, "destinationConfig"> & {
+  destinationConfig: TOvhSyncDestinationConfig;
+};
 
 export type TOvhSyncInput = z.infer<typeof CreateOvhSyncSchema>;
 
