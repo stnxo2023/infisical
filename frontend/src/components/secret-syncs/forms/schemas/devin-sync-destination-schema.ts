@@ -7,7 +7,11 @@ export const DevinSyncDestinationSchema = BaseSecretSyncSchema().merge(
   z.object({
     destination: z.literal(SecretSync.Devin),
     destinationConfig: z.object({
-      orgId: z.string().trim().min(1, "Organization ID required")
+      orgId: z
+        .string()
+        .trim()
+        .min(1, "Organization ID required")
+        .startsWith("org-", "Organization ID must start with 'org-'")
     })
   })
 );

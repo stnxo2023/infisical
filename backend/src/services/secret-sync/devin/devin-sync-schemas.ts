@@ -13,7 +13,12 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
 const DevinSyncDestinationConfigSchema = z.object({
-  orgId: z.string().trim().min(1, "Organization ID is required").describe(SecretSyncs.DESTINATION_CONFIG.DEVIN.orgId)
+  orgId: z
+    .string()
+    .trim()
+    .min(1, "Organization ID is required")
+    .startsWith("org-", "Organization ID must start with 'org-'")
+    .describe(SecretSyncs.DESTINATION_CONFIG.DEVIN.orgId)
 });
 
 const DevinSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
