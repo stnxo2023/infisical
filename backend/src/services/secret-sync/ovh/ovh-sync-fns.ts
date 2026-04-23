@@ -2,6 +2,7 @@ import { isAxiosError } from "axios";
 import https from "https";
 
 import { request } from "@app/lib/config/request";
+import { deepEqual } from "@app/lib/fn/object";
 import { getOvhHttpsAgent } from "@app/services/app-connection/ovh";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -127,9 +128,13 @@ const updateSecret = async (
   );
 };
 
-const applyUpdate = async (
+// OVH OKMS stores all keys of a path in a single versioned bundle; any change
+// requires rewriting the whole bundle. Callers describe the desired bundle as
+// a pure function of the existing bundle; this helper decides whether to skip,
+// create, or CAS-update based on what's actually on the remote.
+const writeSecretBundle = async (
   secretSync: TOvhSyncWithCredentials,
-  computeUpdate: (existing: Record<string, string>) => { desiredData: Record<string, string>; needsWrite: boolean }
+  buildDesiredBundle: (existing: Record<string, string>) => Record<string, string>
 ) => {
   const { connection, destinationConfig } = secretSync;
   const path = String(destinationConfig.path);
@@ -138,9 +143,9 @@ const applyUpdate = async (
 
   try {
     const { exists, data: existingData, currentVersion } = await readSecret(okmsDomain, okmsId, path, httpsAgent);
+    const desiredData = buildDesiredBundle(existingData);
 
-    const { desiredData, needsWrite } = computeUpdate(existingData);
-    if (!needsWrite) return;
+    if (deepEqual(existingData, desiredData)) return;
 
     if (exists) {
       await updateSecret(okmsDomain, okmsId, path, desiredData, currentVersion, httpsAgent);
@@ -155,32 +160,26 @@ const applyUpdate = async (
 export const OvhSyncFns = {
   syncSecrets: async (secretSync: TOvhSyncWithCredentials, secretMap: TSecretMap) => {
     const {
-      syncOptions: { disableSecretDeletion }
+      syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
+    const envSlug = secretSync.environment?.slug || "";
 
-    await applyUpdate(secretSync, (existing) => {
-      const desiredData = { ...existing };
-      let needsWrite = false;
+    await writeSecretBundle(secretSync, (existing) => {
+      const desired: Record<string, string> = { ...existing };
 
       for (const [key, { value }] of Object.entries(secretMap)) {
-        if (value !== desiredData[key]) {
-          desiredData[key] = value;
-          needsWrite = true;
-        }
+        desired[key] = value;
       }
 
       if (!disableSecretDeletion) {
-        for (const key of Object.keys(desiredData)) {
-          // eslint-disable-next-line no-continue
-          if (!matchesSchema(key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
-          if (!(key in secretMap)) {
-            delete desiredData[key];
-            needsWrite = true;
+        for (const key of Object.keys(desired)) {
+          if (matchesSchema(key, envSlug, keySchema) && !(key in secretMap)) {
+            delete desired[key];
           }
         }
       }
 
-      return { desiredData, needsWrite };
+      return desired;
     });
   },
 
@@ -199,16 +198,10 @@ export const OvhSyncFns = {
   },
 
   removeSecrets: async (secretSync: TOvhSyncWithCredentials, secretMap: TSecretMap) => {
-    await applyUpdate(secretSync, (existing) => {
-      const desiredData = { ...existing };
-      let needsWrite = false;
-      for (const key of Object.keys(secretMap)) {
-        if (key in desiredData) {
-          delete desiredData[key];
-          needsWrite = true;
-        }
-      }
-      return { desiredData, needsWrite };
+    await writeSecretBundle(secretSync, (existing) => {
+      const desired = { ...existing };
+      for (const key of Object.keys(secretMap)) delete desired[key];
+      return desired;
     });
   }
 };
