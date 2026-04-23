@@ -2,16 +2,7 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import {
-  Button,
-  FormControl,
-  Input,
-  ModalClose,
-  SecretInput,
-  Select,
-  SelectItem
-} from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   OVHConnectionMethod,
@@ -101,30 +92,8 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
         <Controller
           name="method"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.OVH].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(OVHConnectionMethod).map((method) => (
-                  <SelectItem value={method} key={method}>
-                    {getAppConnectionMethodDetails(method).name}
-                  </SelectItem>
-                ))}
-              </Select>
-            </FormControl>
+          render={({ field }) => (
+            <input type="hidden" {...field} value={OVHConnectionMethod.Certificate} />
           )}
         />
         <Controller
@@ -174,7 +143,6 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
               errorText={error?.message}
               isError={Boolean(error?.message)}
               label="OKMS Domain"
-              helperText="Include the host and any path prefix. The OKMS ID and API version are appended automatically."
               tooltipText="The OKMS base URL, e.g. 'https://ca-east-bhs.okms.ovh.net/api'."
             >
               <Input {...field} placeholder="https://ca-east-bhs.okms.ovh.net/api" />

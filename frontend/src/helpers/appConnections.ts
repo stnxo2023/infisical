@@ -164,7 +164,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Doppler]: { name: "Doppler", image: "Doppler.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
   [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" },
-  [AppConnection.OVH]: { name: "OVH", image: "OVH.png" }
+  [AppConnection.OVH]: { name: "OVH Cloud", image: "OVH.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {

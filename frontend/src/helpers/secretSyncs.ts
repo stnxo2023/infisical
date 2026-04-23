@@ -143,7 +143,7 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
     image: "Infisical.png"
   },
   [SecretSync.OVH]: {
-    name: "OVH",
+    name: "OVH Cloud",
     image: "OVH.png"
   }
 };
