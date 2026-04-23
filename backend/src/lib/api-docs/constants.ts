@@ -2798,8 +2798,7 @@ export const AppConnections = {
         "The PEM-encoded private key issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
       certificate:
         "The PEM-encoded public certificate issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
-      okmsDomain:
-        "The OKMS base URL, including any path prefix (e.g., 'https://ca-east-bhs.okms.ovh.net/api'). The OKMS ID and API version are appended automatically.",
+      okmsDomain: "The OKMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
       okmsId: "The OKMS instance identifier from the OVH Control Panel, used as a path segment in all API calls."
     },
     VENAFI: {

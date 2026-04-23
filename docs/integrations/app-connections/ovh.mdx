@@ -35,7 +35,7 @@ Infisical authenticates to [OVHcloud Key Management Service (OKMS)](https://www.
     You will need to get the following values to create a connection. 
 
     - **OKMS ID** — the UUID-style identifier shown on the OKMS summary page.
-    - **REST API endpoint** — the base URL of the OKMS REST API (e.g. `https://ca-east-bhs.okms.ovh.net/api`). This is the **OKMS Domain** value in Infisical.
+    - **REST API endpoint** — the base URL of the OKMS instance (e.g. `https://ca-east-bhs.okms.ovh.net`). This is the **OKMS Domain** value in Infisical.
 
     ![OKMS Details](/images/app-connections/ovh/okms-details.png)
   </Step>
@@ -83,7 +83,7 @@ Infisical authenticates to [OVHcloud Key Management Service (OKMS)](https://www.
         - An optional **Description**.
         - **Private Key (PEM)** — paste the full contents of `*_privatekey.pem`, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` markers.
         - **Certificate (PEM)** — paste the full contents of `*_certificate.pem`, including the `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----` markers.
-        - **OKMS Domain** — the OKMS REST API endpoint (e.g. `https://ca-east-bhs.okms.ovh.net/api`).
+        - **OKMS Domain** — the OKMS base URL (e.g. `https://ca-east-bhs.okms.ovh.net`). Do not include the `/api` suffix; Infisical appends it automatically.
         - **OKMS ID** — the OKMS instance identifier from the OVHcloud Control Panel.
 
         ![OVH Cloud Connection Form](/images/app-connections/ovh/app-connection-form.png)
@@ -114,7 +114,7 @@ Infisical authenticates to [OVHcloud Key Management Service (OKMS)](https://www.
                 "credentials": {
                     "privateKey": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
                     "certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n",
-                    "okmsDomain": "https://ca-east-bhs.okms.ovh.net/api",
+                    "okmsDomain": "https://ca-east-bhs.okms.ovh.net",
                     "okmsId": "00000000-0000-0000-0000-000000000000"
                 }
             }'

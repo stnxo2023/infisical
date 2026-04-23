@@ -143,9 +143,9 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
               errorText={error?.message}
               isError={Boolean(error?.message)}
               label="OKMS Domain"
-              tooltipText="The OKMS base URL, e.g. 'https://ca-east-bhs.okms.ovh.net/api'."
+              tooltipText="The OKMS base URL, e.g. 'https://ca-east-bhs.okms.ovh.net'."
             >
-              <Input {...field} placeholder="https://ca-east-bhs.okms.ovh.net/api" />
+              <Input {...field} placeholder="https://ca-east-bhs.okms.ovh.net" />
             </FormControl>
           )}
         />
