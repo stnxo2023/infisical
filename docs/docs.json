@@ -1474,6 +1474,18 @@
                     ]
                   },
                   {
+                    "group": "Devin",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/devin/list",
+                      "api-reference/endpoints/app-connections/devin/available",
+                      "api-reference/endpoints/app-connections/devin/get-by-id",
+                      "api-reference/endpoints/app-connections/devin/get-by-name",
+                      "api-reference/endpoints/app-connections/devin/create",
+                      "api-reference/endpoints/app-connections/devin/update",
+                      "api-reference/endpoints/app-connections/devin/delete"
+                    ]
+                  },
+                  {
                     "group": "Digital Ocean",
                     "pages": [
                       "api-reference/endpoints/app-connections/digital-ocean/list",
@@ -2616,6 +2628,19 @@
                       "api-reference/endpoints/secret-syncs/databricks/delete",
                       "api-reference/endpoints/secret-syncs/databricks/sync-secrets",
                       "api-reference/endpoints/secret-syncs/databricks/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Devin",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/devin/list",
+                      "api-reference/endpoints/secret-syncs/devin/get-by-id",
+                      "api-reference/endpoints/secret-syncs/devin/get-by-name",
+                      "api-reference/endpoints/secret-syncs/devin/create",
+                      "api-reference/endpoints/secret-syncs/devin/update",
+                      "api-reference/endpoints/secret-syncs/devin/delete",
+                      "api-reference/endpoints/secret-syncs/devin/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/devin/remove-secrets"
                     ]
                   },
                   {
