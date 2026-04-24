@@ -75,7 +75,7 @@ import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/app
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
-import { ActorAuthMethod, ActorType, TProviderAuthCallback } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType, MfaMethod, TProviderAuthCallback } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCaAutoRenewalQueueFactory } from "@app/services/certificate-authority/ca-auto-renewal-queue";
@@ -218,6 +218,7 @@ declare module "fastify" {
       userId: string;
       orgId?: string;
       user: TUsers;
+      requiredMfaMethod: MfaMethod;
     };
     // identity injection. depending on which kinda of token the information is filled in auth
     auth: TAuthMode;

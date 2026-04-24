@@ -11,10 +11,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/login/select-organization",
       "/_restrict-login-signup/login/select-organization"
     ),
-    ProviderSuccessPage: setRoute(
-      "/login/provider/success",
-      "/_restrict-login-signup/login/provider/success"
-    ),
     SignUpSsoPage: setRoute("/signup/sso", "/_restrict-login-signup/signup/sso"),
     AccountRecoveryResetPage: setRoute(
       "/account-recovery-reset",

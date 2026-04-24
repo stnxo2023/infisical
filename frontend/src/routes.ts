@@ -293,11 +293,10 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
       index("cert-manager/CodeSigningPage/route.tsx"),
       route("/$signerId", "cert-manager/SignerDetailPage/route.tsx")
     ]),
-    route("/approvals", "cert-manager/ApprovalsPage/route.tsx"),
-    route(
-      "/approval-requests/$approvalRequestId",
-      "cert-manager/ApprovalRequestDetailPage/route.tsx"
-    ),
+    route("/approvals", [
+      index("cert-manager/ApprovalsPage/route.tsx"),
+      route("/$approvalRequestId", "cert-manager/ApprovalRequestDetailPage/route.tsx")
+    ]),
     route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
     route("/certificates/$certificateId", "cert-manager/CertificateDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
@@ -463,7 +462,6 @@ export const routes = rootRoute("root.tsx", [
       route("/admin", "auth/AdminLoginPage/route.tsx"),
       route("/select-organization", "auth/SelectOrgPage/route.tsx"),
       route("/ldap", "auth/LoginLdapPage/route.tsx"),
-      route("/provider/success", "auth/ProviderSuccessPage/route.tsx"),
       route("/provider/error", "auth/ProviderErrorPage/route.tsx")
     ]),
     route("/signup", [

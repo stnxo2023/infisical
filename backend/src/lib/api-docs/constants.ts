@@ -2471,6 +2471,10 @@ export const KMS = {
     keyId: "The ID of the key to export the private key or key material for."
   },
 
+  BULK_EXPORT_PRIVATE_KEYS: {
+    keyIds: "An array of KMS key IDs to export. Maximum 100 keys per request."
+  },
+
   SIGN: {
     keyId: "The ID of the key to sign the data with.",
     data: "The data in string format to be signed (base64 encoded).",
@@ -2645,6 +2649,16 @@ export const AppConnections = {
     },
     VERCEL: {
       apiToken: "The API token used to authenticate with Vercel."
+    },
+    ONA: {
+      personalAccessToken: "The Personal Access Token used to authenticate with Ona."
+    },
+    DIGICERT: {
+      apiKey: "The CertCentral API Key used to authenticate with DigiCert.",
+      region: "The CertCentral region the API key belongs to (us or eu)."
+    },
+    TRAVISCI: {
+      apiToken: "The API token used to authenticate with Travis CI."
     },
     CAMUNDA: {
       clientId: "The client ID used to authenticate with Camunda.",
@@ -2953,6 +2967,10 @@ export const SecretSyncs = {
       scope: "The Terraform Cloud scope that secrets should be synced to.",
       category: "The Terraform Cloud category that secrets should be synced to."
     },
+    ONA: {
+      projectId: "The Ona project ID to sync secrets to.",
+      projectName: "An optional display name for the Ona project."
+    },
     VERCEL: {
       app: "The ID of the Vercel app to sync secrets to.",
       appName: "The name of the Vercel app to sync secrets to.",
@@ -3086,6 +3104,12 @@ export const SecretSyncs = {
       projectId: "The ID of the project on the external Infisical instance to sync secrets to.",
       environment: "The environment slug on the external Infisical instance to sync secrets to.",
       secretPath: "The secret path on the external Infisical instance to sync secrets to."
+    },
+    TRAVIS_CI: {
+      repositoryId: "The ID of the Travis CI repository to sync secrets to.",
+      repositorySlug: "The slug (owner/repo) of the Travis CI repository to sync secrets to.",
+      branch:
+        "The branch of the Travis CI repository to sync secrets to. If omitted, secrets sync to the repository-level scope."
     }
   }
 };

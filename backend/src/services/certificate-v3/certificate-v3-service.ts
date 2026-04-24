@@ -281,7 +281,8 @@ const validateRenewalEligibility = (
     caType === CaType.ACME ||
     caType === CaType.AZURE_AD_CS ||
     caType === CaType.AWS_PCA ||
-    caType === CaType.AWS_ACM_PUBLIC_CA;
+    caType === CaType.AWS_ACM_PUBLIC_CA ||
+    caType === CaType.DIGICERT;
   const isImportedCertificate = certificate.pkiSubscriberId != null && !certificate.profileId;
 
   if (!isInternalCa && !isConnectedExternalCa) {
@@ -1884,6 +1885,7 @@ export const certificateV3ServiceFactory = ({
       caType === CaType.ACME ||
       caType === CaType.AZURE_AD_CS ||
       caType === CaType.AWS_PCA ||
+      caType === CaType.DIGICERT ||
       caType === CaType.AWS_ACM_PUBLIC_CA
     ) {
       // Pre-flight validation for ACM — reject bad inputs synchronously so the user
@@ -2236,6 +2238,7 @@ export const certificateV3ServiceFactory = ({
           caType === CaType.ACME ||
           caType === CaType.AZURE_AD_CS ||
           caType === CaType.AWS_PCA ||
+          caType === CaType.DIGICERT ||
           caType === CaType.AWS_ACM_PUBLIC_CA
         ) {
           // External CA renewal - mark for async processing outside transaction
