@@ -290,6 +290,7 @@ export enum TableName {
   SecretValidationRule = "secret_validation_rules",
 
   // Honey Tokens
+  HoneyTokenConfig = "honey_token_configs",
   HoneyToken = "honey_tokens",
   HoneyTokenEvent = "honey_token_events",
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { HoneyTokenEventType } from "./honey-token-enums";
+import { HoneyTokenEventType, HoneyTokenType } from "./honey-token-enums";
 
 export const AwsHoneyTokenEventMetadataSchema = z.object({
   username: z.string(),
@@ -28,3 +28,20 @@ export const HoneyTokenEventMetadataSchema = z.discriminatedUnion("eventType", [
 ]);
 
 export type THoneyTokenEventMetadata = z.infer<typeof HoneyTokenEventMetadataSchema>;
+
+// --- Config schemas (typed shape for the encrypted config blob per provider) ---
+
+export const AwsHoneyTokenConfigSchema = z.object({
+  secretToken: z.string().min(1)
+});
+
+export type TAwsHoneyTokenConfig = z.infer<typeof AwsHoneyTokenConfigSchema>;
+
+export const HoneyTokenConfigSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal(HoneyTokenType.AWS),
+    config: AwsHoneyTokenConfigSchema
+  })
+]);
+
+export type THoneyTokenConfig = z.infer<typeof HoneyTokenConfigSchema>;
