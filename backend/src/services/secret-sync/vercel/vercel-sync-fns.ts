@@ -784,47 +784,15 @@ const detachTeamSharedEnvVar = async (
       : destinationConfig.targetEnvironments) ?? [];
   const ourTargetsSet = new Set<string>(ourEffectiveTargets);
 
-  const existingProjects = envVar.projectId ?? [];
-  const ourProjects = destinationConfig.targetProjects ?? [];
-  const ourProjectsSet = new Set(ourProjects);
+  // Vercel's uniqueness constraint on team shared env vars is at (key, target) — projectId
+  // is metadata about which projects see the var on its targets, not part of the conflict
+  // space.
+  const newTarget = envVar.target.filter((t) => !ourTargetsSet.has(t));
 
-  // Only narrow a dimension where the var's scope is strictly broader than ours. If the
-  // dimensions are equal, leave them alone — narrowing an equal dimension would zero it out
-  // (e.g. removing projectId=[A] when ours=[A] gives []), which would either delete the var
-  // or silently broaden it (Vercel treats empty projectId as "all projects").
-  const targetsAreEqual = setsEqual(envVar.target, ourEffectiveTargets);
-  const newTarget = targetsAreEqual ? envVar.target : envVar.target.filter((t) => !ourTargetsSet.has(t));
-
-  const bothHaveProjects = existingProjects.length > 0 && ourProjects.length > 0;
-  const projectsAreEqual = bothHaveProjects && setsEqual(existingProjects, ourProjects);
-  const newProjectId =
-    bothHaveProjects && !projectsAreEqual ? existingProjects.filter((p) => !ourProjectsSet.has(p)) : existingProjects;
-
-  if (newTarget.length === 0 && newProjectId.length === 0 && existingProjects.length > 0) {
-    // After detach, var would have no remaining scope. Fall back to full delete.
+  if (newTarget.length === 0) {
+    // No targets remain — the var has no scope to cover. Full delete.
     await deleteTeamSharedEnvVar(secretSync, envVar);
     return;
-  }
-  if (newTarget.length === 0 && existingProjects.length === 0) {
-    // Var was team-wide (no projectId). With no targets left, it has no scope. Full delete.
-    await deleteTeamSharedEnvVar(secretSync, envVar);
-    return;
-  }
-
-  // If detach didn't actually narrow anything in either dimension, the var is broader than us
-  // in a way we can't represent in Vercel (e.g. team-wide projectId vs sync's specific project
-  // list). PATCHing with a no-op leaves the overlap intact and the create that follows will be
-  // rejected.
-  if (newTarget === envVar.target && newProjectId === existingProjects) {
-    throw new SecretSyncError({
-      message:
-        `Cannot detach scope from existing shared env var "${envVar.key}": ` +
-        `the var's scope is broader than this sync's in a dimension that can't be narrowed ` +
-        `(e.g. team-wide projectId or merged across both target environments and projects). ` +
-        `Manually split or scope the existing var in Vercel.`,
-      secretKey: envVar.key,
-      shouldRetry: false
-    });
   }
 
   try {
@@ -836,8 +804,7 @@ const detachTeamSharedEnvVar = async (
       {
         updates: {
           [envVar.id]: {
-            ...(newTarget.length ? { target: newTarget } : {}),
-            ...(existingProjects.length > 0 ? { projectId: newProjectId } : {})
+            target: newTarget
           }
         }
       },
