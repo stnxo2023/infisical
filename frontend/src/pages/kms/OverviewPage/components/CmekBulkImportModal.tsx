@@ -11,20 +11,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
   EmptyMedia,
+  EmptyTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
@@ -243,7 +243,7 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
     if (!parsedKeys) {
       return (
         <div className="space-y-4">
-          <UnstableEmpty
+          <Empty
             className={`cursor-pointer transition-colors duration-75 ${isDragging ? "bg-container-hover" : ""}`}
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => {
@@ -258,18 +258,16 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
               if (file) handleFile(file);
             }}
           >
-            <UnstableEmptyHeader>
+            <EmptyHeader>
               <EmptyMedia variant="icon">
                 <UploadIcon />
               </EmptyMedia>
-              <UnstableEmptyTitle>
-                {isDragging ? "Drop your file here" : "Upload your keys"}
-              </UnstableEmptyTitle>
-              <UnstableEmptyDescription>
+              <EmptyTitle>{isDragging ? "Drop your file here" : "Upload your keys"}</EmptyTitle>
+              <EmptyDescription>
                 Drag and drop your .json file here, or click to browse
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
 
           {parseError && (
             <p className="rounded-md bg-red/10 px-3 py-2 text-sm text-red">{parseError}</p>
@@ -307,38 +305,36 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
 
     return (
       <div className="flex flex-col gap-4">
-        <UnstableTable
+        <Table
           className="border-collapse"
           containerClassName="max-h-[60vh] overflow-y-auto overflow-x-hidden"
         >
-          <UnstableTableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
-            <UnstableTableRow className="relative h-9">
-              <UnstableTableHead className="w-16 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+          <TableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
+            <TableRow className="relative h-9">
+              <TableHead className="w-16 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 #
-              </UnstableTableHead>
-              <UnstableTableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+              </TableHead>
+              <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 Name
-              </UnstableTableHead>
-              <UnstableTableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+              </TableHead>
+              <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 Key Type
-              </UnstableTableHead>
-              <UnstableTableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+              </TableHead>
+              <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 Algorithm
-              </UnstableTableHead>
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {parsedKeys.map((key, i) => {
               const errorMsg = errorByIndex.get(i);
               return (
-                <UnstableTableRow
+                <TableRow
                   // eslint-disable-next-line react/no-array-index-key
                   key={i}
                   className={errorMsg ? "border-danger/20 bg-danger/[0.075]" : ""}
                 >
-                  <UnstableTableCell
-                    className={`w-16 ${errorMsg ? "text-danger" : "text-mineshaft-400"}`}
-                  >
+                  <TableCell className={`w-16 ${errorMsg ? "text-danger" : "text-mineshaft-400"}`}>
                     <div className="flex items-center gap-1.5">
                       <span className="inline-block w-5 text-right tabular-nums">{i + 1}</span>
                       {errorMsg ? (
@@ -352,23 +348,23 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
                         <span className="size-3.5" />
                       )}
                     </div>
-                  </UnstableTableCell>
-                  <UnstableTableCell isTruncatable className="w-1/2 max-w-0 font-mono text-xs">
+                  </TableCell>
+                  <TableCell isTruncatable className="w-1/2 max-w-0 font-mono text-xs">
                     <p className="truncate">{String(key.name ?? "")}</p>
-                  </UnstableTableCell>
-                  <UnstableTableCell isTruncatable className="w-1/4 max-w-0">
+                  </TableCell>
+                  <TableCell isTruncatable className="w-1/4 max-w-0">
                     <p className="truncate">
                       {kmsKeyUsageOptions[key.keyType as KmsKeyUsage]?.label ?? key.keyType}
                     </p>
-                  </UnstableTableCell>
-                  <UnstableTableCell isTruncatable className="w-1/4 max-w-0 uppercase">
+                  </TableCell>
+                  <TableCell isTruncatable className="w-1/4 max-w-0 uppercase">
                     <p className="truncate">{String(key.algorithm ?? "")}</p>
-                  </UnstableTableCell>
-                </UnstableTableRow>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
 
         {hasErrors && (
           <div className="flex min-h-10 items-center gap-2 rounded-md border border-danger/35 bg-danger/[0.075] px-3 py-2 text-sm">
