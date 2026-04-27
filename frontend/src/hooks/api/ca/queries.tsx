@@ -82,7 +82,14 @@ export const useListExternalCasByProjectId = (projectId: string) => {
   return useQuery({
     queryKey: caKeys.listExternalCasByProjectId(projectId),
     queryFn: async () => {
-      const [acmeResponse, azureAdCsResponse, awsPcaResponse] = await Promise.allSettled([
+      const [
+        acmeResponse,
+        azureAdCsResponse,
+        awsPcaResponse,
+        digicertResponse,
+        awsAcmPublicCaResponse,
+        venafiTppResponse
+      ] = await Promise.allSettled([
         apiRequest.get<TUnifiedCertificateAuthority[]>(
           `/api/v1/cert-manager/ca/${CaType.ACME}?projectId=${projectId}`
         ),
@@ -91,6 +98,15 @@ export const useListExternalCasByProjectId = (projectId: string) => {
         ),
         apiRequest.get<TUnifiedCertificateAuthority[]>(
           `/api/v1/cert-manager/ca/${CaType.AWS_PCA}?projectId=${projectId}`
+        ),
+        apiRequest.get<TUnifiedCertificateAuthority[]>(
+          `/api/v1/cert-manager/ca/${CaType.DIGICERT}?projectId=${projectId}`
+        ),
+        apiRequest.get<TUnifiedCertificateAuthority[]>(
+          `/api/v1/cert-manager/ca/${CaType.AWS_ACM_PUBLIC_CA}?projectId=${projectId}`
+        ),
+        apiRequest.get<TUnifiedCertificateAuthority[]>(
+          `/api/v1/cert-manager/ca/${CaType.VENAFI_TPP}?projectId=${projectId}`
         )
       ]);
 
@@ -106,6 +122,18 @@ export const useListExternalCasByProjectId = (projectId: string) => {
 
       if (awsPcaResponse.status === "fulfilled") {
         allCas.push(...awsPcaResponse.value.data);
+      }
+
+      if (digicertResponse.status === "fulfilled") {
+        allCas.push(...digicertResponse.value.data);
+      }
+
+      if (awsAcmPublicCaResponse.status === "fulfilled") {
+        allCas.push(...awsAcmPublicCaResponse.value.data);
+      }
+
+      if (venafiTppResponse.status === "fulfilled") {
+        allCas.push(...venafiTppResponse.value.data);
       }
 
       return allCas;

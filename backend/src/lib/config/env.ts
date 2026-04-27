@@ -297,6 +297,7 @@ const envSchema = z
       .transform((val) => val === "true" || IS_PACKAGED)
       .optional(),
     INFISICAL_CLOUD: zodStrBool.default("false"),
+    INFISICAL_DEDICATED: zodStrBool.default("false"),
     MAINTENANCE_MODE: zodStrBool.default("false"),
     CAPTCHA_SECRET: zpStr(z.string().optional()),
     CAPTCHA_SITE_KEY: zpStr(z.string().optional()),
@@ -452,6 +453,14 @@ const envSchema = z
           return JSON.parse(val) as string[];
         })
     ),
+
+    // Reverse Proxy -----------------------------------------------------------------------------
+    // Comma-separated list of trusted proxy CIDRs (e.g. "10.0.0.0/8,172.16.0.0/12") or
+    // proxy-addr aliases ("loopback", "linklocal", "uniquelocal"). When set, requests whose
+    // socket remote address is NOT in this set will have forwarded-IP headers ignored; the
+    // socket address is used as the real IP. When unset, legacy first-header-wins behavior
+    // is preserved for backwards compatibility.
+    TRUSTED_PROXY_CIDRS: zpStr(z.string().optional()),
 
     /* OracleDB ----------------------------------------------------------------------------- */
     TNS_ADMIN: zpStr(z.string().optional()),

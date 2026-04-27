@@ -2,13 +2,14 @@ import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
-import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
@@ -56,16 +57,20 @@ export const authSignupServiceFactory = ({
       // Send informational email for existing accounts instead of throwing error
       // This prevents user enumeration vulnerability
       const appCfg = getConfig();
-      await smtpService.sendMail({
-        template: SmtpTemplates.SignupExistingAccount,
-        subjectLine: "Sign-up Request for Your Infisical Account",
-        recipients: [sanitizedEmail],
-        substitutions: {
-          email: sanitizedEmail,
-          loginUrl: `${appCfg.SITE_URL}/login`,
-          resetPasswordUrl: `${appCfg.SITE_URL}/account-recovery`
-        }
-      });
+      await smtpService
+        .sendMail({
+          template: SmtpTemplates.SignupExistingAccount,
+          subjectLine: "Sign-up Request for Your Infisical Account",
+          recipients: [sanitizedEmail],
+          substitutions: {
+            email: sanitizedEmail,
+            loginUrl: `${appCfg.SITE_URL}/login`,
+            resetPasswordUrl: `${appCfg.SITE_URL}/account-recovery`
+          }
+        })
+        .catch((err) =>
+          logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
+        );
       return;
     }
 
@@ -84,14 +89,16 @@ export const authSignupServiceFactory = ({
       userId: user.id
     });
 
-    await smtpService.sendMail({
-      template: SmtpTemplates.SignupEmailVerification,
-      subjectLine: "Infisical confirmation code",
-      recipients: [sanitizedEmail],
-      substitutions: {
-        code: token
-      }
-    });
+    await smtpService
+      .sendMail({
+        template: SmtpTemplates.SignupEmailVerification,
+        subjectLine: "Infisical confirmation code",
+        recipients: [sanitizedEmail],
+        substitutions: {
+          code: token
+        }
+      })
+      .catch((err) => throwIfSmtpError(err, "Failed to send signup verification email"));
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {
@@ -164,9 +171,10 @@ export const authSignupServiceFactory = ({
     // whether the request is valid. This prevents timing-based user/alias enumeration.
     let authMethod: AuthMethod;
     let organizationId: string | undefined;
+    let isInvitedUser = false;
     if (dto.type === CompleteAccountType.Email) {
       // Determine rejection before hashing, but don't throw yet
-      const shouldReject = !user || user.isAccepted;
+      const shouldReject = !user || user.isAccepted || Boolean(decodedToken?.aliasId);
 
       // Always hash the password so bcrypt cost is incurred regardless of validity
       const hashedPassword = await crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS);
@@ -190,7 +198,7 @@ export const authSignupServiceFactory = ({
           },
           { tx }
         );
-        const isInvitedUser = existingMemberships.length > 0;
+        isInvitedUser = existingMemberships.length > 0;
         if (!isInvitedUser && dto.organizationName) {
           const org = await orgService.createOrganization(
             {
@@ -289,7 +297,8 @@ export const authSignupServiceFactory = ({
       accessToken: tokens.access,
       refreshToken: tokens.refresh,
       authMethod,
-      organizationId
+      organizationId,
+      isInvitedUser
     };
   };
 

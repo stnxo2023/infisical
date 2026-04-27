@@ -5,13 +5,13 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
-  DocumentationLinkBadge,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
@@ -36,11 +36,13 @@ type CertificatesSectionProps = {
     search?: string;
   };
   dashboardFilters?: FilterRule[];
+  dashboardViewId?: string;
 };
 
 export const CertificatesSection = ({
   externalFilter,
-  dashboardFilters
+  dashboardFilters,
+  dashboardViewId
 }: CertificatesSectionProps) => {
   const { currentProject } = useProject();
   const { mutateAsync: deleteCert } = useDeleteCert();
@@ -120,16 +122,16 @@ export const CertificatesSection = ({
   };
 
   return (
-    <UnstableCard className="mb-6">
-      <UnstableCardHeader>
-        <UnstableCardTitle className="flex items-center gap-x-2">
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-x-2">
           Certificates
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
-        </UnstableCardTitle>
-        <UnstableCardDescription>
+        </CardTitle>
+        <CardDescription>
           View, filter, and manage all certificates across your project.
-        </UnstableCardDescription>
-        <UnstableCardAction>
+        </CardDescription>
+        <CardAction>
           <ProjectPermissionCan
             I={ProjectPermissionCertificateActions.Import}
             a={ProjectPermissionSub.Certificates}
@@ -145,13 +147,14 @@ export const CertificatesSection = ({
               </Button>
             )}
           </ProjectPermissionCan>
-        </UnstableCardAction>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
         <CertificatesTable
           handlePopUpOpen={handlePopUpOpen}
           externalFilter={externalFilter}
           dashboardFilters={dashboardFilters}
+          dashboardViewId={dashboardViewId}
         />
         <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
@@ -180,7 +183,7 @@ export const CertificatesSection = ({
             )
           }
         />
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

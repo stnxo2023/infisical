@@ -12,7 +12,7 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
@@ -25,6 +25,8 @@ import {
 } from "@app/lib/errors";
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -38,7 +40,7 @@ import { TNotificationServiceFactory } from "../notification/notification-servic
 import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { getDefaultOrgMembershipRole } from "../org/org-role-fns";
-import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
@@ -115,17 +117,19 @@ export const authLoginServiceFactory = ({
       ]);
 
       if (user.email) {
-        await smtpService.sendMail({
-          template: SmtpTemplates.NewDeviceJoin,
-          subjectLine: "Successful login from new device",
-          recipients: [user.email],
-          substitutions: {
-            email: user.email,
-            timestamp: new Date().toString(),
-            ip,
-            userAgent
-          }
-        });
+        await smtpService
+          .sendMail({
+            template: SmtpTemplates.NewDeviceJoin,
+            subjectLine: "Successful login from new device",
+            recipients: [user.email],
+            substitutions: {
+              email: user.email,
+              timestamp: new Date().toString(),
+              ip,
+              userAgent
+            }
+          })
+          .catch((err) => logger.error(err, "Failed to send new device login email"));
       }
     }
   };
@@ -140,14 +144,16 @@ export const authLoginServiceFactory = ({
       userId
     });
 
-    await smtpService.sendMail({
-      template: SmtpTemplates.EmailMfa,
-      subjectLine: "Infisical MFA code",
-      recipients: [email],
-      substitutions: {
-        code
-      }
-    });
+    await smtpService
+      .sendMail({
+        template: SmtpTemplates.EmailMfa,
+        subjectLine: "Infisical MFA code",
+        recipients: [email],
+        substitutions: {
+          code
+        }
+      })
+      .catch((err) => throwIfSmtpError(err, "Failed to send MFA code email"));
   };
 
   /*
@@ -194,7 +200,8 @@ export const authLoginServiceFactory = ({
         authTokenType: AuthTokenType.MFA_TOKEN,
         userId,
         organizationId,
-        email
+        email,
+        requiredMfaMethod
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_MFA_LIFETIME }
@@ -250,7 +257,9 @@ export const authLoginServiceFactory = ({
     let refreshTokenExpiresIn: string | number = cfg.JWT_REFRESH_LIFETIME;
 
     if (organizationId) {
-      const org = await orgDAL.findById(organizationId);
+      const org = await requestMemoize(requestMemoKeys.orgFindById(organizationId), () =>
+        orgDAL.findById(organizationId)
+      );
       if (org) {
         await membershipUserDAL.update(
           { actorUserId: userId, scopeOrgId: org.id, scope: AccessScope.Organization },
@@ -596,7 +605,13 @@ export const authLoginServiceFactory = ({
    * Multi factor authentication re-send code, Get user id from token
    * saved in frontend
    */
-  const resendMfaToken = async (userId: string) => {
+  const resendMfaToken = async (userId: string, requiredMfaMethod: MfaMethod) => {
+    if (requiredMfaMethod !== MfaMethod.EMAIL) {
+      throw new BadRequestError({
+        message: "Email MFA code cannot be sent when a different MFA method is required"
+      });
+    }
+
     const user = await userDAL.findById(userId);
     if (!user || !user.email) return;
     enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
@@ -663,6 +678,7 @@ export const authLoginServiceFactory = ({
     userId,
     mfaToken,
     mfaMethod,
+    requiredMfaMethod,
     mfaJwtToken,
     ip,
     userAgent,
@@ -673,6 +689,12 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findById(userId);
 
     try {
+      if (mfaMethod !== requiredMfaMethod) {
+        throw new BadRequestError({
+          message: `Invalid MFA method. ${requiredMfaMethod} verification is required.`
+        });
+      }
+
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
       if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
@@ -740,7 +762,11 @@ export const authLoginServiceFactory = ({
               });
 
               // Mark that an unlock email was sent, expires after 5 minutes
-              await keyStore.setItemWithExpiry(KeyStorePrefixes.UserMfaUnlockEmailSent(userId), 300, "1");
+              await keyStore.setItemWithExpiry(
+                KeyStorePrefixes.UserMfaUnlockEmailSent(userId),
+                KeyStoreTtls.UserMfaUnlockEmailSentInSeconds,
+                "1"
+              );
             }
           } catch (lockErr) {
             if (lock) {
@@ -909,7 +935,9 @@ export const authLoginServiceFactory = ({
         );
 
         if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
-          const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
+          const defaultOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(serverCfg.defaultAuthOrgId), () =>
+            orgDAL.findOrgById(serverCfg.defaultAuthOrgId as string)
+          );
           if (!defaultOrg) {
             throw new BadRequestError({
               message: `Failed to find default organization with ID ${serverCfg.defaultAuthOrgId}`
@@ -1140,7 +1168,9 @@ export const authLoginServiceFactory = ({
       });
     }
 
-    const selectedOrg = await orgDAL.findById(organizationId);
+    const selectedOrg = await requestMemoize(requestMemoKeys.orgFindById(organizationId), () =>
+      orgDAL.findById(organizationId)
+    );
     if (!selectedOrg) {
       throw new NotFoundError({ message: `Organization with ID '${organizationId}' not found` });
     }
@@ -1156,7 +1186,9 @@ export const authLoginServiceFactory = ({
         });
       }
 
-      rootOrg = await orgDAL.findById(selectedOrg.rootOrgId);
+      rootOrg = await requestMemoize(requestMemoKeys.orgFindById(selectedOrg.rootOrgId), () =>
+        orgDAL.findById(selectedOrg.rootOrgId as string)
+      );
       if (!rootOrg) {
         throw new BadRequestError({
           message: "Invalid sub-organization"
@@ -1314,19 +1346,21 @@ export const authLoginServiceFactory = ({
             }))
         );
 
-        await smtpService.sendMail({
-          recipients: adminEmails,
-          subjectLine: "Security Alert: SSO Bypass",
-          substitutions: {
-            email: user.email,
-            timestamp: new Date().toISOString(),
-            ip: ipAddress,
-            userAgent,
-            siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com"),
-            orgId: organizationId
-          },
-          template: SmtpTemplates.OrgAdminBreakglassAccess
-        });
+        await smtpService
+          .sendMail({
+            recipients: adminEmails,
+            subjectLine: "Security Alert: SSO Bypass",
+            substitutions: {
+              email: user.email,
+              timestamp: new Date().toISOString(),
+              ip: ipAddress,
+              userAgent,
+              siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com"),
+              orgId: organizationId
+            },
+            template: SmtpTemplates.OrgAdminBreakglassAccess
+          })
+          .catch((err) => logger.error(err, "Failed to send SSO bypass alert email"));
       }
     }
 

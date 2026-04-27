@@ -328,6 +328,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
     "Get Certificate Profile Latest Active Bundle",
 
+  [EventType.CREATE_CERTIFICATE_REQUEST]: "Create Certificate Request",
+  [EventType.GET_CERTIFICATE_REQUEST]: "Get Certificate Request",
+  [EventType.GET_CERTIFICATE_FROM_REQUEST]: "Get Certificate From Request",
+  [EventType.LIST_CERTIFICATE_REQUESTS]: "List Certificate Requests",
+  [EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION]: "Trigger Certificate Request Validation",
+
   [EventType.SCEP_ENROLLMENT]: "SCEP Certificate Enrollment",
   [EventType.SCEP_RENEWAL]: "SCEP Certificate Renewal",
   [EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED]: "SCEP Dynamic Challenge Generated",
@@ -387,7 +393,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.SECRET_VALIDATION_RULE_CREATE]: "Create Secret Validation Rule",
   [EventType.SECRET_VALIDATION_RULE_UPDATE]: "Update Secret Validation Rule",
-  [EventType.SECRET_VALIDATION_RULE_DELETE]: "Delete Secret Validation Rule"
+  [EventType.SECRET_VALIDATION_RULE_DELETE]: "Delete Secret Validation Rule",
+
+  // External Migration
+  [EventType.EXTERNAL_MIGRATION_CREATE]: "Create External Migration",
+  [EventType.EXTERNAL_MIGRATION_UPDATE]: "Update External Migration",
+  [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

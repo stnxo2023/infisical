@@ -360,38 +360,35 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       ProjectPermissionSub.Cmek
     );
 
-    const bulkMaterials = await kmsService.getBulkKeyMaterial({ kmsIds: uniqueKeyIds });
+    const bulkMaterials = await kmsService.getBulkKeyMaterial({ kmsIds: keys.map((k) => k.id) });
 
-    const result = await Promise.all(
-      keys.map(async (key) => {
-        const materialEntry = bulkMaterials.find((m) => m.kmsId === key.id);
+    const materialByKmsId = new Map(bulkMaterials.map((m) => [m.kmsId, m]));
+    const asymmetricAlgorithms = new Set<string>(Object.values(AsymmetricKeyAlgorithm));
 
-        if (!materialEntry) {
-          throw new NotFoundError({ message: `Key material not found for key ID "${key.id}"` });
-        }
+    const result = keys.map((key) => {
+      const materialEntry = materialByKmsId.get(key.id);
 
-        const isAsymmetric = Object.values(AsymmetricKeyAlgorithm).includes(
+      if (!materialEntry) {
+        throw new NotFoundError({ message: `Key material not found for key ID "${key.id}"` });
+      }
+
+      let publicKey: string | undefined;
+      if (asymmetricAlgorithms.has(key.encryptionAlgorithm)) {
+        const pubKeyBuffer = signingService(
           key.encryptionAlgorithm as AsymmetricKeyAlgorithm
-        );
+        ).getPublicKeyFromPrivateKey(materialEntry.keyMaterial);
+        publicKey = pubKeyBuffer.toString("base64");
+      }
 
-        let publicKey: string | undefined;
-        if (isAsymmetric) {
-          const pubKeyBuffer = signingService(
-            key.encryptionAlgorithm as AsymmetricKeyAlgorithm
-          ).getPublicKeyFromPrivateKey(materialEntry.keyMaterial);
-          publicKey = pubKeyBuffer.toString("base64");
-        }
-
-        return {
-          keyId: key.id,
-          name: key.name,
-          keyUsage: key.keyUsage,
-          algorithm: key.encryptionAlgorithm,
-          privateKey: materialEntry.keyMaterial.toString("base64"),
-          ...(publicKey ? { publicKey } : {})
-        };
-      })
-    );
+      return {
+        keyId: key.id,
+        name: key.name,
+        keyUsage: key.keyUsage,
+        algorithm: key.encryptionAlgorithm,
+        privateKey: materialEntry.keyMaterial.toString("base64"),
+        ...(publicKey ? { publicKey } : {})
+      };
+    });
 
     return { keys: result, projectId };
   };

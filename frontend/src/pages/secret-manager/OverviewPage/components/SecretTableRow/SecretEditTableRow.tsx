@@ -27,29 +27,33 @@ import { twMerge } from "tailwind-merge";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
+import {
+  hasSecretReference,
+  ResolvedSecretValuePopover,
+  SecretReferenceTree
+} from "@app/components/secrets/SecretReferenceDetails";
 import { DeleteActionModal, Input, Modal, ModalContent } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Separator,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  TableCell,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton,
-  UnstableSeparator,
-  UnstableTableCell
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -188,6 +192,8 @@ export const SecretEditTableRow = ({
   const batchStore = useBatchStoreApi();
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
+  const [isResolvedValueOpen, setIsResolvedValueOpen] = useToggle();
+  const isFieldActive = isFieldFocused || isResolvedValueOpen;
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
 
   const fetchSharedValueParams =
@@ -214,7 +220,7 @@ export const SecretEditTableRow = ({
     isError: isErrorFetchingSharedValue,
     refetch: refetchSharedValue
   } = useGetSecretValue(fetchSharedValueParams, {
-    enabled: canFetchSharedValue && (isVisible || isFieldFocused)
+    enabled: canFetchSharedValue && (isVisible || isFieldActive)
   });
 
   const isFetchingSharedValue = canFetchSharedValue && isPendingSharedValue;
@@ -880,6 +886,8 @@ export const SecretEditTableRow = ({
   const isDirtyState =
     isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode;
 
+  const secretHasReference = hasSecretReference(watchedValue as string);
+
   const valueContent = (
     <>
       <DeleteActionModal
@@ -904,11 +912,21 @@ export const SecretEditTableRow = ({
         )}
         <div
           className={twMerge(
-            "grow pr-2 pl-1",
-            isFieldFocused && !isBatchMode && "pr-16",
-            isFieldFocused && isBatchMode && "pr-6"
+            "relative grow pr-2 pl-1",
+            isFieldActive && !isBatchMode && "pr-16",
+            isFieldActive && isBatchMode && "pr-6"
           )}
         >
+          {isFieldActive && !secretValueHidden && !isCreatable && secretHasReference && (
+            <ResolvedSecretValuePopover
+              environment={environment}
+              secretPath={secretPath}
+              secretKey={secretName}
+              open={isResolvedValueOpen}
+              onOpenChange={setIsResolvedValueOpen.toggle}
+              isDisabled={isDirtyState || hasPendingValueChange}
+            />
+          )}
           <Controller
             control={control}
             name="value"
@@ -926,13 +944,14 @@ export const SecretEditTableRow = ({
                         : (field.value as string)
                 }
                 key="secret-input-shared"
-                isVisible={isVisible}
+                isVisible={isVisible || isResolvedValueOpen}
                 secretPath={secretPath}
                 environment={environment}
                 isImport={isImportedSecret}
                 defaultValue={secretValueHidden ? "" : undefined}
                 canEditButNotView={secretValueHidden}
                 onFocus={() => setIsFieldFocused.on()}
+                containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
                 onBlur={() => {
                   field.onBlur();
                   setIsFieldFocused.off();
@@ -941,11 +960,11 @@ export const SecretEditTableRow = ({
             )}
           />
         </div>
-        {!isDirtyState && !isFieldFocused && (
+        {!isDirtyState && !isFieldActive && (
           <div className="flex w-fit items-start justify-end self-start pl-2">
             <div className="flex items-center gap-1">
               {comment && !isImportedSecret && (
-                <Tooltip delayDuration={300}>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="flex size-5 items-center justify-center text-muted">
                       <MessageSquareIcon className="size-3.5" />
@@ -955,7 +974,7 @@ export const SecretEditTableRow = ({
                 </Tooltip>
               )}
               {canReadTags && tags?.length && !isImportedSecret ? (
-                <Tooltip delayDuration={300}>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="flex size-5 items-center justify-center text-muted">
                       <TagsIcon className="size-3.5" />
@@ -967,7 +986,7 @@ export const SecretEditTableRow = ({
                 </Tooltip>
               ) : null}
               {reminder && !isImportedSecret && (
-                <Tooltip delayDuration={300}>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="flex size-5 items-center justify-center text-muted">
                       <BellIcon className="size-3.5" />
@@ -977,7 +996,7 @@ export const SecretEditTableRow = ({
                 </Tooltip>
               )}
               {secretMetadata?.length && !isImportedSecret ? (
-                <Tooltip delayDuration={300}>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="flex size-5 items-center justify-center text-muted">
                       <CodeXmlIcon className="size-3.5" />
@@ -987,7 +1006,7 @@ export const SecretEditTableRow = ({
                 </Tooltip>
               ) : null}
               {skipMultilineEncoding && !isImportedSecret && (
-                <Tooltip delayDuration={300}>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="flex size-5 items-center justify-center text-muted">
                       <WrapTextIcon className="size-3.5" />
@@ -1020,14 +1039,14 @@ export const SecretEditTableRow = ({
               <div>
                 <Tooltip>
                   <TooltipTrigger>
-                    <UnstableIconButton
+                    <IconButton
                       size="xs"
                       variant="success"
                       isDisabled={isSubmitting || !isAllowed}
                       onClick={handleSubmit(handleFormSubmit)}
                     >
                       <SaveIcon />
-                    </UnstableIconButton>
+                    </IconButton>
                   </TooltipTrigger>
                   <TooltipContent>Save changes</TooltipContent>
                 </Tooltip>
@@ -1037,21 +1056,21 @@ export const SecretEditTableRow = ({
           <div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <UnstableIconButton
+                <IconButton
                   variant="danger"
                   size="xs"
                   onClick={handleFormReset}
                   isDisabled={isSubmitting}
                 >
                   <Undo2Icon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Undo changes</TooltipContent>
             </Tooltip>
           </div>
         </div>
       )}
-      {isFieldFocused &&
+      {isFieldActive &&
         !(
           isDirty &&
           (dirtyFields.key || dirtyFields.value) &&
@@ -1084,16 +1103,16 @@ export const SecretEditTableRow = ({
             "pointer-events-none opacity-0 transition-all duration-300",
             "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
             shouldStayExpanded && "pointer-events-auto gap-1 opacity-100",
-            isFieldFocused &&
+            isFieldActive &&
               !showMenuWhileFocused &&
               "group-hover:pointer-events-none group-hover:gap-0 group-hover:opacity-0",
-            isFieldFocused && showMenuWhileFocused && "pointer-events-auto gap-1 opacity-100",
+            isFieldActive && showMenuWhileFocused && "pointer-events-auto gap-1 opacity-100",
             isSingleEnvView ? "top-0.5 right-0.5" : "-top-[1px] -right-1.5"
           )}
         >
-          <Tooltip delayDuration={300} disableHoverableContent>
+          <Tooltip disableHoverableContent>
             <TooltipTrigger>
-              <UnstableIconButton
+              <IconButton
                 isDisabled={
                   isPendingDelete ||
                   isImportedSecret ||
@@ -1111,7 +1130,7 @@ export const SecretEditTableRow = ({
                 )}
               >
                 <EditIcon />
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent>
               {isImportedSecret
@@ -1123,9 +1142,9 @@ export const SecretEditTableRow = ({
                     : `${isCreatable ? "Add" : "Edit"} Value`}
             </TooltipContent>
           </Tooltip>
-          <Tooltip delayDuration={300} disableHoverableContent>
+          <Tooltip disableHoverableContent>
             <TooltipTrigger>
-              <UnstableIconButton
+              <IconButton
                 isDisabled={isPendingDelete || !canCopySecret}
                 onClick={handleCopySharedToClipboard}
                 variant="ghost"
@@ -1136,7 +1155,7 @@ export const SecretEditTableRow = ({
                 )}
               >
                 {isCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent>
               {isCopied
@@ -1149,10 +1168,10 @@ export const SecretEditTableRow = ({
             </TooltipContent>
           </Tooltip>
           <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
-            <Tooltip delayDuration={300} disableHoverableContent>
+            <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <PopoverTrigger asChild>
-                  <UnstableIconButton
+                  <IconButton
                     variant="ghost"
                     size="xs"
                     isDisabled={isPendingDelete || isCreatable || isImportedSecret}
@@ -1164,7 +1183,7 @@ export const SecretEditTableRow = ({
                     )}
                   >
                     <MessageSquareIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent>
@@ -1192,10 +1211,10 @@ export const SecretEditTableRow = ({
             </PopoverContent>
           </Popover>
           <Popover modal open={isTagOpen} onOpenChange={setIsTagOpen}>
-            <Tooltip delayDuration={300} disableHoverableContent>
+            <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <PopoverTrigger asChild>
-                  <UnstableIconButton
+                  <IconButton
                     variant="ghost"
                     size="xs"
                     isDisabled={isPendingDelete || isCreatable || isImportedSecret || !canReadTags}
@@ -1207,7 +1226,7 @@ export const SecretEditTableRow = ({
                     )}
                   >
                     <TagsIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent>
@@ -1237,10 +1256,10 @@ export const SecretEditTableRow = ({
             </PopoverContent>
           </Popover>
           <Popover open={isReminderOpen} onOpenChange={setIsReminderOpen}>
-            <Tooltip delayDuration={300} disableHoverableContent>
+            <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <PopoverTrigger asChild>
-                  <UnstableIconButton
+                  <IconButton
                     variant="ghost"
                     size="xs"
                     isDisabled={
@@ -1258,7 +1277,7 @@ export const SecretEditTableRow = ({
                     )}
                   >
                     <BellIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent>
@@ -1287,10 +1306,10 @@ export const SecretEditTableRow = ({
             </PopoverContent>
           </Popover>
           <Popover open={isMetadataOpen} onOpenChange={setIsMetadataOpen}>
-            <Tooltip delayDuration={300} disableHoverableContent>
+            <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <PopoverTrigger asChild>
-                  <UnstableIconButton
+                  <IconButton
                     variant="ghost"
                     size="xs"
                     isDisabled={isPendingDelete || isCreatable || isImportedSecret}
@@ -1302,7 +1321,7 @@ export const SecretEditTableRow = ({
                     )}
                   >
                     <CodeXmlIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent>
@@ -1337,9 +1356,9 @@ export const SecretEditTableRow = ({
               />
             </PopoverContent>
           </Popover>
-          <Tooltip delayDuration={300} disableHoverableContent>
+          <Tooltip disableHoverableContent>
             <TooltipTrigger>
-              <UnstableIconButton
+              <IconButton
                 variant="ghost"
                 size="xs"
                 isDisabled={
@@ -1358,7 +1377,7 @@ export const SecretEditTableRow = ({
                 )}
               >
                 <WrapTextIcon />
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent>
               {isImportedSecret
@@ -1372,9 +1391,9 @@ export const SecretEditTableRow = ({
                       : "Enable Multi-line Encoding"}
             </TooltipContent>
           </Tooltip>
-          <Tooltip delayDuration={300} disableHoverableContent>
+          <Tooltip disableHoverableContent>
             <TooltipTrigger>
-              <UnstableIconButton
+              <IconButton
                 isDisabled={
                   secretValueHidden ||
                   !currentProject.secretSharing ||
@@ -1407,39 +1426,44 @@ export const SecretEditTableRow = ({
                 )}
               >
                 <ForwardIcon />
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent>{getTooltipContentForSecretSharing()}</TooltipContent>
           </Tooltip>
           {isBatchMode && hasPendingChange ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   className="hover:text-error"
                   size="xs"
                   onClick={() => onBatchRevert?.(environment, secretName)}
                 >
                   <Undo2Icon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Discard pending changes</TooltipContent>
             </Tooltip>
           ) : (
-            <UnstableDropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-              <UnstableDropdownMenuTrigger asChild>
-                <UnstableIconButton
-                  variant="ghost"
-                  size="xs"
-                  className={twMerge(
-                    "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
-                    shouldStayExpanded && "w-7"
-                  )}
-                >
-                  <EllipsisIcon />
-                </UnstableIconButton>
-              </UnstableDropdownMenuTrigger>
-              <UnstableDropdownMenuContent align="end">
+            <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton
+                      variant="ghost"
+                      size="xs"
+                      className={twMerge(
+                        "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                        shouldStayExpanded && "w-7"
+                      )}
+                    >
+                      <EllipsisIcon />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>More Options</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
                   a={subject(ProjectPermissionSub.Secrets, {
@@ -1456,17 +1480,16 @@ export const SecretEditTableRow = ({
                           ? undefined
                           : false
                       }
-                      delayDuration={300}
                       disableHoverableContent
                     >
                       <TooltipTrigger className="block w-full">
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           onClick={() => onAddOverride?.()}
                           isDisabled={isCreatable || isImportedSecret || isOverride || !isAllowed}
                         >
                           <GitBranchIcon />
                           Add Override
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       </TooltipTrigger>
                       <TooltipContent side="left">
                         {!isAllowed
@@ -1484,17 +1507,16 @@ export const SecretEditTableRow = ({
                 </ProjectPermissionCan>
                 <Tooltip
                   open={!canReadSecretValue || !secretId || isEmpty ? undefined : false}
-                  delayDuration={300}
                   disableHoverableContent
                 >
                   <TooltipTrigger className="block w-full">
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       onClick={() => setIsSecretReferenceOpen(true)}
                       isDisabled={!canReadSecretValue || !secretId || isEmpty}
                     >
                       <WorkflowIcon />
                       Secret References
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   </TooltipTrigger>
                   <TooltipContent side="left">
                     {!canReadSecretValue
@@ -1511,17 +1533,16 @@ export const SecretEditTableRow = ({
                   {(isAllowed) => (
                     <Tooltip
                       open={isImportedSecret || isCreatable || !isAllowed ? undefined : false}
-                      delayDuration={300}
                       disableHoverableContent
                     >
                       <TooltipTrigger className="block w-full">
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           onClick={() => setIsVersionHistoryOpen(true)}
                           isDisabled={!secretId || isCreatable || isImportedSecret || !isAllowed}
                         >
                           <HistoryIcon />
                           Version History
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       </TooltipTrigger>
                       <TooltipContent side="left">
                         {!isAllowed
@@ -1535,11 +1556,10 @@ export const SecretEditTableRow = ({
                 </ProjectPermissionCan>
                 <Tooltip
                   open={isImportedSecret || isCreatable ? undefined : false}
-                  delayDuration={300}
                   disableHoverableContent
                 >
                   <TooltipTrigger className="block w-full">
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       onClick={() => {
                         if (!subscription?.secretAccessInsights) {
                           handlePopUpOpen("accessInsightsUpgrade");
@@ -1551,7 +1571,7 @@ export const SecretEditTableRow = ({
                     >
                       <UsersIcon />
                       View Access
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   </TooltipTrigger>
                   <TooltipContent side="left">
                     {isImportedSecret
@@ -1571,11 +1591,10 @@ export const SecretEditTableRow = ({
                   {(isAllowed) => (
                     <Tooltip
                       open={isRotatedSecret || isImportedSecret || isCreatable ? undefined : false}
-                      delayDuration={300}
                       disableHoverableContent
                     >
                       <TooltipTrigger className="block w-full">
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           onClick={toggleModal}
                           isDisabled={
                             isCreatable ||
@@ -1588,7 +1607,7 @@ export const SecretEditTableRow = ({
                         >
                           <TrashIcon />
                           Delete Secret
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       </TooltipTrigger>
                       <TooltipContent side="left">
                         {isRotatedSecret
@@ -1602,8 +1621,8 @@ export const SecretEditTableRow = ({
                     </Tooltip>
                   )}
                 </ProjectPermissionCan>
-              </UnstableDropdownMenuContent>
-            </UnstableDropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       )}
@@ -1628,14 +1647,14 @@ export const SecretEditTableRow = ({
             <SheetTitle>Version History</SheetTitle>
             <SheetDescription>Audit secret history and rollback changes</SheetDescription>
           </SheetHeader>
-          <UnstableSeparator />
+          <Separator />
           <div className="bg-container p-4 text-foreground">
             <p className="truncate">{secretName}</p>
             <Badge variant="neutral" className="mt-0.5">
               {environmentName}
             </Badge>
           </div>
-          <UnstableSeparator />
+          <Separator />
           {secretId && (
             <SecretVersionHistory
               secretId={secretId}
@@ -1660,14 +1679,14 @@ export const SecretEditTableRow = ({
               View and manage user, group, and machine identity access to this secret
             </SheetDescription>
           </SheetHeader>
-          <UnstableSeparator />
+          <Separator />
           <div className="bg-container p-4 text-foreground">
             <p className="truncate">{secretName}</p>
             <Badge variant="neutral" className="mt-0.5">
               {environmentName}
             </Badge>
           </div>
-          <UnstableSeparator />
+          <Separator />
           {secretId && (
             <SecretAccessInsights
               secretKey={secretName}
@@ -1710,16 +1729,16 @@ export const SecretEditTableRow = ({
   if (isSingleEnvView) {
     return (
       <>
-        <UnstableTableCell
+        <TableCell
           className={twMerge("border-r pt-1 align-top", isOverride && "border-b-border/50")}
         >
           {nameInput}
-        </UnstableTableCell>
-        <UnstableTableCell
+        </TableCell>
+        <TableCell
           className={twMerge("relative w-full p-0 px-2", isOverride && "border-b-border/50")}
         >
           <div className="flex w-full flex-col gap-y-2 py-1.5">{valueContent}</div>
-        </UnstableTableCell>
+        </TableCell>
       </>
     );
   }

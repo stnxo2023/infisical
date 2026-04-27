@@ -61,7 +61,6 @@ export enum TableName {
   UserAction = "user_actions",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
-  ApiKey = "api_keys",
   ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
   ProjectBot = "project_bots",
@@ -131,8 +130,6 @@ export enum TableName {
   SecretApprovalRequestSecret = "secret_approval_requests_secrets",
   SecretApprovalRequestSecretTag = "secret_approval_request_secret_tags",
   SecretApprovalPolicyEnvironment = "secret_approval_policies_environments",
-  SecretRotation = "secret_rotations",
-  SecretRotationOutput = "secret_rotation_outputs",
   SamlConfig = "saml_configs",
   LdapConfig = "ldap_configs",
   OidcConfig = "oidc_configs",
@@ -163,7 +160,6 @@ export enum TableName {
   JnSecretTag = "secret_tag_junction",
   SecretVersionTag = "secret_version_tag_junction",
   SecretVersionV2Tag = "secret_version_v2_tag_junction",
-  SecretRotationOutputV2 = "secret_rotation_output_v2",
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
   KmsKey = "kms_keys",
@@ -222,6 +218,8 @@ export enum TableName {
   Relay = "relays",
   GatewayV2 = "gateways_v2",
   GatewayEnrollmentTokens = "gateway_enrollment_tokens",
+  GatewayPool = "gateway_pools",
+  GatewayPoolMembership = "gateway_pool_memberships",
 
   KeyValueStore = "key_value_store",
 
@@ -239,9 +237,11 @@ export enum TableName {
   PamAccountDependency = "pam_account_dependencies",
   PamResourceRotationRule = "pam_resource_rotation_rules",
   PamResourceFavorite = "pam_resource_favorites",
+  PamDomain = "pam_domains",
   PamAccountPolicy = "pam_account_policies",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
+  ExternalMigrationConfig = "external_migration_configs",
 
   // PKI ACME
   PkiAcmeAccount = "pki_acme_accounts",
@@ -286,11 +286,15 @@ export enum TableName {
   PkiSigners = "pki_signers",
   PkiSigningOperations = "pki_signing_operations",
 
+  CaSigningConfig = "ca_signing_configs",
+  SecretValidationRule = "secret_validation_rules",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
-
-  CaSigningConfig = "ca_signing_configs",
-  SecretValidationRule = "secret_validation_rules"
+  DeprecatedSecretRotationV1 = "secret_rotations",
+  DeprecatedSecretRotationOutput = "secret_rotation_outputs",
+  DeprecatedSecretRotationOutputV2 = "secret_rotation_output_v2",
+  DeprecatedApiKey = "api_keys"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

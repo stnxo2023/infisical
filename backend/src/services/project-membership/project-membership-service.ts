@@ -8,6 +8,8 @@ import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/se
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-dal";
@@ -36,10 +38,7 @@ import {
 } from "./project-membership-types";
 
 type TProjectMembershipServiceFactoryDep = {
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getProjectPermissionByRoles" | "invalidateProjectPermissionCache"
-  >;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
@@ -198,9 +197,6 @@ export const projectMembershipServiceFactory = ({
     members,
     sendEmails = true
   }: TAddUsersToWorkspaceDTO) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -210,8 +206,11 @@ export const projectMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     const orgMembers = await membershipUserDAL.find({
-      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: project.orgId,
+      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: actorOrgId,
       scope: AccessScope.Organization,
       $in: {
         [`${TableName.Membership}.id` as "id"]: members.map(({ orgMembershipId }) => orgMembershipId)
@@ -245,7 +244,7 @@ export const projectMembershipServiceFactory = ({
           scopeProjectId: projectId,
           actorUserId,
           scope: AccessScope.Project,
-          scopeOrgId: project.orgId
+          scopeOrgId: actorOrgId
         })),
         tx
       );
@@ -268,13 +267,11 @@ export const projectMembershipServiceFactory = ({
       );
     });
 
-    await permissionService.invalidateProjectPermissionCache(projectId);
-
     if (sendEmails) {
       await notificationService.createUserNotifications(
         orgMembershipUsernames.map((member) => ({
           userId: member.id,
-          orgId: project.orgId,
+          orgId: actorOrgId,
           type: NotificationType.PROJECT_INVITATION,
           title: "Project Invitation",
           body: `You've been invited to join the project **${project.name}**.`
@@ -313,14 +310,6 @@ export const projectMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
-
-    const project = await projectDAL.findById(projectId);
-
-    if (!project) {
-      throw new NotFoundError({
-        message: `Project with ID '${projectId}' not found`
-      });
-    }
 
     const usernamesAndEmails = [...emails, ...usernames];
 
@@ -400,8 +389,6 @@ export const projectMembershipServiceFactory = ({
       return deletedMemberships;
     });
 
-    await permissionService.invalidateProjectPermissionCache(projectId);
-
     return memberships;
   };
 
@@ -410,7 +397,9 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "Only users can leave projects" });
     }
 
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     if (project.version === ProjectVersion.V1) {

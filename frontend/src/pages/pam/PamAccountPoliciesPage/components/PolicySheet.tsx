@@ -16,6 +16,8 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  IconButton,
+  Input,
   Label,
   Popover,
   PopoverContent,
@@ -30,9 +32,7 @@ import {
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableIconButton,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   PamAccountPolicyRuleType,
@@ -44,6 +44,7 @@ import {
 import { PAM_RESOURCE_TYPE_MAP } from "@app/hooks/api/pam/maps";
 
 import {
+  PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS,
   PAM_ACCOUNT_POLICY_RULE_METADATA,
   PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES
 } from "./constants";
@@ -66,13 +67,21 @@ const RulePatternSchema = z.object({
     .refine(isValidRegex, { message: "Invalid regular expression" })
 });
 
-const RuleSchema = z.object({
-  ruleType: z.nativeEnum(PamAccountPolicyRuleType),
-  patterns: z
-    .array(RulePatternSchema)
-    .min(1, "At least one pattern is required")
-    .max(20, "A rule can have at most 20 patterns")
-});
+const RuleSchema = z
+  .object({
+    ruleType: z.nativeEnum(PamAccountPolicyRuleType),
+    patterns: z.array(RulePatternSchema).max(20, "A rule can have at most 20 patterns").optional()
+  })
+  .superRefine((rule, ctx) => {
+    if (PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[rule.ruleType]) return;
+    if (!rule.patterns || rule.patterns.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["patterns"],
+        message: "At least one pattern is required"
+      });
+    }
+  });
 
 const FormSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(255),
@@ -90,19 +99,33 @@ type Props = {
 };
 
 const rulesToFormData = (rules: TPamAccountPolicyRules): TFormData["rules"] => {
-  return (Object.entries(rules) as [PamAccountPolicyRuleType, { patterns: string[] }][])
-    .filter(([, config]) => config?.patterns)
-    .map(([ruleType, config]) => ({
-      ruleType,
-      patterns: config.patterns.map((p) => ({ value: p }))
-    }));
+  return (
+    Object.entries(rules) as [PamAccountPolicyRuleType, { patterns?: string[] } | undefined][]
+  )
+    .filter(([ruleType, config]) => {
+      if (PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[ruleType]) return Boolean(config);
+      return Boolean(config?.patterns);
+    })
+    .map(([ruleType, config]) => {
+      if (PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[ruleType]) {
+        return { ruleType };
+      }
+      return {
+        ruleType,
+        patterns: (config?.patterns ?? []).map((p) => ({ value: p }))
+      };
+    });
 };
 
 const formDataToRules = (rules: TFormData["rules"]): TPamAccountPolicyRules => {
   return rules.reduce<TPamAccountPolicyRules>((acc, rule) => {
-    acc[rule.ruleType] = {
-      patterns: rule.patterns.map((p) => p.value)
-    };
+    if (PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[rule.ruleType]) {
+      acc[rule.ruleType] = {};
+    } else {
+      acc[rule.ruleType] = {
+        patterns: (rule.patterns ?? []).map((p) => p.value)
+      };
+    }
     return acc;
   }, {});
 };
@@ -173,7 +196,7 @@ const RulePatterns = ({
                 control={control}
                 name={`rules.${ruleIndex}.patterns.${patternIndex}.value`}
                 render={({ field }) => (
-                  <UnstableInput
+                  <Input
                     {...field}
                     placeholder={"Regex pattern, e.g. rm\\s+-rf"}
                     className="flex-1 font-mono text-xs"
@@ -181,7 +204,7 @@ const RulePatterns = ({
                   />
                 )}
               />
-              <UnstableIconButton
+              <IconButton
                 variant="ghost"
                 size="xs"
                 aria-label="Remove pattern"
@@ -189,7 +212,7 @@ const RulePatterns = ({
                 disabled={fields.length <= 1}
               >
                 <CircleMinus className="h-3.5 w-3.5 text-mineshaft-400" />
-              </UnstableIconButton>
+              </IconButton>
             </div>
             {patternError && <p className="mt-1 text-xs text-danger">{patternError.message}</p>}
           </div>
@@ -324,7 +347,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                 <Field>
                   <FieldLabel>Name</FieldLabel>
                   <FieldContent>
-                    <UnstableInput
+                    <Input
                       {...field}
                       placeholder="e.g. Production SSH Policy"
                       isError={Boolean(error)}
@@ -376,7 +399,13 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                                 disabled={isAdded}
                                 onSelect={() => {
                                   if (!isAdded) {
-                                    appendRule({ ruleType, patterns: [{ value: "" }] });
+                                    const isPatternless =
+                                      PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[ruleType];
+                                    appendRule(
+                                      isPatternless
+                                        ? { ruleType }
+                                        : { ruleType, patterns: [{ value: "" }] }
+                                    );
                                     setAddRuleOpen(false);
                                   }
                                 }}
@@ -403,6 +432,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                 const ruleType = currentRules[ruleIndex]?.ruleType;
                 if (!ruleType) return null;
                 const meta = PAM_ACCOUNT_POLICY_RULE_METADATA[ruleType];
+                const isPatternless = PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[ruleType];
 
                 return (
                   <div key={ruleField.id} className="rounded-md border border-border bg-card p-4">
@@ -411,22 +441,24 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                         <span className="text-sm font-medium text-foreground">{meta.name}</span>
                         {ruleType && <RuleSupportedResourceIndicator ruleType={ruleType} />}
                       </div>
-                      <UnstableIconButton
+                      <IconButton
                         variant="danger"
                         size="xs"
                         aria-label="Remove rule"
                         onClick={() => removeRule(ruleIndex)}
                       >
                         <Trash2 className="size-3.5" />
-                      </UnstableIconButton>
+                      </IconButton>
                     </div>
                     {meta.description && (
                       <p className="mt-2 text-xs text-muted">{meta.description}</p>
                     )}
 
-                    <div className="mt-3">
-                      <RulePatterns control={control} ruleIndex={ruleIndex} errors={errors} />
-                    </div>
+                    {!isPatternless && (
+                      <div className="mt-3">
+                        <RulePatterns control={control} ruleIndex={ruleIndex} errors={errors} />
+                      </div>
+                    )}
                   </div>
                 );
               })}

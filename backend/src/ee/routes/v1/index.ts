@@ -17,6 +17,7 @@ import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerEmailDomainRouter } from "./email-domain-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { EXTERNAL_KMS_REGISTER_ROUTER_MAP } from "./external-kms-routers";
+import { registerGatewayPoolRouter } from "./gateway-pool-router";
 import { registerGatewayRouter } from "./gateway-router";
 import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
@@ -34,6 +35,11 @@ import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
 import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
 import { PAM_DISCOVERY_REGISTER_ROUTER_MAP } from "./pam-discovery-routers";
 import { registerPamDiscoveryRouter } from "./pam-discovery-routers/pam-discovery-router";
+import {
+  PAM_DOMAIN_ACCOUNT_REGISTER_ROUTER_MAP,
+  PAM_DOMAIN_REGISTER_ROUTER_MAP,
+  registerPamDomainRouter
+} from "./pam-domain-routers";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRotationRulesRouter } from "./pam-resource-routers/pam-resource-rotation-rules-router";
@@ -50,8 +56,6 @@ import { registerRelayRouter } from "./relay-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
-import { registerSecretRotationProviderRouter } from "./secret-rotation-provider-router";
-import { registerSecretRotationRouter } from "./secret-rotation-router";
 import { registerSecretRouter } from "./secret-router";
 import { registerSecretScanningRouter } from "./secret-scanning-router";
 import { registerSecretVersionRouter } from "./secret-version-router";
@@ -97,9 +101,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretApprovalRequestRouter, {
     prefix: "/secret-approval-requests"
   });
-  await server.register(registerSecretRotationProviderRouter, {
-    prefix: "/secret-rotation-providers"
-  });
 
   await server.register(registerAccessApprovalPolicyRouter, { prefix: "/access-approvals/policies" });
   await server.register(registerAccessApprovalRequestRouter, { prefix: "/access-approvals/requests" });
@@ -115,6 +116,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerGatewayRouter, { prefix: "/gateways" });
+  await server.register(registerGatewayPoolRouter, { prefix: "/gateway-pools" });
   await server.register(registerRelayRouter, { prefix: "/relays" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
 
@@ -152,7 +154,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerScimRouter, { prefix: "/scim" });
   await server.register(registerLdapRouter, { prefix: "/ldap" });
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });
-  await server.register(registerSecretRotationRouter, { prefix: "/secret-rotations" });
   await server.register(registerSecretRouter, { prefix: "/secrets" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });
@@ -210,6 +211,19 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pamRouter.register(registerPamSessionRouter, { prefix: "/sessions" });
       await pamRouter.register(registerPamAccountPolicyRouter, { prefix: "/account-policies" });
       await pamRouter.register(
+        async (pamDomainRouter) => {
+          await pamDomainRouter.register(registerPamDomainRouter);
+
+          // Domain-type-specific endpoints
+          await Promise.all(
+            Object.entries(PAM_DOMAIN_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+              pamDomainRouter.register(router, { prefix: `/${provider}` })
+            )
+          );
+        },
+        { prefix: "/domains" }
+      );
+      await pamRouter.register(
         async (pamDiscoveryRouter) => {
           await pamDiscoveryRouter.register(registerPamDiscoveryRouter);
 
@@ -227,9 +241,16 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
         async (pamAccountRouter) => {
           await pamAccountRouter.register(registerPamAccountRouter);
 
-          // Provider-specific endpoints
+          // Resource-type-specific account endpoints
           await Promise.all(
             Object.entries(PAM_ACCOUNT_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+              pamAccountRouter.register(router, { prefix: `/${provider}` })
+            )
+          );
+
+          // Domain-type-specific account endpoints
+          await Promise.all(
+            Object.entries(PAM_DOMAIN_ACCOUNT_REGISTER_ROUTER_MAP).map(([provider, router]) =>
               pamAccountRouter.register(router, { prefix: `/${provider}` })
             )
           );

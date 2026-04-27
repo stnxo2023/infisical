@@ -86,11 +86,11 @@ import {
   fetchDashboardProjectSecretsByKeys
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
+import { useGetExternalMigrationConfigs, useImportVaultSecrets } from "@app/hooks/api/migration";
 import {
-  useGetVaultExternalMigrationConfigs,
-  useImportVaultSecrets
-} from "@app/hooks/api/migration";
-import { VaultImportStatus } from "@app/hooks/api/migration/types";
+  ExternalMigrationImportStatus,
+  ExternalMigrationProviders
+} from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
@@ -210,7 +210,9 @@ export const ActionBar = ({
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
 
   const { permission } = useProjectPermission();
-  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
+  );
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
@@ -650,8 +652,10 @@ export const ActionBar = ({
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.count({ projectId })
       });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
 
-      // Close the modal and show notification
       handlePopUpClose("confirmUpload");
       createNotification({
         type: "success",
@@ -677,7 +681,7 @@ export const ActionBar = ({
       vaultSecretPath: vaultPath
     });
 
-    if (result.status === VaultImportStatus.ApprovalRequired) {
+    if (result.status === ExternalMigrationImportStatus.ApprovalRequired) {
       createNotification({
         type: "info",
         text: "Secret change request created successfully. Awaiting approval."

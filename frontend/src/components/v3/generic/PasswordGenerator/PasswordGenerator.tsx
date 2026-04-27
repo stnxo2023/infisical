@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import picomatch from "picomatch";
 import RandExp from "randexp";
+import { twMerge } from "tailwind-merge";
 
 import { useTimedReset } from "@app/hooks";
 import {
@@ -23,7 +24,7 @@ import {
 import { Badge } from "../Badge";
 import { Button } from "../Button";
 import { Checkbox } from "../Checkbox";
-import { UnstableIconButton } from "../IconButton";
+import { IconButton } from "../IconButton";
 import { Label } from "../Label";
 import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
 import { FilterableSelect } from "../ReactSelect";
@@ -126,7 +127,8 @@ const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RequiredSuffix]: "Suffix",
   [ConstraintType.RegexPattern]: "Pattern",
   [ConstraintType.MinLength]: "Min length",
-  [ConstraintType.MaxLength]: "Max length"
+  [ConstraintType.MaxLength]: "Max length",
+  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous values"
 };
 
 const RuleOptionComponent = ({ isSelected, children, ...props }: OptionProps<RuleOption>) => (
@@ -306,9 +308,9 @@ export const PasswordGenerator = ({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <UnstableIconButton variant="outline" size="md" isDisabled={isDisabled}>
+        <IconButton variant="outline" size="md" isDisabled={isDisabled}>
           <KeyRoundIcon />
-        </UnstableIconButton>
+        </IconButton>
       </PopoverTrigger>
       <PopoverContent className="w-[30rem]" align="end">
         <div className="flex flex-col gap-4">
@@ -343,16 +345,12 @@ export const PasswordGenerator = ({
             <div className="flex items-center justify-between gap-2">
               <p className="flex-1 font-mono text-sm break-all select-all">{password}</p>
               <div className="flex shrink-0 gap-1">
-                <UnstableIconButton
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => setRefresh((prev) => !prev)}
-                >
+                <IconButton variant="ghost" size="xs" onClick={() => setRefresh((prev) => !prev)}>
                   <RefreshCwIcon />
-                </UnstableIconButton>
-                <UnstableIconButton variant="ghost" size="xs" onClick={copyToClipboard}>
+                </IconButton>
+                <IconButton variant="ghost" size="xs" onClick={copyToClipboard}>
                   {isCopying ? <CheckIcon /> : <CopyIcon />}
-                </UnstableIconButton>
+                </IconButton>
               </div>
             </div>
           </div>
@@ -378,10 +376,19 @@ export const PasswordGenerator = ({
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {valueConstraints.map((constraint) => (
                   <span key={constraint.type} className="text-xs">
-                    <span className="font-medium text-muted">
-                      {CONSTRAINT_LABELS[constraint.type]}:
-                    </span>{" "}
-                    <span className="font-mono text-label">{constraint.value}</span>
+                    <span
+                      className={twMerge(
+                        "font-medium text-muted",
+                        constraint.type === ConstraintType.PreventValueReuse && "text-label"
+                      )}
+                    >
+                      {CONSTRAINT_LABELS[constraint.type]}
+                    </span>
+                    {constraint.type !== ConstraintType.PreventValueReuse && (
+                      <>
+                        : <span className="font-mono text-label">{constraint.value}</span>
+                      </>
+                    )}
                   </span>
                 ))}
               </div>

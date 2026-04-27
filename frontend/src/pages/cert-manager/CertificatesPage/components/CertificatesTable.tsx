@@ -28,31 +28,31 @@ import {
 import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
 import {
   Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -78,6 +78,7 @@ import type {
   TSystemViewFilters
 } from "@app/hooks/api/certificateInventoryViews/types";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
+import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -126,6 +127,7 @@ type Props = {
     search?: string;
   };
   dashboardFilters?: FilterRule[];
+  dashboardViewId?: string;
 };
 
 const PER_PAGE_INIT = 25;
@@ -155,20 +157,48 @@ const SortIcon = ({
   return <Icon className="ml-1 inline-block size-3" />;
 };
 
-export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFilters }: Props) => {
+export const CertificatesTable = ({
+  handlePopUpOpen,
+  externalFilter,
+  dashboardFilters,
+  dashboardViewId
+}: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const [search, setSearch] = useState(externalFilter?.search || "");
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
 
-  const [appliedFilters, setAppliedFilters] = useState<FilterRule[]>(
-    dashboardFilters?.length ? dashboardFilters : []
-  );
+  const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
+    if (viewId === "system-pqc") {
+      return [
+        { id: "sv-pqc", field: "keyAlgorithm", operator: "in", value: [...PQC_KEY_ALGORITHMS] }
+      ];
+    }
+    if (viewId === "system-non-pqc") {
+      return [
+        {
+          id: "sv-non-pqc",
+          field: "keyAlgorithm",
+          operator: "in",
+          value: [...NON_PQC_KEY_ALGORITHMS]
+        }
+      ];
+    }
+    return [];
+  };
+
+  const [appliedFilters, setAppliedFilters] = useState<FilterRule[]>(() => {
+    if (dashboardFilters?.length) return dashboardFilters;
+    return getFiltersForSystemViewId(dashboardViewId);
+  });
   const [pendingFilters, setPendingFilters] = useState<FilterRule[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const hasDashboardFilters = Boolean(dashboardFilters?.length);
+  const hasSynchronousDashboardView =
+    dashboardViewId === "system-pqc" || dashboardViewId === "system-non-pqc";
   const [activeViewId, setActiveViewId] = useState<string | null>(() => {
+    if (dashboardViewId) return dashboardViewId;
     if (hasDashboardFilters) return null;
     try {
       return localStorage.getItem(VIEW_STORAGE_KEY) || "system-all";
@@ -177,7 +207,9 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
     }
   });
   const [isSaveViewOpen, setIsSaveViewOpen] = useState(false);
-  const [hasRestoredView, setHasRestoredView] = useState(hasDashboardFilters);
+  const [hasRestoredView, setHasRestoredView] = useState(
+    hasDashboardFilters || hasSynchronousDashboardView
+  );
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | undefined>(undefined);
@@ -403,6 +435,24 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
         setAppliedFilters([
           { id: "sv-status", field: "status", operator: "in", value: ["revoked"] }
         ]);
+      } else if (viewId === "system-pqc") {
+        setAppliedFilters([
+          {
+            id: "sv-pqc",
+            field: "keyAlgorithm",
+            operator: "in",
+            value: [...PQC_KEY_ALGORITHMS]
+          }
+        ]);
+      } else if (viewId === "system-non-pqc") {
+        setAppliedFilters([
+          {
+            id: "sv-non-pqc",
+            field: "keyAlgorithm",
+            operator: "in",
+            value: [...NON_PQC_KEY_ALGORITHMS]
+          }
+        ]);
       } else {
         const customFilters = filters as TInventoryViewFilters;
         const rules: FilterRule[] = [];
@@ -588,13 +638,13 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
         >
           <PopoverTrigger asChild>
             <div className="relative">
-              <UnstableIconButton
+              <IconButton
                 variant={isTableFiltered ? "project" : "outline"}
                 size="md"
                 aria-label="Filter Certificates"
               >
                 <FilterIcon />
-              </UnstableIconButton>
+              </IconButton>
               {isTableFiltered && (
                 <Badge
                   variant="default"
@@ -624,7 +674,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
           </PopoverContent>
         </Popover>
 
-        <UnstableIconButton
+        <IconButton
           variant="outline"
           size="md"
           aria-label="Export CSV"
@@ -632,7 +682,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
           disabled={!certificates.length}
         >
           <DownloadIcon />
-        </UnstableIconButton>
+        </IconButton>
 
         {canReadViews && (
           <ViewsDropdown
@@ -663,73 +713,63 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
 
       {(isPending || certificates.length > 0) && (
         <>
-          <UnstableTable>
-            <UnstableTableHeader>
-              <UnstableTableRow>
+          <Table>
+            <TableHeader>
+              <TableRow>
                 {visibleColumns.has("sanCn") && (
-                  <UnstableTableHead className="max-w-[200px] min-w-[120px]">
-                    SAN / CN
-                  </UnstableTableHead>
+                  <TableHead className="max-w-[200px] min-w-[120px]">SAN / CN</TableHead>
                 )}
                 {visibleColumns.has("serialNumber") && (
-                  <UnstableTableHead className="max-w-[120px] min-w-[90px]">
-                    Serial #
-                  </UnstableTableHead>
+                  <TableHead className="max-w-[120px] min-w-[90px]">Serial #</TableHead>
                 )}
                 {visibleColumns.has("enrollmentMethod") && (
-                  <UnstableTableHead className="w-[110px]">Enrollment Method</UnstableTableHead>
+                  <TableHead className="w-[110px]">Enrollment Method</TableHead>
                 )}
-                {visibleColumns.has("status") && (
-                  <UnstableTableHead className="w-[80px]">Status</UnstableTableHead>
-                )}
+                {visibleColumns.has("status") && <TableHead className="w-[80px]">Status</TableHead>}
                 {visibleColumns.has("health") && (
-                  <UnstableTableHead className="w-[110px]">Health</UnstableTableHead>
+                  <TableHead className="w-[110px]">Health</TableHead>
                 )}
                 {visibleColumns.has("issuedAt") && (
-                  <UnstableTableHead
+                  <TableHead
                     className="w-[100px] cursor-pointer"
                     onClick={() => handleSort("notBefore")}
                   >
                     Issued
                     <SortIcon column="notBefore" sortBy={sortBy} sortOrder={sortOrder} />
-                  </UnstableTableHead>
+                  </TableHead>
                 )}
                 {visibleColumns.has("expiresAt") && (
-                  <UnstableTableHead
+                  <TableHead
                     className="w-[100px] cursor-pointer"
                     onClick={() => handleSort("notAfter")}
                   >
                     Expires
                     <SortIcon column="notAfter" sortBy={sortBy} sortOrder={sortOrder} />
-                  </UnstableTableHead>
+                  </TableHead>
                 )}
                 {visibleColumns.has("ca") && (
-                  <UnstableTableHead className="max-w-[130px] min-w-[80px]">CA</UnstableTableHead>
+                  <TableHead className="max-w-[130px] min-w-[80px]">CA</TableHead>
                 )}
                 {visibleColumns.has("profile") && (
-                  <UnstableTableHead className="max-w-[120px] min-w-[80px]">
-                    Profile
-                  </UnstableTableHead>
+                  <TableHead className="max-w-[120px] min-w-[80px]">Profile</TableHead>
                 )}
                 {visibleColumns.has("algorithm") && (
-                  <UnstableTableHead className="w-[90px]">Algorithm</UnstableTableHead>
+                  <TableHead className="w-[90px]">Algorithm</TableHead>
                 )}
-                {visibleColumns.has("source") && (
-                  <UnstableTableHead className="w-[80px]">Source</UnstableTableHead>
-                )}
-                <UnstableTableHead className="w-5" />
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+                {visibleColumns.has("source") && <TableHead className="w-[80px]">Source</TableHead>}
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {isPending &&
                 Array.from({ length: 10 }).map((_, i) => (
-                  <UnstableTableRow key={`skeleton-${i + 1}`}>
+                  <TableRow key={`skeleton-${i + 1}`}>
                     {Array.from({ length: visibleColumns.size + 1 }).map((__, j) => (
-                      <UnstableTableCell key={`skeleton-cell-${j + 1}`}>
+                      <TableCell key={`skeleton-cell-${j + 1}`}>
                         <Skeleton className="h-4 w-full" />
-                      </UnstableTableCell>
+                      </TableCell>
                     ))}
-                  </UnstableTableRow>
+                  </TableRow>
                 ))}
               {!isPending &&
                 certificates.map((certificate) => {
@@ -752,7 +792,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                   const { originalDisplayName } = getCertificateDisplayName(certificate, 64, "—");
 
                   return (
-                    <UnstableTableRow
+                    <TableRow
                       className="group"
                       key={`certificate-${certificate.id}`}
                       onClick={() => {
@@ -767,22 +807,22 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                       }}
                     >
                       {visibleColumns.has("sanCn") && (
-                        <UnstableTableCell isTruncatable>
+                        <TableCell isTruncatable>
                           <CertificateDisplayName cert={certificate} maxLength={64} fallback="—" />
-                        </UnstableTableCell>
+                        </TableCell>
                       )}
                       {visibleColumns.has("serialNumber") && (
-                        <UnstableTableCell isTruncatable>
+                        <TableCell isTruncatable>
                           {truncateSerialNumber(certificate.serialNumber)}
-                        </UnstableTableCell>
+                        </TableCell>
                       )}
                       {visibleColumns.has("enrollmentMethod") && (
-                        <UnstableTableCell>
+                        <TableCell>
                           {getEnrollmentMethodBadge(certificate.enrollmentType)}
-                        </UnstableTableCell>
+                        </TableCell>
                       )}
                       {visibleColumns.has("status") && (
-                        <UnstableTableCell>
+                        <TableCell>
                           {isRevoked ? (
                             <Badge variant="danger">Revoked</Badge>
                           ) : isExpired ? (
@@ -790,60 +830,58 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                           ) : (
                             <Badge variant="success">Active</Badge>
                           )}
-                        </UnstableTableCell>
+                        </TableCell>
                       )}
                       {visibleColumns.has("health") && (
-                        <UnstableTableCell>
+                        <TableCell>
                           {isRevoked ? (
                             <Badge variant="danger">Critical</Badge>
                           ) : (
                             <Badge variant={variant}>{label}</Badge>
                           )}
-                        </UnstableTableCell>
+                        </TableCell>
                       )}
                       {visibleColumns.has("issuedAt") && (
-                        <UnstableTableCell>
+                        <TableCell>
                           {certificate.notBefore ? (
                             format(new Date(certificate.notBefore), "MMM d, yyyy")
                           ) : (
                             <EmptyCell />
                           )}
-                        </UnstableTableCell>
+                        </TableCell>
                       )}
                       {visibleColumns.has("expiresAt") && (
-                        <UnstableTableCell>
+                        <TableCell>
                           {certificate.notAfter ? (
                             format(new Date(certificate.notAfter), "MMM d, yyyy")
                           ) : (
                             <EmptyCell />
                           )}
-                        </UnstableTableCell>
+                        </TableCell>
                       )}
                       {visibleColumns.has("ca") && (
-                        <UnstableTableCell isTruncatable>
-                          {certificate.caName || <EmptyCell />}
-                        </UnstableTableCell>
+                        <TableCell isTruncatable>{certificate.caName || <EmptyCell />}</TableCell>
                       )}
                       {visibleColumns.has("profile") && (
-                        <UnstableTableCell isTruncatable>
+                        <TableCell isTruncatable>
                           {certificate.profileName || <EmptyCell />}
-                        </UnstableTableCell>
+                        </TableCell>
                       )}
                       {visibleColumns.has("algorithm") && (
-                        <UnstableTableCell>
+                        <TableCell>
                           <span className="text-xs">
                             {certificate.keyAlgorithm?.replace("_", "-") || <EmptyCell />}
                           </span>
-                        </UnstableTableCell>
+                        </TableCell>
                       )}
                       {visibleColumns.has("source") && (
-                        <UnstableTableCell>
+                        <TableCell>
                           <Badge variant="ghost">
                             {getCertSourceLabel(certificate.source ?? null)}
                           </Badge>
-                        </UnstableTableCell>
+                        </TableCell>
                       )}
-                      <UnstableTableCell>
+                      <TableCell>
                         <div className="flex items-center justify-end gap-2">
                           <div
                             className={`transition-opacity ${(() => {
@@ -924,17 +962,17 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                 );
                               })()}
                           </div>
-                          <UnstableDropdownMenu>
-                            <UnstableDropdownMenuTrigger asChild>
-                              <UnstableIconButton
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
                                 variant="ghost"
                                 size="xs"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreHorizontalIcon />
-                              </UnstableIconButton>
-                            </UnstableDropdownMenuTrigger>
-                            <UnstableDropdownMenuContent align="end" sideOffset={2}>
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" sideOffset={2}>
                               <ProjectPermissionCan
                                 I={ProjectPermissionCertificateActions.Read}
                                 a={subject(ProjectPermissionSub.Certificates, {
@@ -946,7 +984,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                 })}
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     isDisabled={!isAllowed}
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -958,7 +996,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                   >
                                     <FileOutputIcon />
                                     Export Certificate
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
                               <ProjectPermissionCan
@@ -972,7 +1010,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                 })}
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     isDisabled={!isAllowed}
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -983,7 +1021,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                   >
                                     <EyeIcon />
                                     View Details
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
                               {(() => {
@@ -1012,7 +1050,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                     })}
                                   >
                                     {(isAllowed) => (
-                                      <UnstableDropdownMenuItem
+                                      <DropdownMenuItem
                                         isDisabled={!isAllowed}
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -1046,7 +1084,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                         {isAutoRenewalEnabled
                                           ? "Manage auto renewal"
                                           : "Enable auto renewal"}
-                                      </UnstableDropdownMenuItem>
+                                      </DropdownMenuItem>
                                     )}
                                   </ProjectPermissionCan>
                                 );
@@ -1077,7 +1115,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                     })}
                                   >
                                     {(isAllowed) => (
-                                      <UnstableDropdownMenuItem
+                                      <DropdownMenuItem
                                         isDisabled={!isAllowed}
                                         onClick={async (e) => {
                                           e.stopPropagation();
@@ -1089,7 +1127,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                       >
                                         <BanIcon />
                                         Disable auto renewal
-                                      </UnstableDropdownMenuItem>
+                                      </DropdownMenuItem>
                                     )}
                                   </ProjectPermissionCan>
                                 );
@@ -1118,7 +1156,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                     })}
                                   >
                                     {(isAllowed) => (
-                                      <UnstableDropdownMenuItem
+                                      <DropdownMenuItem
                                         isDisabled={!isAllowed}
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -1130,7 +1168,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                       >
                                         <RefreshCwIcon />
                                         Renew Now
-                                      </UnstableDropdownMenuItem>
+                                      </DropdownMenuItem>
                                     )}
                                   </ProjectPermissionCan>
                                 );
@@ -1143,7 +1181,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                     a={ProjectPermissionSub.PkiSyncs}
                                   >
                                     {(isAllowed) => (
-                                      <UnstableDropdownMenuItem
+                                      <DropdownMenuItem
                                         isDisabled={!isAllowed}
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -1155,7 +1193,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                       >
                                         <LinkIcon />
                                         Manage PKI Syncs
-                                      </UnstableDropdownMenuItem>
+                                      </DropdownMenuItem>
                                     )}
                                   </ProjectPermissionCan>
                                 )}
@@ -1187,7 +1225,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                     })}
                                   >
                                     {(isAllowed) => (
-                                      <UnstableDropdownMenuItem
+                                      <DropdownMenuItem
                                         variant="danger"
                                         isDisabled={!isAllowed}
                                         onClick={(e) => {
@@ -1199,7 +1237,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                       >
                                         <BanIcon />
                                         Revoke Certificate
-                                      </UnstableDropdownMenuItem>
+                                      </DropdownMenuItem>
                                     )}
                                   </ProjectPermissionCan>
                                 );
@@ -1215,7 +1253,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                 })}
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     variant="danger"
                                     isDisabled={!isAllowed}
                                     onClick={(e) => {
@@ -1228,20 +1266,20 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                                   >
                                     <Trash2Icon />
                                     Delete Certificate
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
-                            </UnstableDropdownMenuContent>
-                          </UnstableDropdownMenu>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                      </UnstableTableCell>
-                    </UnstableTableRow>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
           {!isPending && (data?.totalCount || 0) >= PER_PAGE_INIT && (
-            <UnstablePagination
+            <Pagination
               count={data?.totalCount || 0}
               page={page}
               perPage={perPage}
@@ -1252,15 +1290,15 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
         </>
       )}
       {!isPending && !certificates.length && (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
               {isTableFiltered || appliedSearch
                 ? "No certificates match search..."
                 : "No certificates have been issued"}
-            </UnstableEmptyTitle>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       )}
 
       <SaveViewModal

@@ -192,7 +192,10 @@ export const kmskeyDALFactory = (db: TDbClient) => {
         .where("projectId", projectId)
         .where((qb) => {
           if (search) {
-            void qb.whereILike("name", `%${search}%`);
+            const pattern = `%${search}%`;
+            void qb
+              .whereILike(`${TableName.KmsKey}.name`, pattern)
+              .orWhereRaw(`?? ::text ILIKE ?`, [`${TableName.KmsKey}.id`, pattern]);
           }
         })
         .where(`${TableName.KmsKey}.isReserved`, false)

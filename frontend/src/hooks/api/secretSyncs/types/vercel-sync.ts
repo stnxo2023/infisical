@@ -25,6 +25,7 @@ export type TVercelSync = TRootSecretSync & {
         branch?: string;
         appName?: string;
         teamId: string;
+        sensitive: boolean;
       }
     | {
         scope: VercelSyncScope.Team;
@@ -32,6 +33,7 @@ export type TVercelSync = TRootSecretSync & {
         teamName?: string;
         targetEnvironments: string[];
         targetProjects?: string[];
+        sensitive: boolean;
       };
   connection: {
     app: AppConnection.Vercel;

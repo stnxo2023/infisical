@@ -20,6 +20,7 @@ export const VercelSyncReviewFields = () => {
   const teamId = watch("destinationConfig.teamId");
   const targetEnvironments = watch("destinationConfig.targetEnvironments");
   const targetProjects = watch("destinationConfig.targetProjects");
+  const sensitive = watch("destinationConfig.sensitive");
   const connectionId = watch("connection.id");
 
   const { data: teams } = useVercelConnectionListOrganizations(connectionId, undefined, {
@@ -52,6 +53,7 @@ export const VercelSyncReviewFields = () => {
           <GenericFieldLabel label="Target Projects">
             {selectedProjects?.map((project) => project?.name).join(", ")}
           </GenericFieldLabel>
+          <GenericFieldLabel label="Sensitive">{sensitive ? "Yes" : "No"}</GenericFieldLabel>
         </>
       ) : (
         <>
@@ -61,6 +63,7 @@ export const VercelSyncReviewFields = () => {
           {envId === VercelEnvironmentType.Preview && branchId && (
             <GenericFieldLabel label="Preview Branch">{branchId}</GenericFieldLabel>
           )}
+          <GenericFieldLabel label="Sensitive">{sensitive ? "Yes" : "No"}</GenericFieldLabel>
         </>
       )}
     </>

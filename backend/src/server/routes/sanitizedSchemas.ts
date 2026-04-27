@@ -113,6 +113,7 @@ export const SanitizedUserSchema = UsersSchema.pick({
   isEmailVerified: true,
   firstName: true,
   lastName: true,
+  authMethods: true,
   id: true
 }).extend({
   publicKey: z.string().nullable().optional()

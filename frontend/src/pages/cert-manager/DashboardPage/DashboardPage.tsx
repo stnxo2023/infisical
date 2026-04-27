@@ -5,13 +5,17 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
-import { UnstablePageLoader } from "@app/components/v3";
+import { PageLoader } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { useGetCertActivityTrend, useGetCertDashboardStats } from "@app/hooks/api/certificates";
+import {
+  useGetCertActivityTrend,
+  useGetCertDashboardStats,
+  useGetCertPqcTrend
+} from "@app/hooks/api/certificates";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
@@ -20,6 +24,8 @@ import {
   DistributionCharts,
   ExpirationTimeline,
   KpiCards,
+  PqcReadinessChart,
+  PqcTrend,
   ValidityReadinessSection
 } from "./components";
 
@@ -28,10 +34,12 @@ export const DashboardPage = () => {
   const { currentProject } = useProject();
   const navigate = useNavigate();
   const [trendRange, setTrendRange] = useState("30d");
+  const [pqcTrendRange, setPqcTrendRange] = useState("30d");
   const { data: stats, isPending: isStatsLoading } = useGetCertDashboardStats(
     currentProject?.id || ""
   );
   const { data: trendData } = useGetCertActivityTrend(currentProject?.id || "", trendRange);
+  const { data: pqcTrendData } = useGetCertPqcTrend(currentProject?.id || "", pqcTrendRange);
   const navigateToInventory = useCallback(
     (filters: Record<string, string | undefined>) => {
       navigate({
@@ -47,7 +55,7 @@ export const DashboardPage = () => {
     [navigate, currentProject]
   );
   if (!currentProject) {
-    return <UnstablePageLoader />;
+    return <PageLoader />;
   }
   return (
     <div className="h-full bg-bunker-800">
@@ -67,7 +75,7 @@ export const DashboardPage = () => {
             a={ProjectPermissionSub.Certificates}
           >
             {isStatsLoading || !stats ? (
-              <UnstablePageLoader />
+              <PageLoader />
             ) : (
               <div className="flex flex-col gap-6">
                 <KpiCards stats={stats} onNavigate={navigateToInventory} />
@@ -85,6 +93,21 @@ export const DashboardPage = () => {
                   onRangeChange={setTrendRange}
                 />
                 <ValidityReadinessSection stats={stats} />
+                {stats.totals.total > 0 && (
+                  <div className="flex flex-col gap-4">
+                    <h2 className="text-lg font-semibold text-foreground">
+                      Post-Quantum Readiness
+                    </h2>
+                    <div className="flex flex-wrap gap-4">
+                      <PqcReadinessChart stats={stats} onNavigate={navigateToInventory} />
+                      <PqcTrend
+                        data={pqcTrendData?.periods || []}
+                        currentRange={pqcTrendRange}
+                        onRangeChange={setPqcTrendRange}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </ProjectPermissionCan>

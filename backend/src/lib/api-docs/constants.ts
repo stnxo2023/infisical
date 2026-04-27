@@ -2559,6 +2559,12 @@ export const CertificateAuthorities = {
       certificateAuthorityArn: `The ARN of the AWS Private Certificate Authority to use for issuing certificates.`,
       region: `The AWS region where the Private Certificate Authority is located.`
     },
+    AWS_ACM_PUBLIC_CA: {
+      appConnectionId: `The ID of the AWS App Connection to use for authenticating with AWS Certificate Manager (ACM). This connection must have permissions to request, describe, export, renew, and delete certificates.`,
+      dnsAppConnectionId: `The ID of the AWS App Connection to use for creating and managing Route 53 CNAME records required for ACM domain validation.`,
+      hostedZoneId: `The Route 53 hosted zone ID to use for ACM DNS validation CNAME records.`,
+      region: `The AWS region to use for the ACM API calls.`
+    },
     INTERNAL: {
       type: "The type of CA to create.",
       friendlyName: "A friendly name for the CA.",
@@ -2643,6 +2649,16 @@ export const AppConnections = {
     },
     VERCEL: {
       apiToken: "The API token used to authenticate with Vercel."
+    },
+    ONA: {
+      personalAccessToken: "The Personal Access Token used to authenticate with Ona."
+    },
+    DIGICERT: {
+      apiKey: "The CertCentral API Key used to authenticate with DigiCert.",
+      region: "The CertCentral region the API key belongs to (us or eu)."
+    },
+    TRAVISCI: {
+      apiToken: "The API token used to authenticate with Travis CI."
     },
     CAMUNDA: {
       clientId: "The client ID used to authenticate with Camunda.",
@@ -2794,6 +2810,14 @@ export const AppConnections = {
     VENAFI: {
       apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
       region: "The region of your Venafi TLS Protect Cloud instance (e.g., 'us', 'eu')."
+    },
+    VENAFI_TPP: {
+      tppUrl: "The HTTPS URL of the Venafi TPP instance (e.g., 'https://tpp.example.com'). Must use HTTPS.",
+      clientId:
+        "The OAuth client ID registered in the Venafi TPP API Integration. Used for token-based authentication.",
+      username:
+        "The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\\\username', 'username@domain.com', or local usernames.",
+      password: "The password used to authenticate with Venafi TPP."
     }
   }
 };
@@ -2951,6 +2975,10 @@ export const SecretSyncs = {
       scope: "The Terraform Cloud scope that secrets should be synced to.",
       category: "The Terraform Cloud category that secrets should be synced to."
     },
+    ONA: {
+      projectId: "The Ona project ID to sync secrets to.",
+      projectName: "An optional display name for the Ona project."
+    },
     VERCEL: {
       app: "The ID of the Vercel app to sync secrets to.",
       appName: "The name of the Vercel app to sync secrets to.",
@@ -2960,7 +2988,9 @@ export const SecretSyncs = {
       teamName:
         "The name of the team to sync the secrets to. This is an optional field only intended for display purposes.",
       targetEnvironments: "An optional array of Vercel environments to add shared environment variables to.",
-      targetProjects: "An optional array of Vercel projects to add shared environment variables to."
+      targetProjects: "An optional array of Vercel projects to add shared environment variables to.",
+      sensitive:
+        "Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment."
     },
     LARAVEL_FORGE: {
       orgSlug: "The slug of the Laravel Forge org to sync secrets to.",
@@ -3082,6 +3112,12 @@ export const SecretSyncs = {
       projectId: "The ID of the project on the external Infisical instance to sync secrets to.",
       environment: "The environment slug on the external Infisical instance to sync secrets to.",
       secretPath: "The secret path on the external Infisical instance to sync secrets to."
+    },
+    TRAVIS_CI: {
+      repositoryId: "The ID of the Travis CI repository to sync secrets to.",
+      repositorySlug: "The slug (owner/repo) of the Travis CI repository to sync secrets to.",
+      branch:
+        "The branch of the Travis CI repository to sync secrets to. If omitted, secrets sync to the repository-level scope."
     }
   }
 };
@@ -3233,6 +3269,10 @@ export const SecretRotations = {
       limitReset: "The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).",
       includeByokInLimit:
         "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
+    },
+    SUPABASE_API_KEY: {
+      projectRef: "The reference ID of the Supabase project to rotate the API key for.",
+      keyType: "The type of the API key to rotate (e.g. publishable, secret)."
     }
   },
   SECRETS_MAPPING: {
@@ -3293,6 +3333,9 @@ export const SecretRotations = {
     },
     OPEN_ROUTER_API_KEY: {
       apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
+    },
+    SUPABASE_API_KEY: {
+      apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
     }
   }
 };

@@ -19,6 +19,7 @@ import { TEmailDomainServiceFactory } from "@app/ee/services/email-domain/email-
 import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
@@ -33,6 +34,7 @@ import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-ser
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { TPamAccountPolicyServiceFactory } from "@app/ee/services/pam-account-policy/pam-account-policy-service";
 import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
+import { TPamDomainServiceFactory } from "@app/ee/services/pam-domain/pam-domain-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
@@ -53,7 +55,6 @@ import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-con
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
-import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
 import { TSecretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSecretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
@@ -68,14 +69,13 @@ import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
-import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnectionCredentialRotationServiceFactory } from "@app/services/app-connection/credential-rotation";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
-import { ActorAuthMethod, ActorType, TProviderAuthCallback } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType, MfaMethod, TProviderAuthCallback } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCaAutoRenewalQueueFactory } from "@app/services/certificate-authority/ca-auto-renewal-queue";
@@ -154,7 +154,6 @@ import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TTotpServiceFactory } from "@app/services/totp/totp-service";
-import { TUpgradePathService } from "@app/services/upgrade-path/upgrade-path-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
@@ -219,6 +218,7 @@ declare module "fastify" {
       userId: string;
       orgId?: string;
       user: TUsers;
+      requiredMfaMethod: MfaMethod;
     };
     // identity injection. depending on which kinda of token the information is filled in auth
     auth: TAuthMode;
@@ -267,7 +267,6 @@ declare module "fastify" {
       user: TUserServiceFactory;
       group: TGroupServiceFactory;
       groupProject: TGroupProjectServiceFactory;
-      apiKey: TApiKeyServiceFactory;
       pkiAlert: TPkiAlertServiceFactory;
       project: TProjectServiceFactory;
       projectMembership: TProjectMembershipServiceFactory;
@@ -305,7 +304,6 @@ declare module "fastify" {
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
       secretApprovalRequest: TSecretApprovalRequestServiceFactory;
-      secretRotation: TSecretRotationServiceFactory;
       snapshot: TSecretSnapshotServiceFactory;
       saml: TSamlConfigServiceFactory;
       scim: TScimServiceFactory;
@@ -369,6 +367,7 @@ declare module "fastify" {
       insights: TInsightsServiceFactory;
       relay: TRelayServiceFactory;
       gatewayV2: TGatewayV2ServiceFactory;
+      gatewayPool: TGatewayPoolServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
       folderCommit: TFolderCommitServiceFactory;
       pit: TPitServiceFactory;
@@ -384,6 +383,7 @@ declare module "fastify" {
       offlineUsageReport: TOfflineUsageReportServiceFactory;
       pamFolder: TPamFolderServiceFactory;
       pamResource: TPamResourceServiceFactory;
+      pamDomain: TPamDomainServiceFactory;
       pamResourceRotationRules: TPamResourceRotationRulesServiceFactory;
       pamAccount: TPamAccountServiceFactory;
       pamAccountPolicy: TPamAccountPolicyServiceFactory;
@@ -391,8 +391,6 @@ declare module "fastify" {
       pamWebAccess: TPamWebAccessServiceFactory;
       pamDiscoverySource: TPamDiscoverySourceServiceFactory;
       mfaSession: TMfaSessionServiceFactory;
-      upgradePath: TUpgradePathService;
-
       membershipUser: TMembershipUserServiceFactory;
       membershipIdentity: TMembershipIdentityServiceFactory;
       membershipGroup: TMembershipGroupServiceFactory;
