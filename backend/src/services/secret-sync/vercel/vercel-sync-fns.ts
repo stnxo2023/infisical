@@ -401,12 +401,7 @@ const isSubset = (a: readonly string[] | undefined, b: readonly string[] | undef
   return (a ?? []).every((v) => bSet.has(v));
 };
 
-// Ownership is by exact (target, projectId) scope match. Type is intentionally NOT checked
-// here — if it were, a sensitivity flip on an existing sync's var would orphan the var (it
-// would be invisible to both the owned and merged-superset paths) and the next sync run would
-// hit Vercel's `existing_key_and_target` rejection on create. Letting same-scope-different-type
-// vars enter the owned map lets the existing `sensitivityChanged` branch in syncSecrets do
-// delete-and-recreate.
+// Ownership is by exact (target, projectId) scope match.
 const isTeamSharedEnvVarOwnedByThisSync = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
   const effectiveTargets = destinationConfig.sensitive
     ? destinationConfig.targetEnvironments?.filter((env) => env !== VercelEnvironmentType.Development)
@@ -796,7 +791,7 @@ const detachTeamSharedEnvVar = async (
   // Only narrow a dimension where the var's scope is strictly broader than ours. If the
   // dimensions are equal, leave them alone — narrowing an equal dimension would zero it out
   // (e.g. removing projectId=[A] when ours=[A] gives []), which would either delete the var
-  // or — worse — silently broaden it (Vercel treats empty projectId as "all projects").
+  // or silently broaden it (Vercel treats empty projectId as "all projects").
   const targetsAreEqual = setsEqual(envVar.target, ourEffectiveTargets);
   const newTarget = targetsAreEqual ? envVar.target : envVar.target.filter((t) => !ourTargetsSet.has(t));
 
@@ -819,8 +814,7 @@ const detachTeamSharedEnvVar = async (
   // If detach didn't actually narrow anything in either dimension, the var is broader than us
   // in a way we can't represent in Vercel (e.g. team-wide projectId vs sync's specific project
   // list). PATCHing with a no-op leaves the overlap intact and the create that follows will be
-  // rejected. Surface this loudly with context instead of letting the user see a confusing
-  // `existing_key_and_target` error.
+  // rejected.
   if (newTarget === envVar.target && newProjectId === existingProjects) {
     throw new SecretSyncError({
       message:
