@@ -95,6 +95,7 @@ export type TFeatureSet = {
   fips: false;
   eventSubscriptions: false;
   secretShareExternalBranding: false;
+  honeyTokens: false;
 };
 
 export type TOrgPlansTableDTO = {
