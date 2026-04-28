@@ -151,7 +151,8 @@ export const registerPamInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getPamInsightsUpcomingRotations",
-      description: "Get accounts due for credential rotation in the next 7 days",
+      description:
+        "Get accounts with a configured rotation schedule, ordered by next rotation time (capped at 100)",
       security: [{ bearerAuth: [] }],
       querystring: z.object({
         projectId: z.string().trim()

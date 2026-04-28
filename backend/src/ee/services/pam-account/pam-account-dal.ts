@@ -307,12 +307,18 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     projectId: string,
     tx?: Knex
   ): Promise<{ resourceType: string; count: number }[]> => {
+    // leftJoin + COALESCE so domain accounts (resourceId IS NULL) are bucketed under
+    // a synthetic "domain" type instead of being silently dropped from the breakdown.
     const rows = (await (tx || db.replicaNode())(TableName.PamAccount)
-      .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-      .select(`${TableName.PamResource}.resourceType as resourceType`)
+      .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+      .select(
+        db.raw(`COALESCE("${TableName.PamResource}"."resourceType", 'domain') as "resourceType"`)
+      )
       .count(`${TableName.PamAccount}.id as count`)
       .where(`${TableName.PamAccount}.projectId`, projectId)
-      .groupBy(`${TableName.PamResource}.resourceType`)) as unknown as {
+      .groupByRaw(
+        `COALESCE("${TableName.PamResource}"."resourceType", 'domain')`
+      )) as unknown as {
       resourceType: string;
       count: string | number;
     }[];

@@ -224,7 +224,9 @@ export const pamInsightsServiceFactory = ({
           nextRotationAt: Date;
         };
 
-        const upcoming: TUpcomingRotation[] = [];
+        // Sort by raw nextRotationMs so the most-overdue rotations stay at the top
+        // even after clamping the displayed timestamp to "now" for past-due entries.
+        const candidatesWithRotation: { row: TUpcomingRotation; nextRotationMs: number }[] = [];
         for (const candidate of candidates) {
           const rules = rulesByResource[candidate.resourceId];
           // eslint-disable-next-line no-continue
@@ -239,22 +241,25 @@ export const pamInsightsServiceFactory = ({
             : candidate.createdAt.getTime();
           const nextRotationMs = lastRotated + matchedRule.intervalSeconds * 1000;
 
-          upcoming.push({
-            accountId: candidate.id,
-            accountName: candidate.name,
-            resourceId: candidate.resourceId,
-            resourceName: candidate.resourceName,
-            resourceType: candidate.resourceType,
-            intervalSeconds: matchedRule.intervalSeconds,
-            nextRotationAt: new Date(Math.max(nextRotationMs, now))
+          candidatesWithRotation.push({
+            row: {
+              accountId: candidate.id,
+              accountName: candidate.name,
+              resourceId: candidate.resourceId,
+              resourceName: candidate.resourceName,
+              resourceType: candidate.resourceType,
+              intervalSeconds: matchedRule.intervalSeconds,
+              nextRotationAt: new Date(Math.max(nextRotationMs, now))
+            },
+            nextRotationMs
           });
         }
 
-        upcoming.sort((a, b) => a.nextRotationAt.getTime() - b.nextRotationAt.getTime());
+        candidatesWithRotation.sort((a, b) => a.nextRotationMs - b.nextRotationMs);
 
         return {
-          rotations: upcoming.slice(0, UPCOMING_ROTATIONS_LIMIT),
-          totalScheduled: upcoming.length
+          rotations: candidatesWithRotation.slice(0, UPCOMING_ROTATIONS_LIMIT).map((c) => c.row),
+          totalScheduled: candidatesWithRotation.length
         };
       },
       reviver: (parsed) => {

@@ -98,12 +98,14 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<{ date: string; count: number }[]> => {
     const rows = (await (tx || db.replicaNode())(TableName.PamSession)
-      .select(db.raw(`to_char("createdAt"::date, 'YYYY-MM-DD') as date`))
+      .select(db.raw(`to_char(("createdAt" AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD') as date`))
       .count("id as count")
       .where("projectId", projectId)
       .where("createdAt", ">=", startDate)
-      .groupByRaw(`"createdAt"::date`)
-      .orderByRaw(`"createdAt"::date asc`)) as unknown as { date: string; count: string | number }[];
+      .groupByRaw(`("createdAt" AT TIME ZONE 'UTC')::date`)
+      .orderByRaw(
+        `("createdAt" AT TIME ZONE 'UTC')::date asc`
+      )) as unknown as { date: string; count: string | number }[];
 
     return rows.map((row) => ({ date: String(row.date), count: Number(row.count) }));
   };
