@@ -10,11 +10,15 @@ import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/componen
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
+import { TPamDomainRelatedResource } from "@app/hooks/api/pamDomain";
 
 import { PamAwsIamAccessSection } from "./PamAwsIamAccessSection";
 
 type Props = {
   account?: TPamAccount;
+  // For domain accounts (e.g. Active Directory) the user picks a target resource at access
+  // time via PamSelectResourceModal. Local accounts ignore this and fall back to account.resource.
+  resource?: TPamDomainRelatedResource;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId: string;
@@ -25,6 +29,7 @@ export const PamAccessAccountModal = ({
   isOpen,
   onOpenChange,
   account,
+  resource: selectedResource,
   projectId,
   reason
 }: Props) => {
@@ -76,13 +81,16 @@ export const PamAccessAccountModal = ({
     return duration;
   }, [duration]);
 
-  const command = useMemo(() => {
-    if (!account?.resource) return "";
-    const { resource } = account;
-    const base = (verb: string) =>
-      `infisical pam ${verb} access --resource ${resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+  // Domain accounts (e.g. AD) carry their target on the explicit `resource` prop;
+  // local accounts read it off account.resource.
+  const targetResource = selectedResource ?? account?.resource;
 
-    switch (resource.resourceType) {
+  const command = useMemo(() => {
+    if (!account || !targetResource) return "";
+    const base = (verb: string) =>
+      `infisical pam ${verb} access --resource ${targetResource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+
+    switch (targetResource.resourceType) {
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
       case PamResourceType.MsSQL:
@@ -99,16 +107,16 @@ export const PamAccessAccountModal = ({
       default:
         return "";
     }
-  }, [account, projectId, cliDuration, siteURL]);
+  }, [account, targetResource, projectId, cliDuration, siteURL]);
 
   if (!account) return null;
 
-  const isAwsIam = account.resource?.resourceType === PamResourceType.AwsIam;
+  const isAwsIam = targetResource?.resourceType === PamResourceType.AwsIam;
 
   const showWebAccess =
-    account.resource?.resourceType === PamResourceType.Postgres ||
-    account.resource?.resourceType === PamResourceType.SSH ||
-    account.resource?.resourceType === PamResourceType.Redis;
+    targetResource?.resourceType === PamResourceType.Postgres ||
+    targetResource?.resourceType === PamResourceType.SSH ||
+    targetResource?.resourceType === PamResourceType.Redis;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -192,8 +200,8 @@ export const PamAccessAccountModal = ({
                       params={{
                         orgId: currentOrg.id,
                         projectId,
-                        resourceType: account.resource?.resourceType ?? "",
-                        resourceId: account.resource?.id ?? "",
+                        resourceType: targetResource?.resourceType ?? "",
+                        resourceId: targetResource?.id ?? "",
                         accountId: account.id
                       }}
                       target="_blank"

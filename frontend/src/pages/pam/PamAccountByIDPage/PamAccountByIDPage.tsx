@@ -232,18 +232,15 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* AD-joined accounts (domain accounts) still disabled; AD/RDP is a later phase. */}
-          {!isDomainAccount && (
-            <ProjectPermissionCan
-              I={ProjectPermissionPamAccountActions.Access}
-              a={ProjectPermissionSub.PamAccounts}
-            >
-              <Button variant="neutral" onClick={handleAccess}>
-                <LogInIcon />
-                Access
-              </Button>
-            </ProjectPermissionCan>
-          )}
+          <ProjectPermissionCan
+            I={ProjectPermissionPamAccountActions.Access}
+            a={ProjectPermissionSub.PamAccounts}
+          >
+            <Button variant="neutral" onClick={handleAccess}>
+              <LogInIcon />
+              Access
+            </Button>
+          </ProjectPermissionCan>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -330,6 +327,7 @@ const PageContent = () => {
           if (!isOpen) setAccessReason(undefined);
         }}
         account={popUp.accessAccount.data?.account}
+        resource={popUp.accessAccount.data?.resource}
         projectId={projectId!}
         reason={accessReason}
       />
