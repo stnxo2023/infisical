@@ -74,7 +74,7 @@ export const PamSessionActivityChart = () => {
       );
     }
     return (
-      <div className="flex flex-col gap-4 [&_*:focus]:outline-none [&_*]:focus:outline-none">
+      <div className="flex flex-col gap-4 [&_*]:focus:outline-none [&_*:focus]:outline-none">
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
             <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} />

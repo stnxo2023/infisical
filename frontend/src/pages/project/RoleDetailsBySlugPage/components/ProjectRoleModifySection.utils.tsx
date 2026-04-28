@@ -3330,8 +3330,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Read",
         value: ProjectPermissionPamInsightsActions.Read,
-        description:
-          "View the PAM insights dashboard"
+        description: "View the PAM insights dashboard"
       }
     ]
   },
