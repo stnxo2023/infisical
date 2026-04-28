@@ -10,11 +10,8 @@ import { IconButton, Tag, Tooltip } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
-import {
-  HoneyTokenStatus,
-  HoneyTokenType,
-  TDashboardHoneyToken
-} from "@app/hooks/api/honeyTokens/types";
+import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 type Props = {
   honeyToken: TDashboardHoneyToken;
@@ -48,7 +45,12 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
         aria-expanded={isExpanded}
         aria-label={`${isExpanded ? "Collapse" : "Expand"} honey token secrets for ${name}`}
       >
-        <div className={twMerge("flex w-11 items-center py-2 pl-5", status === HoneyTokenStatus.Triggered ? "text-red" : "text-yellow")}>
+        <div
+          className={twMerge(
+            "flex w-11 items-center py-2 pl-5",
+            status === HoneyTokenStatus.Triggered ? "text-red" : "text-yellow"
+          )}
+        >
           <SirenIcon className="size-4" />
         </div>
         <div className="flex grow items-center py-2 pr-2 pl-4">

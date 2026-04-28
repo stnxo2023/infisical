@@ -5,7 +5,8 @@ import { apiRequest } from "@app/config/request";
 export const honeyTokenKeys = {
   all: ["honeyTokens"] as const,
   list: (projectId: string) => [...honeyTokenKeys.all, "list", projectId] as const,
-  credentials: (honeyTokenId: string) => [...honeyTokenKeys.all, "credentials", honeyTokenId] as const
+  credentials: (honeyTokenId: string) =>
+    [...honeyTokenKeys.all, "credentials", honeyTokenId] as const
 };
 
 export const useGetHoneyTokenCredentials = ({

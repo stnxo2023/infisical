@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { FormControl, FormLabel, Input } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES } from "@app/helpers/honeyTokens";
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/types";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 import { THoneyTokenForm } from "../schemas";
 

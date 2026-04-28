@@ -8,11 +8,13 @@ import { Button } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
-import { HoneyTokenType, TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 
 import { HoneyTokenMappingFields } from "./HoneyTokenMappingFields/HoneyTokenMappingFields";
+import { HoneyTokenParametersFields } from "./HoneyTokenParametersFields/HoneyTokenParametersFields";
 import { HoneyTokenReviewFields } from "./HoneyTokenReviewFields/HoneyTokenReviewFields";
 import { HoneyTokenConfigurationFields } from "./HoneyTokenConfigurationFields";
 import { HoneyTokenDetailsFields } from "./HoneyTokenDetailsFields";
@@ -34,12 +36,14 @@ const CREATE_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[
     key: "configuration",
     fields: ["environment"]
   },
+  { name: "Parameters", key: "parameters", fields: [] },
   { name: "Mapping", key: "mapping", fields: ["secretsMapping"] },
   { name: "Details", key: "details", fields: ["name", "description"] },
   { name: "Review", key: "review", fields: [] }
 ];
 
 const EDIT_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[] }[] = [
+  { name: "Parameters", key: "parameters", fields: [] },
   { name: "Mapping", key: "mapping", fields: ["secretsMapping"] },
   { name: "Details", key: "details", fields: ["name", "description"] },
   { name: "Review", key: "review", fields: [] }
@@ -235,6 +239,9 @@ export const HoneyTokenForm = ({
                   <HoneyTokenConfigurationFields environments={environments} />
                 </Tab.Panel>
               )}
+              <Tab.Panel>
+                <HoneyTokenParametersFields />
+              </Tab.Panel>
               <Tab.Panel>
                 <HoneyTokenMappingFields />
               </Tab.Panel>

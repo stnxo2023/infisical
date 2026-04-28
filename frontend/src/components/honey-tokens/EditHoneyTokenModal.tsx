@@ -1,7 +1,8 @@
 import { HoneyTokenForm } from "@app/components/honey-tokens/forms";
 import { HoneyTokenModalHeader } from "@app/components/honey-tokens/HoneyTokenModalHeader";
 import { Modal, ModalContent } from "@app/components/v2";
-import { HoneyTokenType, TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 type Props = {
   honeyToken?: TDashboardHoneyToken;

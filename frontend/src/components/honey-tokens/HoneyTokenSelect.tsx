@@ -1,5 +1,5 @@
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/types";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 type Props = {
   onSelect: (type: HoneyTokenType) => void;

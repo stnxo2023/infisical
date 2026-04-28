@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/types";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 import { BaseHoneyTokenSchema } from "./base-honey-token-schema";
 

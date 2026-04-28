@@ -1,6 +1,6 @@
-export enum HoneyTokenType {
-  AWS = "aws"
-}
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+
+export { HoneyTokenType };
 
 export type THoneyTokenConfig = {
   id: string | null;

@@ -1,5 +1,5 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/types";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 export const HONEY_TOKEN_MAP: Record<
   HoneyTokenType,

@@ -5,7 +5,7 @@ import { HoneyTokenModalHeader } from "@app/components/honey-tokens/HoneyTokenMo
 import { HoneyTokenSelect } from "@app/components/honey-tokens/HoneyTokenSelect";
 import { Modal, ModalContent } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/types";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 type SharedProps = {

@@ -2,7 +2,7 @@ import { useFormContext } from "react-hook-form";
 
 import { GenericFieldLabel } from "@app/components/v2";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/types";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 import { THoneyTokenForm } from "../schemas";
 import { AwsHoneyTokenReviewFields } from "./AwsHoneyTokenReviewFields";

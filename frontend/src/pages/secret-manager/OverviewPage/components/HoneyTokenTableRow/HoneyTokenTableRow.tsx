@@ -1,4 +1,11 @@
-import { AsteriskIcon, ChevronDownIcon, EditIcon, InfoIcon, SirenIcon, TrashIcon } from "lucide-react";
+import {
+  AsteriskIcon,
+  ChevronDownIcon,
+  EditIcon,
+  InfoIcon,
+  SirenIcon,
+  TrashIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -21,11 +28,8 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { useToggle } from "@app/hooks";
-import {
-  HoneyTokenStatus,
-  HoneyTokenType,
-  TDashboardHoneyToken
-} from "@app/hooks/api/honeyTokens/types";
+import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 

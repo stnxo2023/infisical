@@ -3,13 +3,13 @@ import { useFormContext } from "react-hook-form";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 import { THoneyTokenForm } from "../schemas";
-import { AwsHoneyTokenMappingFields } from "./AwsHoneyTokenMappingFields";
+import { AwsHoneyTokenParametersFields } from "./AwsHoneyTokenParametersFields";
 
 const COMPONENT_MAP: Record<HoneyTokenType, React.FC> = {
-  [HoneyTokenType.AWS]: AwsHoneyTokenMappingFields
+  [HoneyTokenType.AWS]: AwsHoneyTokenParametersFields
 };
 
-export const HoneyTokenMappingFields = () => {
+export const HoneyTokenParametersFields = () => {
   const { watch } = useFormContext<THoneyTokenForm>();
 
   const honeyTokenType = watch("type");
@@ -19,7 +19,7 @@ export const HoneyTokenMappingFields = () => {
   return (
     <>
       <p className="mb-4 text-sm text-bunker-300">
-        Map the decoy credential&apos;s fields to secrets in your Infisical project.
+        Configure the required parameters for this Honey Token.
       </p>
       <Component />
     </>

@@ -3,7 +3,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
-import { TCreateHoneyTokenDTO, TDeleteHoneyTokenDTO, THoneyToken, TUpdateHoneyTokenDTO } from "./types";
+import {
+  TCreateHoneyTokenDTO,
+  TDeleteHoneyTokenDTO,
+  THoneyToken,
+  TUpdateHoneyTokenDTO
+} from "./types";
 
 export const useCreateHoneyToken = () => {
   const queryClient = useQueryClient();
