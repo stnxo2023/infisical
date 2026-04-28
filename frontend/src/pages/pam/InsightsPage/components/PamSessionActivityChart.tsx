@@ -106,11 +106,11 @@ export const PamSessionActivityChart = () => {
               itemStyle={{ color: "var(--color-primary)" }}
               cursor={false}
               isAnimationActive={false}
-              labelFormatter={(date: string) => {
+              labelFormatter={(date) => {
                 const point = chartData.find((p) => p.date === date);
                 return point?.label ?? String(date);
               }}
-              formatter={(value: number) => [Number(value).toLocaleString(), "Sessions"]}
+              formatter={(value) => [Number(value).toLocaleString(), "Sessions"]}
             />
             <Bar
               dataKey="count"
