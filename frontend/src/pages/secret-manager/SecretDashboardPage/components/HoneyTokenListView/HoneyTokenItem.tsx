@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { faEdit, faInfoCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faAsterisk, faEdit, faInfoCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 import { SirenIcon } from "lucide-react";
@@ -20,9 +20,10 @@ type Props = {
   honeyToken: TDashboardHoneyToken;
   onEdit: () => void;
   onDelete: () => void;
+  onViewCredentials: () => void;
 };
 
-export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete }: Props) => {
+export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials }: Props) => {
   const { name, type, status, secretsMapping } = honeyToken;
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -84,11 +85,32 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete }: Props) => {
         <AnimatePresence mode="wait">
           <motion.div
             key="options"
-            className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-2 py-3"
+            className="flex w-24 items-center justify-between border-l border-mineshaft-600 px-2 py-3"
             initial={{ x: 0, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 10, opacity: 0 }}
           >
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretActions.DescribeAndReadValue}
+              a={ProjectPermissionSub.Secrets}
+              renderTooltip
+              allowedLabel="View credentials"
+            >
+              {(isAllowed) => (
+                <IconButton
+                  ariaLabel="View credentials"
+                  variant="plain"
+                  isDisabled={!isAllowed}
+                  className="opacity-0 group-hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewCredentials();
+                  }}
+                >
+                  <FontAwesomeIcon icon={faAsterisk} />
+                </IconButton>
+              )}
+            </ProjectPermissionCan>
             <ProjectPermissionCan
               I={ProjectPermissionSecretActions.Edit}
               a={ProjectPermissionSub.Secrets}

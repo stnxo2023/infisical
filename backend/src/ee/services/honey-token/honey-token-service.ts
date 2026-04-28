@@ -612,10 +612,51 @@ export const honeyTokenServiceFactory = ({
     return honeyTokens;
   };
 
+  const getCredentials = async (
+    { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
+    actor: OrgServiceActor
+  ) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.DescribeAndReadValue, ProjectPermissionSub.Secrets);
+
+    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
+
+    if (!honeyToken || honeyToken.projectId !== projectId) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: actor.orgId
+    });
+
+    const decryptedCredentials = JSON.parse(
+      decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
+    ) as Record<string, string>;
+
+    const mapping = honeyToken.secretsMapping as Record<string, string>;
+
+    const credentials: Record<string, string> = {};
+    for (const [credentialKey, secretName] of Object.entries(mapping)) {
+      credentials[secretName] = decryptedCredentials[credentialKey] ?? "";
+    }
+
+    return { credentials };
+  };
+
   return {
     create,
     updateHoneyToken,
     deleteHoneyToken,
+    getCredentials,
     getDashboardHoneyTokenCount,
     getDashboardHoneyTokens
   };

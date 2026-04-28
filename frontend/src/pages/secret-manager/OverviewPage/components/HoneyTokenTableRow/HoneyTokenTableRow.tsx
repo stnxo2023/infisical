@@ -1,4 +1,4 @@
-import { ChevronDownIcon, EditIcon, InfoIcon, SirenIcon, TrashIcon } from "lucide-react";
+import { AsteriskIcon, ChevronDownIcon, EditIcon, InfoIcon, SirenIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -37,6 +37,7 @@ type Props = {
   tableWidth: number;
   onEdit: (honeyToken: TDashboardHoneyToken) => void;
   onDelete: (honeyToken: TDashboardHoneyToken) => void;
+  onViewCredentials: (honeyToken: TDashboardHoneyToken) => void;
 };
 
 export const HoneyTokenTableRow = ({
@@ -46,7 +47,8 @@ export const HoneyTokenTableRow = ({
   getHoneyTokenByName,
   tableWidth,
   onEdit,
-  onDelete
+  onDelete,
+  onViewCredentials
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
 
@@ -72,6 +74,27 @@ export const HoneyTokenTableRow = ({
           "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
         )}
       >
+        <ProjectPermissionCan
+          I={ProjectPermissionSecretActions.DescribeAndReadValue}
+          a={ProjectPermissionSub.Secrets}
+        >
+          {(isAllowed) => (
+            <Tooltip>
+              <TooltipTrigger>
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  isDisabled={!isAllowed}
+                  onClick={() => onViewCredentials(honeyToken)}
+                >
+                  <AsteriskIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>View credentials</TooltipContent>
+            </Tooltip>
+          )}
+        </ProjectPermissionCan>
         <ProjectPermissionCan
           I={ProjectPermissionSecretActions.Edit}
           a={ProjectPermissionSub.Secrets}

@@ -140,6 +140,38 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    url: "/:honeyTokenId/credentials",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        honeyTokenId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          credentials: z.record(z.string(), z.string())
+        })
+      }
+    },
+    handler: async (req) => {
+      const { credentials } = await server.services.honeyTokenCrud.getCredentials(
+        {
+          honeyTokenId: req.params.honeyTokenId,
+          projectId: req.query.projectId
+        },
+        req.permission
+      );
+      return { credentials };
+    }
+  });
+
+  server.route({
     url: "/configs",
     method: "PUT",
     config: {

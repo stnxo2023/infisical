@@ -1,6 +1,11 @@
 import { useState } from "react";
 
-import { DeleteHoneyTokenModal, EditHoneyTokenModal } from "@app/components/honey-tokens";
+import {
+  DeleteHoneyTokenModal,
+  EditHoneyTokenModal,
+  ViewHoneyTokenCredentialsModal
+} from "@app/components/honey-tokens";
+import { useWorkspace } from "@app/context";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 import { HoneyTokenItem } from "./HoneyTokenItem";
@@ -10,8 +15,12 @@ type Props = {
 };
 
 export const HoneyTokenListView = ({ honeyTokens }: Props) => {
+  const { currentWorkspace } = useWorkspace();
+  const projectId = currentWorkspace?.id || "";
+
   const [deleteTarget, setDeleteTarget] = useState<TDashboardHoneyToken>();
   const [editTarget, setEditTarget] = useState<TDashboardHoneyToken>();
+  const [credentialsTarget, setCredentialsTarget] = useState<TDashboardHoneyToken>();
 
   return (
     <>
@@ -21,6 +30,7 @@ export const HoneyTokenListView = ({ honeyTokens }: Props) => {
           honeyToken={honeyToken}
           onEdit={() => setEditTarget(honeyToken)}
           onDelete={() => setDeleteTarget(honeyToken)}
+          onViewCredentials={() => setCredentialsTarget(honeyToken)}
         />
       ))}
       <EditHoneyTokenModal
@@ -36,6 +46,14 @@ export const HoneyTokenListView = ({ honeyTokens }: Props) => {
           if (!isOpen) setDeleteTarget(undefined);
         }}
         honeyToken={deleteTarget}
+      />
+      <ViewHoneyTokenCredentialsModal
+        isOpen={Boolean(credentialsTarget)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setCredentialsTarget(undefined);
+        }}
+        honeyToken={credentialsTarget}
+        projectId={projectId}
       />
     </>
   );
