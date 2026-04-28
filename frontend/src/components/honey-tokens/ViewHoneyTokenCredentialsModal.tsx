@@ -72,8 +72,8 @@ export const ViewHoneyTokenCredentialsModal = ({
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         onOpenAutoFocus={(e) => e.preventDefault()}
-        title="Generated Credentials"
-        subTitle={honeyToken ? `View the credentials for "${honeyToken.name}".` : ""}
+        title="Honey Token Credentials"
+        subTitle={honeyToken ? `Credentials for "${honeyToken.name}".` : ""}
       >
         <ModalBody honeyToken={honeyToken} projectId={projectId} isOpen={isOpen} />
       </ModalContent>

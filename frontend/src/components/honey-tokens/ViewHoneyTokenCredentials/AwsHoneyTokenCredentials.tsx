@@ -1,5 +1,4 @@
 import { CredentialDisplay } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/shared/CredentialDisplay";
-import { ViewRotationGeneratedCredentialsDisplay } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/shared/ViewRotationGeneratedCredentialsDisplay";
 import { TAwsHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 type Props = {
@@ -14,21 +13,17 @@ const CREDENTIAL_FIELDS: { key: keyof TAwsHoneyToken["secretsMapping"]; label: s
 
 export const AwsHoneyTokenCredentials = ({ secretsMapping, credentials }: Props) => {
   return (
-    <ViewRotationGeneratedCredentialsDisplay
-      activeCredentials={
-        <>
-          {CREDENTIAL_FIELDS.map(({ key, label }) => {
-            const secretName = secretsMapping[key];
-            const value = secretName ? credentials[secretName] : undefined;
+    <div className="flex flex-col gap-x-8 gap-y-2 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-2">
+      {CREDENTIAL_FIELDS.map(({ key, label }) => {
+        const secretName = secretsMapping[key];
+        const value = secretName ? credentials[secretName] : undefined;
 
-            return (
-              <CredentialDisplay key={key} label={label} isSensitive>
-                {value}
-              </CredentialDisplay>
-            );
-          })}
-        </>
-      }
-    />
+        return (
+          <CredentialDisplay key={key} label={label} isSensitive>
+            {value}
+          </CredentialDisplay>
+        );
+      })}
+    </div>
   );
 };
