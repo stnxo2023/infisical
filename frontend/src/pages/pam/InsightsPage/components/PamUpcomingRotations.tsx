@@ -126,7 +126,7 @@ export const PamUpcomingRotations = () => {
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle>Account credentials due to rotate</CardTitle>
+        <CardTitle>Upcoming Rotations</CardTitle>
         <CardDescription>
           {data?.totalScheduled ?? 0} scheduled rotation
           {data?.totalScheduled === 1 ? "" : "s"} across this project

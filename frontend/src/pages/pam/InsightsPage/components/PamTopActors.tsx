@@ -104,7 +104,7 @@ export const PamTopActors = () => {
       <CardHeader>
         <CardTitle>Top Actors</CardTitle>
         <CardDescription>
-          Users &amp; identities initiating the most privileged sessions over the past 30 days
+          Users &amp; identities initiating the most PAM sessions over the past 30 days
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col justify-between gap-4">

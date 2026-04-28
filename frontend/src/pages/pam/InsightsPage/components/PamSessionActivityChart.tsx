@@ -132,7 +132,7 @@ export const PamSessionActivityChart = () => {
     <Card className="h-full">
       <CardHeader>
         <CardTitle>Session Activity</CardTitle>
-        <CardDescription>Privileged sessions started over the past 30 days</CardDescription>
+        <CardDescription>PAM sessions started over the past 30 days</CardDescription>
       </CardHeader>
       <CardContent>{renderBody()}</CardContent>
     </Card>
