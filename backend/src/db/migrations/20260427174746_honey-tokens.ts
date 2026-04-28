@@ -44,6 +44,9 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await createOnUpdateTrigger(knex, TableName.HoneyToken);
+    await knex.schema.alterTable(TableName.HoneyToken, (t) => {
+      t.unique(["name", "folderId"]);
+    });
   }
 
   if (!(await knex.schema.hasTable(TableName.HoneyTokenEvent))) {

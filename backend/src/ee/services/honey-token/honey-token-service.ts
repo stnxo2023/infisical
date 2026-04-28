@@ -146,6 +146,14 @@ export const honeyTokenServiceFactory = ({
       });
     }
 
+    const existingHoneyToken = await honeyTokenDAL.findOne({ name, folderId: folder.id });
+
+    if (existingHoneyToken) {
+      throw new BadRequestError({
+        message: `A honey token with the name "${name}" already exists at the path "${secretPath}" in environment "${environment}"`
+      });
+    }
+
     const secretKeys = Object.values(secretsMapping);
 
     if (new Set(secretKeys).size !== secretKeys.length) {
@@ -315,6 +323,16 @@ export const honeyTokenServiceFactory = ({
 
     if (!honeyToken || honeyToken.projectId !== projectId) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
+
+    if (name && name !== honeyToken.name) {
+      const existingHoneyToken = await honeyTokenDAL.findOne({ name, folderId: honeyToken.folderId });
+
+      if (existingHoneyToken) {
+        throw new BadRequestError({
+          message: `A honey token with the name "${name}" already exists in this path`
+        });
+      }
     }
 
     const oldMapping = honeyToken.secretsMapping as Record<string, string>;
