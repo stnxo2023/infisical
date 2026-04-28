@@ -30,6 +30,8 @@ export async function up(knex: Knex): Promise<void> {
       t.string("status").notNullable().defaultTo("active");
       t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      t.uuid("folderId").notNullable();
+      t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
       t.uuid("connectionId").notNullable();
       t.foreign("connectionId").references("id").inTable(TableName.AppConnection);
       t.binary("encryptedCredentials").notNullable();

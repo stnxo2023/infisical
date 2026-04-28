@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { CreateHoneyTokenModal } from "@app/components/honey-tokens";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -173,6 +174,7 @@ import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
 import {
   useDynamicSecretOverview,
   useFolderOverview,
+  useHoneyTokenOverview,
   useSecretImportOverview,
   useSecretOverview,
   useSecretRotationOverview
@@ -212,6 +214,7 @@ import {
   EnvironmentSelect,
   FolderBreadcrumb,
   FolderTableRow,
+  HoneyTokenTableRow,
   ResourceCount,
   ResourceFilter,
   ResourceSearchInput,
@@ -557,6 +560,7 @@ const OverviewPageContent = () => {
       includeSecrets: activeTagSlugs.length > 0 || (isFilteredByResources ? filter.secret : true),
       includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
+      includeHoneyTokens: true,
       search: searchFilter,
       tags: tagFilter,
       limit,
@@ -570,6 +574,7 @@ const OverviewPageContent = () => {
     folders,
     dynamicSecrets,
     secretRotations,
+    honeyTokens,
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
@@ -581,6 +586,7 @@ const OverviewPageContent = () => {
     totalUniqueSecretImportsInPage,
     totalUniqueDynamicSecretsInPage,
     totalUniqueSecretRotationsInPage,
+    totalUniqueHoneyTokensInPage,
     importedByEnvs,
     usedBySecretSyncs
   } = overview ?? {};
@@ -622,6 +628,9 @@ const OverviewPageContent = () => {
     getSecretRotationByName,
     getSecretRotationStatusesByName
   } = useSecretRotationOverview(secretRotations);
+
+  const { honeyTokenNames, isHoneyTokenPresentInEnv, getHoneyTokenByName } =
+    useHoneyTokenOverview(honeyTokens);
 
   const { secretImportNames, isSecretImportInEnv, getSecretImportByEnv, getSecretImportsForEnv } =
     useSecretImportOverview(overview?.imports);
@@ -745,6 +754,7 @@ const OverviewPageContent = () => {
     "deleteFolder",
     "addDynamicSecret",
     "addSecretRotation",
+    "addHoneyToken",
     "editSecretRotation",
     "rotateSecretRotation",
     "viewSecretRotationGeneratedCredentials",
@@ -2310,6 +2320,7 @@ const OverviewPageContent = () => {
     mergedFolderNamesAndDescriptions.length === 0 &&
     dynamicSecretNames.length === 0 &&
     secretRotationNames.length === 0 &&
+    honeyTokenNames.length === 0 &&
     secretImportNames.length === 0 &&
     !isOverviewLoading;
 
@@ -2496,9 +2507,13 @@ const OverviewPageContent = () => {
                         text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
                       });
                     }}
+                    onAddHoneyToken={() => {
+                      handlePopUpOpen("addHoneyToken");
+                    }}
                     onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
                     isDyanmicSecretAvailable={userAvailableDynamicSecretEnvs.length > 0}
                     isSecretRotationAvailable={userAvailableSecretRotationEnvs.length > 0}
+                    isHoneyTokenAvailable
                     isReplicateSecretsAvailable={visibleEnvs.length === 1}
                     onAddSecretImport={handleAddSecretImport}
                     isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
@@ -3056,6 +3071,18 @@ const OverviewPageContent = () => {
                               }
                             />
                           ))}
+                          {honeyTokenNames.map((honeyTokenName, index) => (
+                            <HoneyTokenTableRow
+                              honeyTokenName={honeyTokenName}
+                              isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
+                              environments={visibleEnvs}
+                              getHoneyTokenByName={getHoneyTokenByName}
+                              tableWidth={tableWidth}
+                              key={`overview-ht-${honeyTokenName}-${index + 1}`}
+                              onEdit={() => {}}
+                              onDelete={() => {}}
+                            />
+                          ))}
                           {mergedSecKeys.map((key, index) => (
                             <SecretTableRow
                               isSelected={
@@ -3091,7 +3118,8 @@ const OverviewPageContent = () => {
                                 (totalUniqueDynamicSecretsInPage || 0) -
                                 (totalUniqueSecretsInPage || 0) -
                                 (totalUniqueSecretImportsInPage || 0) -
-                                (totalUniqueSecretRotationsInPage || 0),
+                                (totalUniqueSecretRotationsInPage || 0) -
+                                (totalUniqueHoneyTokensInPage || 0),
                               0
                             )}
                           />
@@ -3350,6 +3378,12 @@ const OverviewPageContent = () => {
         environments={userAvailableSecretRotationEnvs}
         isOpen={popUp.addSecretRotation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretRotation", isOpen)}
+      />
+      <CreateHoneyTokenModal
+        secretPath={secretPath}
+        environments={userAvailableEnvs}
+        isOpen={popUp.addHoneyToken.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addHoneyToken", isOpen)}
       />
       <EditSecretRotationV2Modal
         isOpen={popUp.editSecretRotation.isOpen}

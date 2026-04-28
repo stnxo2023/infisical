@@ -1517,11 +1517,7 @@ declare module "knex/types/tables" {
       THoneyTokenConfigsInsert,
       THoneyTokenConfigsUpdate
     >;
-    [TableName.HoneyToken]: KnexOriginal.CompositeTableType<
-      THoneyTokens,
-      THoneyTokensInsert,
-      THoneyTokensUpdate
-    >;
+    [TableName.HoneyToken]: KnexOriginal.CompositeTableType<THoneyTokens, THoneyTokensInsert, THoneyTokensUpdate>;
     [TableName.HoneyTokenEvent]: KnexOriginal.CompositeTableType<
       THoneyTokenEvents,
       THoneyTokenEventsInsert,

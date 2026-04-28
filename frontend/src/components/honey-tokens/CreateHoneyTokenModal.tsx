@@ -1,0 +1,82 @@
+import { useState } from "react";
+
+import { HoneyTokenForm } from "@app/components/honey-tokens/forms";
+import { HoneyTokenModalHeader } from "@app/components/honey-tokens/HoneyTokenModalHeader";
+import { HoneyTokenSelect } from "@app/components/honey-tokens/HoneyTokenSelect";
+import { Modal, ModalContent } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
+
+type SharedProps = {
+  secretPath: string;
+  environment?: string;
+  environments?: ProjectEnv[];
+};
+
+type Props = {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+} & SharedProps;
+
+type ContentProps = {
+  onComplete: () => void;
+  selectedType: HoneyTokenType | null;
+  setSelectedType: (type: HoneyTokenType | null) => void;
+  onCancel: () => void;
+} & SharedProps;
+
+const Content = ({ setSelectedType, selectedType, onCancel, ...props }: ContentProps) => {
+  if (selectedType) {
+    return <HoneyTokenForm onCancel={onCancel} type={selectedType} {...props} />;
+  }
+
+  return <HoneyTokenSelect onSelect={setSelectedType} />;
+};
+
+export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props) => {
+  const [selectedType, setSelectedType] = useState<HoneyTokenType | null>(null);
+
+  const handleReset = () => {
+    setSelectedType(null);
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          handleReset();
+        }
+        onOpenChange(open);
+      }}
+    >
+      <ModalContent
+        title={
+          selectedType ? (
+            <HoneyTokenModalHeader type={selectedType} />
+          ) : (
+            <div className="flex items-center gap-x-2 text-mineshaft-300">
+              Add Honey Token
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/honey-tokens/overview" />
+            </div>
+          )
+        }
+        className={selectedType ? "max-w-2xl" : "max-w-3xl"}
+        subTitle={selectedType ? undefined : "Select a provider to create a honey token for."}
+        bodyClassName="overflow-visible"
+      >
+        <Content
+          onComplete={() => {
+            handleReset();
+            onOpenChange(false);
+          }}
+          onCancel={handleReset}
+          selectedType={selectedType}
+          setSelectedType={setSelectedType}
+          {...props}
+        />
+      </ModalContent>
+    </Modal>
+  );
+};

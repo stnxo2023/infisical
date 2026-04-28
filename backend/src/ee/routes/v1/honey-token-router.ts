@@ -4,6 +4,7 @@ import { HoneyTokenConfigsSchema } from "@app/db/schemas";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { AwsHoneyTokenConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -17,6 +18,44 @@ const SanitizedHoneyTokenConfigSchema = HoneyTokenConfigsSchema.pick({
 });
 
 export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    url: "/",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      body: z.object({
+        projectId: z.string().trim(),
+        type: z.nativeEnum(HoneyTokenType),
+        name: slugSchema({ field: "Name" }),
+        description: z.string().trim().max(256).nullish(),
+        secretsMapping: z.record(z.string(), z.string().min(1)),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          honeyToken: z.object({
+            id: z.string().uuid(),
+            name: z.string(),
+            type: z.string(),
+            status: z.string(),
+            projectId: z.string(),
+            secretsMapping: z.unknown(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const { honeyToken } = await server.services.honeyTokenCrud.create(req.body, req.permission);
+      return { honeyToken };
+    }
+  });
+
   server.route({
     url: "/configs",
     method: "PUT",
