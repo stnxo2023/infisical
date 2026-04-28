@@ -59,12 +59,31 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     const query = (tx || db.replicaNode())(TableName.HoneyToken).whereIn(`${TableName.HoneyToken}.folderId`, folderIds);
 
     if (search) {
-      query.where(`${TableName.HoneyToken}.name`, "ilike", `%${search}%`);
+      void query.where(`${TableName.HoneyToken}.name`, "ilike", `%${search}%`);
     }
 
     const [result] = await query.countDistinct(`${TableName.HoneyToken}.name`);
-    return Number((result as { count: number }).count || 0);
+    return Number((result as unknown as { count: number }).count || 0);
   };
 
-  return { ...orm, findByFolderIds, countByFolderIds };
+  const tryMarkTriggered = async (tokenIdentifier: string, cooldownMs: number, tx?: Knex) => {
+    const COOLDOWN_INTERVAL_MS = cooldownMs;
+    const now = new Date();
+    const cooldownThreshold = new Date(now.getTime() - COOLDOWN_INTERVAL_MS);
+
+    const rows = await (tx || db)(TableName.HoneyToken)
+      .where({ tokenIdentifier })
+      .andWhere((qb) => {
+        void qb.whereNull("lastTriggeredAt").orWhere("lastTriggeredAt", "<=", cooldownThreshold);
+      })
+      .update({
+        status: "triggered",
+        lastTriggeredAt: now
+      })
+      .returning("*");
+
+    return rows.length > 0 ? rows[0] : null;
+  };
+
+  return { ...orm, findByFolderIds, countByFolderIds, tryMarkTriggered };
 };

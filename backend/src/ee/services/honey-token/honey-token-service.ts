@@ -41,9 +41,15 @@ type THoneyTokenServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findBySecretPathMultiEnv" | "findSecretPathByFolderIds">;
+  folderDAL: Pick<
+    TSecretFolderDALFactory,
+    "findBySecretPath" | "findBySecretPathMultiEnv" | "findSecretPathByFolderIds"
+  >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "find" | "deleteMany" | "invalidateSecretCacheByProjectId">;
+  secretDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "insertMany" | "upsertSecretReferences" | "find" | "deleteMany" | "invalidateSecretCacheByProjectId"
+  >;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "find">;
@@ -625,7 +631,10 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.DescribeAndReadValue, ProjectPermissionSub.Secrets);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretActions.DescribeAndReadValue,
+      ProjectPermissionSub.Secrets
+    );
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 

@@ -14,7 +14,6 @@ import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 
 import { HoneyTokenMappingFields } from "./HoneyTokenMappingFields/HoneyTokenMappingFields";
-import { HoneyTokenParametersFields } from "./HoneyTokenParametersFields/HoneyTokenParametersFields";
 import { HoneyTokenReviewFields } from "./HoneyTokenReviewFields/HoneyTokenReviewFields";
 import { HoneyTokenConfigurationFields } from "./HoneyTokenConfigurationFields";
 import { HoneyTokenDetailsFields } from "./HoneyTokenDetailsFields";
@@ -36,14 +35,12 @@ const CREATE_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[
     key: "configuration",
     fields: ["environment"]
   },
-  { name: "Parameters", key: "parameters", fields: [] },
   { name: "Mapping", key: "mapping", fields: ["secretsMapping"] },
   { name: "Details", key: "details", fields: ["name", "description"] },
   { name: "Review", key: "review", fields: [] }
 ];
 
 const EDIT_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[] }[] = [
-  { name: "Parameters", key: "parameters", fields: [] },
   { name: "Mapping", key: "mapping", fields: ["secretsMapping"] },
   { name: "Details", key: "details", fields: ["name", "description"] },
   { name: "Review", key: "review", fields: [] }
@@ -239,9 +236,6 @@ export const HoneyTokenForm = ({
                   <HoneyTokenConfigurationFields environments={environments} />
                 </Tab.Panel>
               )}
-              <Tab.Panel>
-                <HoneyTokenParametersFields />
-              </Tab.Panel>
               <Tab.Panel>
                 <HoneyTokenMappingFields />
               </Tab.Panel>

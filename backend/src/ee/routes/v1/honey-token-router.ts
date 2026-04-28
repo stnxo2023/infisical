@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { HoneyTokenConfigsSchema } from "@app/db/schemas";
-import { logger } from "@app/lib/logger";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { AwsHoneyTokenConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

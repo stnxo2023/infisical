@@ -964,7 +964,10 @@ export const registerRoutes = async (
     honeyTokenEventDAL,
     permissionService,
     kmsService,
-    licenseService
+    licenseService,
+    orgDAL,
+    projectDAL,
+    smtpService
   });
 
   // ldapService is created after loginService (below) due to dependency on processProviderCallback

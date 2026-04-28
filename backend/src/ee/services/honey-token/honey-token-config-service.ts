@@ -2,29 +2,43 @@ import crypto from "node:crypto";
 
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenEventType, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
-import { AwsHoneyTokenConfigSchema, AwsHoneyTokenEventMetadataSchema } from "./honey-token-types";
+import {
+  AwsHoneyTokenConfigSchema,
+  AwsHoneyTokenEventMetadataSchema,
+  TAwsHoneyTokenEventMetadata
+} from "./honey-token-types";
+
+const TRIGGER_NOTIFICATION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
-  honeyTokenDAL: Pick<THoneyTokenDALFactory, "findOne" | "updateById">;
+  honeyTokenDAL: Pick<THoneyTokenDALFactory, "findOne" | "updateById" | "tryMarkTriggered">;
   honeyTokenEventDAL: Pick<THoneyTokenEventDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type THoneyTokenConfigServiceFactory = ReturnType<typeof honeyTokenConfigServiceFactory>;
@@ -35,7 +49,10 @@ export const honeyTokenConfigServiceFactory = ({
   honeyTokenEventDAL,
   permissionService,
   kmsService,
-  licenseService
+  licenseService,
+  orgDAL,
+  projectDAL,
+  smtpService
 }: THoneyTokenConfigServiceFactoryDep) => {
   const upsertConfig = async ({
     orgPermission,
@@ -149,6 +166,52 @@ export const honeyTokenConfigServiceFactory = ({
     };
   };
 
+  const sendTriggerNotification = async ({
+    orgId,
+    honeyToken,
+    eventMetadata
+  }: {
+    orgId: string;
+    honeyToken: { id: string; name: string; projectId: string };
+    eventMetadata: TAwsHoneyTokenEventMetadata;
+  }) => {
+    try {
+      const [project, orgAdmins] = await Promise.all([
+        projectDAL.findById(honeyToken.projectId),
+        orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)
+      ]);
+
+      const adminEmails = orgAdmins.map((admin) => admin.user.email).filter(Boolean) as string[];
+
+      if (adminEmails.length === 0 || !project) {
+        return;
+      }
+
+      const cfg = getAppConfig();
+      const siteUrl = removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com");
+
+      await smtpService.sendMail({
+        recipients: adminEmails,
+        subjectLine: `Security Alert: Honey Token "${honeyToken.name}" Triggered`,
+        template: SmtpTemplates.HoneyTokenTriggered,
+        substitutions: {
+          honeyTokenName: honeyToken.name,
+          projectName: project.name,
+          eventName: eventMetadata.eventName,
+          eventTime: eventMetadata.eventTime,
+          sourceIp: eventMetadata.sourceIp || "Unknown",
+          awsRegion: eventMetadata.awsRegion,
+          projectUrl: `${siteUrl}/project/${project.id}/honey-tokens`
+        }
+      });
+    } catch (err) {
+      logger.error(
+        { err, orgId, honeyTokenId: honeyToken.id },
+        `Failed to send honey token trigger notification [orgId=${orgId}] [honeyTokenId=${honeyToken.id}]`
+      );
+    }
+  };
+
   const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
 
   const handleTrigger = async ({
@@ -215,13 +278,17 @@ export const honeyTokenConfigServiceFactory = ({
 
     const rawEvents = Array.isArray(payload) ? (payload as unknown[]) : [payload];
 
+    /* eslint-disable no-await-in-loop, no-continue */
     for (const rawEvent of rawEvents) {
       const wrapped = rawEvent as { type?: string; event?: unknown };
       const eventData = wrapped.event ?? rawEvent;
 
       const parsed = AwsHoneyTokenEventMetadataSchema.safeParse(eventData);
       if (!parsed.success) {
-        logger.warn({ orgId, event: rawEvent, error: parsed.error }, `Failed to parse honey token event [orgId=${orgId}]`);
+        logger.warn(
+          { orgId, event: rawEvent, error: parsed.error },
+          `Failed to parse honey token event [orgId=${orgId}]`
+        );
         continue;
       }
 
@@ -240,13 +307,25 @@ export const honeyTokenConfigServiceFactory = ({
         metadata: parsed.data
       });
 
-      await honeyTokenDAL.updateById(honeyToken.id, { status: HoneyTokenStatus.Triggered });
-
-      logger.info(
-        { orgId, honeyTokenId: honeyToken.id, eventName: parsed.data.eventName },
-        `Honey token triggered [orgId=${orgId}] [honeyTokenId=${honeyToken.id}]`
+      const updatedToken = await honeyTokenDAL.tryMarkTriggered(
+        parsed.data.accessKeyId,
+        TRIGGER_NOTIFICATION_COOLDOWN_MS
       );
+
+      if (updatedToken) {
+        logger.info(
+          { orgId, honeyTokenId: honeyToken.id, eventName: parsed.data.eventName },
+          `Honey token triggered [orgId=${orgId}] [honeyTokenId=${honeyToken.id}]`
+        );
+
+        void sendTriggerNotification({
+          orgId,
+          honeyToken,
+          eventMetadata: parsed.data
+        });
+      }
     }
+    /* eslint-enable no-await-in-loop, no-continue */
 
     return { acknowledged: true };
   };

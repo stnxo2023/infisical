@@ -39,6 +39,7 @@ export async function up(knex: Knex): Promise<void> {
       t.jsonb("secretsMapping").notNullable();
       t.string("tokenIdentifier", 256).nullable();
       t.unique(["tokenIdentifier"]);
+      t.datetime("lastTriggeredAt").nullable();
       t.timestamps(true, true, true);
     });
 

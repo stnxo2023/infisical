@@ -21,6 +21,7 @@ export const HoneyTokensSchema = z.object({
   encryptedCredentials: zodBuffer,
   secretsMapping: z.unknown(),
   tokenIdentifier: z.string().nullable().optional(),
+  lastTriggeredAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
