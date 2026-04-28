@@ -1,0 +1,252 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Infisical Honey Token detection. Deploys a CloudTrail trail with CloudWatch
+  Logs subscription that triggers a Lambda to alert on honey token usage.
+
+Parameters:
+  NamePrefix:
+    Type: String
+    Default: infisical-honey-token
+    Description: Prefix for all resource names
+
+  WebhookUrl:
+    Type: String
+    Description: URL to send honey token alert webhooks to
+
+  WebhookSigningKey:
+    Type: String
+    NoEcho: true
+    Description: HMAC-SHA256 key used to sign webhook request bodies
+
+Resources:
+  # =============================================
+  # Lambda IAM role
+  # =============================================
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # =============================================
+  # Lambda function
+  # =============================================
+  HoneyTokenAlertFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${NamePrefix}-alert'
+      Role: !GetAtt LambdaRole.Arn
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          WEBHOOK_URL: !Ref WebhookUrl
+          WEBHOOK_SIGNING_KEY: !Ref WebhookSigningKey
+      Code:
+        ZipFile: |
+          const { gunzipSync } = require("node:zlib");
+          const { createHmac } = require("node:crypto");
+
+          const WEBHOOK_URL = process.env.WEBHOOK_URL;
+          const WEBHOOK_SIGNING_KEY = process.env.WEBHOOK_SIGNING_KEY;
+
+          exports.handler = async function (event) {
+            const payload = Buffer.from(event.awslogs.data, "base64");
+            const { logEvents } = JSON.parse(gunzipSync(payload).toString());
+            const alerts = logEvents.map(function (e) { return buildAlert(JSON.parse(e.message)); });
+
+            for (const alert of alerts) {
+              const authorized = !alert.errorCode;
+              const label = authorized ? "AUTHORIZED" : "UNAUTHORIZED";
+              console.log(JSON.stringify({ level: "ALERT", message: "Honey token used (" + label + ")", ...alert }));
+
+              const body = JSON.stringify({ type: "aws", event: alert });
+              const resp = await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: signedHeaders(body),
+                body,
+              });
+              console.log("Webhook response: " + resp.status);
+            }
+
+            return alerts;
+          };
+
+          function signedHeaders(body) {
+            var timestamp = Math.floor(Date.now() / 1000);
+            var signature = createHmac("sha256", WEBHOOK_SIGNING_KEY)
+              .update(timestamp + "." + body)
+              .digest("hex");
+            return {
+              "Content-Type": "application/json",
+              "X-Infisical-Signature": "t=" + timestamp + ",v1=" + signature,
+            };
+          }
+
+          function buildAlert(detail) {
+            var userIdentity = detail.userIdentity || {};
+            return {
+              username: userIdentity.userName || "unknown",
+              eventName: detail.eventName || "unknown",
+              eventSource: detail.eventSource || "unknown",
+              sourceIp: detail.sourceIPAddress || "unknown",
+              userAgent: detail.userAgent || "unknown",
+              awsRegion: detail.awsRegion || "unknown",
+              eventTime: detail.eventTime || "unknown",
+              accountId: userIdentity.accountId || "unknown",
+              accessKeyId: userIdentity.accessKeyId || "unknown",
+              errorCode: detail.errorCode || null,
+              errorMessage: detail.errorMessage || null,
+              eventId: detail.eventID || null,
+              requestParameters: detail.requestParameters,
+            };
+          }
+
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${NamePrefix}-alert'
+      RetentionInDays: 30
+
+  # =============================================
+  # CloudTrail S3 bucket
+  # =============================================
+  CloudTrailBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-logs
+            Status: Enabled
+            ExpirationInDays: 7
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  CloudTrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CloudTrailBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt CloudTrailBucket.Arn
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub '${CloudTrailBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+  # =============================================
+  # CloudTrail CloudWatch Logs
+  # =============================================
+  CloudTrailLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/cloudtrail/${NamePrefix}'
+      RetentionInDays: 30
+
+  CloudTrailRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt CloudTrailLogGroup.Arn
+
+  # =============================================
+  # CloudTrail trail
+  # =============================================
+  HoneyTokenTrail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn: CloudTrailBucketPolicy
+    Properties:
+      TrailName: !Sub '${NamePrefix}-trail'
+      S3BucketName: !Ref CloudTrailBucket
+      IsMultiRegionTrail: true
+      IncludeGlobalServiceEvents: true
+      IsLogging: true
+      CloudWatchLogsLogGroupArn: !GetAtt CloudTrailLogGroup.Arn
+      CloudWatchLogsRoleArn: !GetAtt CloudTrailRole.Arn
+      AdvancedEventSelectors:
+        - Name: Management events only
+          FieldSelectors:
+            - Field: eventCategory
+              Equals:
+                - Management
+
+  # =============================================
+  # CloudWatch Logs subscription -> Lambda
+  # =============================================
+  CloudWatchLogsLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref HoneyTokenAlertFunction
+      Action: lambda:InvokeFunction
+      Principal: logs.amazonaws.com
+      SourceArn: !GetAtt CloudTrailLogGroup.Arn
+
+  HoneyTokenSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn:
+      - CloudWatchLogsLambdaPermission
+      - HoneyTokenTrail
+    Properties:
+      FilterName: !Sub '${NamePrefix}-filter'
+      LogGroupName: !Ref CloudTrailLogGroup
+      FilterPattern: '{ $.userIdentity.userName = "inf_ht_*" }'
+      DestinationArn: !GetAtt HoneyTokenAlertFunction.Arn
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the honey token alert Lambda function
+    Value: !GetAtt HoneyTokenAlertFunction.Arn
+
+  LambdaLogGroupName:
+    Description: CloudWatch log group for the Lambda function
+    Value: !Ref LambdaLogGroup
+
+  CloudTrailArn:
+    Description: ARN of the CloudTrail trail
+    Value: !GetAtt HoneyTokenTrail.Arn
+
+  CloudTrailS3Bucket:
+    Description: S3 bucket storing CloudTrail logs
+    Value: !Ref CloudTrailBucket
+
+  CloudTrailLogGroupName:
+    Description: CloudWatch log group receiving CloudTrail events from all regions
+    Value: !Ref CloudTrailLogGroup
