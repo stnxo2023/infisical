@@ -60,7 +60,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       query.where(`${TableName.HoneyToken}.name`, "ilike", `%${search}%`);
     }
 
-    const [result] = await query.count({ count: "*" });
+    const [result] = await query.countDistinct(`${TableName.HoneyToken}.name`);
     return Number((result as { count: number }).count || 0);
   };
 

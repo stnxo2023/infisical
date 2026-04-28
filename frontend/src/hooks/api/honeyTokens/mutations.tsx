@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { TCreateHoneyTokenDTO, THoneyToken } from "./types";
 
@@ -14,6 +15,7 @@ export const useCreateHoneyToken = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["honeyTokens"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
     }
   });
 };
