@@ -1,4 +1,4 @@
-import { ChevronDownIcon, CrosshairIcon, EditIcon, InfoIcon, TrashIcon } from "lucide-react";
+import { ChevronDownIcon, EditIcon, InfoIcon, SirenIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -165,7 +165,7 @@ export const HoneyTokenTableRow = ({
           {!isSingleEnvView && isExpanded ? (
             <ChevronDownIcon />
           ) : (
-            <CrosshairIcon className="text-yellow" />
+            <SirenIcon className="text-yellow" />
           )}
         </TableCell>
         <TableCell

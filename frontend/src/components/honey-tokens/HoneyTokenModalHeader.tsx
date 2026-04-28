@@ -4,9 +4,10 @@ import { HoneyTokenType } from "@app/hooks/api/honeyTokens/types";
 
 type Props = {
   type: HoneyTokenType;
+  isEdit?: boolean;
 };
 
-export const HoneyTokenModalHeader = ({ type }: Props) => {
+export const HoneyTokenModalHeader = ({ type, isEdit }: Props) => {
   const details = HONEY_TOKEN_MAP[type];
 
   return (
@@ -18,7 +19,7 @@ export const HoneyTokenModalHeader = ({ type }: Props) => {
       />
       <div>
         <div className="flex items-center gap-x-2 text-mineshaft-300">
-          {details.name} Honey Token
+          {isEdit ? "Edit" : ""} {details.name} Honey Token
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/honey-tokens/overview" />
         </div>
         <p className="text-sm leading-4 text-mineshaft-400">

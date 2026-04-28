@@ -40,6 +40,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
           honeyToken: z.object({
             id: z.string().uuid(),
             name: z.string(),
+            description: z.string().nullable().optional(),
             type: z.string(),
             status: z.string(),
             projectId: z.string(),
@@ -52,6 +53,55 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { honeyToken } = await server.services.honeyTokenCrud.create(req.body, req.permission);
+      return { honeyToken };
+    }
+  });
+
+  server.route({
+    url: "/:honeyTokenId",
+    method: "PATCH",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        honeyTokenId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string().trim(),
+        name: slugSchema({ field: "Name" }).optional(),
+        description: z.string().trim().max(256).nullish(),
+        secretsMapping: z.record(z.string(), z.string().min(1)).optional()
+      }),
+      response: {
+        200: z.object({
+          honeyToken: z.object({
+            id: z.string().uuid(),
+            name: z.string(),
+            description: z.string().nullable().optional(),
+            type: z.string(),
+            status: z.string(),
+            projectId: z.string(),
+            secretsMapping: z.unknown(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const { projectId, name, description, secretsMapping } = req.body;
+      const { honeyToken } = await server.services.honeyTokenCrud.updateHoneyToken(
+        {
+          honeyTokenId: req.params.honeyTokenId,
+          projectId,
+          name,
+          description,
+          secretsMapping
+        },
+        req.permission
+      );
       return { honeyToken };
     }
   });

@@ -118,6 +118,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .object({
               id: z.string().uuid(),
               name: z.string(),
+              description: z.string().nullable().optional(),
               type: z.string(),
               status: z.string(),
               projectId: z.string(),
@@ -741,6 +742,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .object({
               id: z.string().uuid(),
               name: z.string(),
+              description: z.string().nullable().optional(),
               type: z.string(),
               status: z.string(),
               projectId: z.string(),

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { faEdit, faInfoCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
-import { CrosshairIcon } from "lucide-react";
+import { SirenIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -48,7 +48,7 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete }: Props) => {
         aria-label={`${isExpanded ? "Collapse" : "Expand"} honey token secrets for ${name}`}
       >
         <div className="flex w-11 items-center py-2 pl-5 text-yellow">
-          <CrosshairIcon className="size-4" />
+          <SirenIcon className="size-4" />
         </div>
         <div className="flex grow items-center py-2 pr-2 pl-4">
           <div className="flex w-full flex-wrap items-center">

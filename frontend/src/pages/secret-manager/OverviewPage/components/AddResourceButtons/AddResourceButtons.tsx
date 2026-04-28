@@ -1,7 +1,7 @@
 import {
   ChevronDown,
   ClipboardPasteIcon,
-  CrosshairIcon,
+  SirenIcon,
   FingerprintIcon,
   FolderIcon,
   ImportIcon,
@@ -144,7 +144,7 @@ export function AddResourceButtons({
           <Tooltip open={!isHoneyTokenAvailable ? undefined : false}>
             <TooltipTrigger className="block w-full">
               <DropdownMenuItem onClick={onAddHoneyToken} isDisabled={!isHoneyTokenAvailable}>
-                <CrosshairIcon className="text-yellow" />
+                <SirenIcon className="text-yellow" />
                 Add Honey Token
               </DropdownMenuItem>
             </TooltipTrigger>

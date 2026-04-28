@@ -78,6 +78,7 @@ export const honeyTokenServiceFactory = ({
       projectId,
       type,
       name,
+      description,
       secretsMapping,
       environment,
       secretPath
@@ -85,6 +86,7 @@ export const honeyTokenServiceFactory = ({
       projectId: string;
       type: HoneyTokenType;
       name: string;
+      description?: string | null;
       secretsMapping: Record<string, string>;
       environment: string;
       secretPath: string;
@@ -199,6 +201,7 @@ export const honeyTokenServiceFactory = ({
 
     const honeyToken = await honeyTokenDAL.create({
       name,
+      description,
       type,
       status: HoneyTokenStatus.Active,
       projectId,
@@ -255,12 +258,174 @@ export const honeyTokenServiceFactory = ({
       honeyToken: {
         id: honeyToken.id,
         name: honeyToken.name,
+        description: honeyToken.description,
         type: honeyToken.type,
         status: honeyToken.status,
         projectId: honeyToken.projectId,
         secretsMapping: honeyToken.secretsMapping,
         createdAt: honeyToken.createdAt,
         updatedAt: honeyToken.updatedAt
+      }
+    };
+  };
+
+  const updateHoneyToken = async (
+    {
+      honeyTokenId,
+      projectId,
+      name,
+      description,
+      secretsMapping
+    }: {
+      honeyTokenId: string;
+      projectId: string;
+      name?: string;
+      description?: string | null;
+      secretsMapping?: Record<string, string>;
+    },
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.honeyTokens) {
+      throw new BadRequestError({
+        message: "Failed to update honey token due to plan restriction. Upgrade plan to use honey tokens."
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
+
+    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
+
+    if (!honeyToken || honeyToken.projectId !== projectId) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
+
+    const oldMapping = honeyToken.secretsMapping as Record<string, string>;
+
+    if (secretsMapping) {
+      const newSecretKeys = Object.values(secretsMapping);
+
+      if (new Set(newSecretKeys).size !== newSecretKeys.length) {
+        throw new BadRequestError({
+          message: `Secrets mapping keys must be unique. "${newSecretKeys.join(", ")}" contains duplicate keys.`
+        });
+      }
+
+      const changedKeys = newSecretKeys.filter((key) => !Object.values(oldMapping).includes(key));
+
+      if (changedKeys.length > 0) {
+        const conflictingSecrets = await secretDAL.find({
+          $in: {
+            [`${TableName.SecretV2}.key` as "key"]: changedKeys
+          },
+          [`${TableName.SecretV2}.folderId` as "folderId"]: honeyToken.folderId,
+          [`${TableName.SecretV2}.type` as "type"]: SecretType.Shared
+        });
+
+        if (conflictingSecrets.length) {
+          throw new BadRequestError({
+            message: `The following secrets already exist: ${conflictingSecrets.map(({ key }) => key).join(", ")}`
+          });
+        }
+      }
+
+      const oldSecretKeys = Object.values(oldMapping);
+
+      await fnSecretBulkDelete({
+        folderId: honeyToken.folderId,
+        projectId,
+        inputSecrets: oldSecretKeys.map((key) => ({ type: SecretType.Shared, secretKey: key })),
+        actorId: actor.id,
+        secretDAL,
+        secretQueueService,
+        folderCommitService,
+        secretVersionDAL
+      });
+
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: actor.orgId
+      });
+
+      const decryptedCredentials = JSON.parse(
+        decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
+      ) as { accessKeyId: string; secretAccessKey: string; iamUserName: string };
+
+      const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+
+      const secretEntries = [
+        { key: secretsMapping.accessKeyId, value: decryptedCredentials.accessKeyId },
+        { key: secretsMapping.secretAccessKey, value: decryptedCredentials.secretAccessKey }
+      ];
+
+      await fnSecretBulkInsert({
+        folderId: honeyToken.folderId,
+        orgId: actor.orgId,
+        inputSecrets: secretEntries.map(({ key, value }) => ({
+          key,
+          type: SecretType.Shared,
+          encryptedValue: secretEncryptor({
+            plainText: Buffer.from(value)
+          }).cipherTextBlob,
+          references: []
+        })),
+        secretDAL,
+        secretVersionDAL,
+        secretVersionTagDAL,
+        secretTagDAL,
+        folderCommitService,
+        resourceMetadataDAL,
+        actor: {
+          type: actor.type as ActorType,
+          actorId: actor.id
+        }
+      });
+    }
+
+    const updated = await honeyTokenDAL.updateById(honeyTokenId, {
+      ...(name !== undefined && { name }),
+      ...(description !== undefined && { description }),
+      ...(secretsMapping !== undefined && { secretsMapping })
+    });
+
+    await secretDAL.invalidateSecretCacheByProjectId(projectId);
+    await snapshotService.performSnapshot(honeyToken.folderId);
+
+    const [folderInfo] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
+    if (folderInfo) {
+      await secretQueueService.syncSecrets({
+        orgId: actor.orgId,
+        secretPath: folderInfo.path,
+        projectId,
+        environmentSlug: folderInfo.environmentSlug,
+        excludeReplication: true
+      });
+    }
+
+    return {
+      honeyToken: {
+        id: updated.id,
+        name: updated.name,
+        description: updated.description,
+        type: updated.type,
+        status: updated.status,
+        projectId: updated.projectId,
+        secretsMapping: updated.secretsMapping,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt
       }
     };
   };
@@ -448,6 +613,7 @@ export const honeyTokenServiceFactory = ({
 
   return {
     create,
+    updateHoneyToken,
     deleteHoneyToken,
     getDashboardHoneyTokenCount,
     getDashboardHoneyTokens

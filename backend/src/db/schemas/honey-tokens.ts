@@ -12,6 +12,7 @@ import { TImmutableDBKeys } from "./models";
 export const HoneyTokensSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  description: z.string().nullable().optional(),
   type: z.string(),
   status: z.string().default("active"),
   projectId: z.string(),

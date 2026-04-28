@@ -29,7 +29,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
-import { DeleteHoneyTokenModal } from "@app/components/honey-tokens";
+import { DeleteHoneyTokenModal, EditHoneyTokenModal } from "@app/components/honey-tokens";
 import { DeleteSecretRotationV2Modal } from "@app/components/secret-rotations-v2/DeleteSecretRotationV2Modal";
 import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/EditSecretRotationV2Modal";
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
@@ -778,6 +778,7 @@ const OverviewPageContent = () => {
     "importFromVault",
     "importFromDoppler",
     "confirmDisableBatchMode",
+    "editHoneyToken",
     "deleteHoneyToken"
   ] as const);
 
@@ -3082,7 +3083,9 @@ const OverviewPageContent = () => {
                               getHoneyTokenByName={getHoneyTokenByName}
                               tableWidth={tableWidth}
                               key={`overview-ht-${honeyTokenName}-${index + 1}`}
-                              onEdit={() => {}}
+                              onEdit={(honeyToken) =>
+                                handlePopUpOpen("editHoneyToken", honeyToken)
+                              }
                               onDelete={(honeyToken) =>
                                 handlePopUpOpen("deleteHoneyToken", honeyToken)
                               }
@@ -3424,6 +3427,11 @@ const OverviewPageContent = () => {
         isOpen={popUp.deleteSecretRotation.isOpen}
         secretRotation={popUp.deleteSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretRotation", isOpen)}
+      />
+      <EditHoneyTokenModal
+        isOpen={popUp.editHoneyToken.isOpen}
+        honeyToken={popUp.editHoneyToken.data as TDashboardHoneyToken}
+        onOpenChange={(isOpen) => handlePopUpToggle("editHoneyToken", isOpen)}
       />
       <DeleteHoneyTokenModal
         isOpen={popUp.deleteHoneyToken.isOpen}

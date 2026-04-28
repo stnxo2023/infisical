@@ -17,6 +17,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .select(
         db.ref("id").withSchema(TableName.HoneyToken),
         db.ref("name").withSchema(TableName.HoneyToken),
+        db.ref("description").withSchema(TableName.HoneyToken),
         db.ref("type").withSchema(TableName.HoneyToken),
         db.ref("status").withSchema(TableName.HoneyToken),
         db.ref("projectId").withSchema(TableName.HoneyToken),
@@ -34,6 +35,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return rows.map((row) => ({
       id: row.id,
       name: row.name,
+      description: row.description,
       type: row.type,
       status: row.status,
       projectId: row.projectId,

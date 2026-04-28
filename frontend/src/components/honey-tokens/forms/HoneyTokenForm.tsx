@@ -7,8 +7,8 @@ import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
-import { useCreateHoneyToken } from "@app/hooks/api/honeyTokens";
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/types";
+import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
+import { HoneyTokenType, TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 
@@ -25,14 +25,21 @@ type Props = {
   secretPath: string;
   environment?: string;
   environments?: ProjectEnv[];
+  honeyToken?: TDashboardHoneyToken;
 };
 
-const FORM_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[] }[] = [
+const CREATE_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[] }[] = [
   {
     name: "Configuration",
     key: "configuration",
     fields: ["environment"]
   },
+  { name: "Mapping", key: "mapping", fields: ["secretsMapping"] },
+  { name: "Details", key: "details", fields: ["name", "description"] },
+  { name: "Review", key: "review", fields: [] }
+];
+
+const EDIT_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[] }[] = [
   { name: "Mapping", key: "mapping", fields: ["secretsMapping"] },
   { name: "Details", key: "details", fields: ["name", "description"] },
   { name: "Review", key: "review", fields: [] }
@@ -44,34 +51,57 @@ export const HoneyTokenForm = ({
   onCancel,
   environment: envSlug,
   secretPath,
-  environments
+  environments,
+  honeyToken
 }: Props) => {
   const createHoneyToken = useCreateHoneyToken();
+  const updateHoneyToken = useUpdateHoneyToken();
   const { currentProject } = useProject();
   const { name: tokenTypeName } = HONEY_TOKEN_MAP[type];
+
+  const isUpdate = Boolean(honeyToken);
+  const formTabs = isUpdate ? EDIT_TABS : CREATE_TABS;
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
   const formMethods = useForm<THoneyTokenForm>({
     resolver: zodResolver(HoneyTokenFormSchema),
-    defaultValues: {
-      type,
-      environment: currentProject?.environments.find((env) => env.slug === envSlug),
-      secretPath,
-      secretsMapping: HONEY_TOKEN_DEFAULT_SECRET_NAMES[type]
-    },
+    defaultValues: honeyToken
+      ? {
+          ...honeyToken,
+          environment: currentProject?.environments.find(
+            (env) => env.slug === honeyToken.environment.slug
+          ),
+          secretPath
+        }
+      : {
+          type,
+          environment: currentProject?.environments.find((env) => env.slug === envSlug),
+          secretPath,
+          secretsMapping: HONEY_TOKEN_DEFAULT_SECRET_NAMES[type]
+        },
     reValidateMode: "onChange"
   });
 
   const onSubmit = async ({ environment, ...formData }: THoneyTokenForm) => {
-    await createHoneyToken.mutateAsync({
-      ...formData,
-      environment: environment.slug,
-      projectId: currentProject.id
-    });
+    if (honeyToken) {
+      await updateHoneyToken.mutateAsync({
+        honeyTokenId: honeyToken.id,
+        projectId: honeyToken.projectId,
+        name: formData.name,
+        description: formData.description,
+        secretsMapping: formData.secretsMapping
+      });
+    } else {
+      await createHoneyToken.mutateAsync({
+        ...formData,
+        environment: environment.slug,
+        projectId: currentProject.id
+      });
+    }
 
     createNotification({
-      text: `Successfully created ${tokenTypeName} Honey Token`,
+      text: `Successfully ${honeyToken ? "updated" : "created"} ${tokenTypeName} Honey Token`,
       type: "success"
     });
     onComplete();
@@ -92,9 +122,9 @@ export const HoneyTokenForm = ({
     formState: { isSubmitting }
   } = formMethods;
 
-  const isStepValid = async (index: number) => trigger(FORM_TABS[index].fields);
+  const isStepValid = async (index: number) => trigger(formTabs[index].fields);
 
-  const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
+  const isFinalStep = selectedTabIndex === formTabs.length - 1;
 
   const [isValidating, setIsValidating] = useState(false);
 
@@ -120,8 +150,9 @@ export const HoneyTokenForm = ({
         secretPath
       });
 
+      const ownKeys = honeyToken ? new Set(Object.values(honeyToken.secretsMapping)) : new Set();
       const existingKeys = new Set(data.secrets.map((s) => s.secretKey));
-      const conflicts = values.filter((key) => existingKeys.has(key));
+      const conflicts = values.filter((key) => existingKeys.has(key) && !ownKeys.has(key));
 
       if (conflicts.length > 0) {
         formMethods.setError("secretsMapping", {
@@ -142,7 +173,7 @@ export const HoneyTokenForm = ({
     return true;
   };
 
-  const MAPPING_STEP_INDEX = 1;
+  const mappingStepIndex = formTabs.findIndex((tab) => tab.key === "mapping");
 
   const handleNext = async () => {
     if (isFinalStep) {
@@ -154,7 +185,7 @@ export const HoneyTokenForm = ({
 
     if (!isValid) return;
 
-    if (selectedTabIndex === MAPPING_STEP_INDEX) {
+    if (selectedTabIndex === mappingStepIndex && !isUpdate) {
       const noConflicts = await checkMappingConflicts();
       if (!noConflicts) return;
     }
@@ -178,7 +209,7 @@ export const HoneyTokenForm = ({
         <FormProvider {...formMethods}>
           <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
             <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
-              {FORM_TABS.map((tab, index) => (
+              {formTabs.map((tab, index) => (
                 <Tab
                   onClick={async (e) => {
                     e.preventDefault();
@@ -199,9 +230,11 @@ export const HoneyTokenForm = ({
               ))}
             </Tab.List>
             <Tab.Panels>
-              <Tab.Panel>
-                <HoneyTokenConfigurationFields environments={environments} />
-              </Tab.Panel>
+              {!isUpdate && (
+                <Tab.Panel>
+                  <HoneyTokenConfigurationFields environments={environments} />
+                </Tab.Panel>
+              )}
               <Tab.Panel>
                 <HoneyTokenMappingFields />
               </Tab.Panel>
@@ -222,7 +255,7 @@ export const HoneyTokenForm = ({
           isDisabled={isSubmitting || isValidating}
           colorSchema="secondary"
         >
-          {isFinalStep ? "Create Honey Token" : "Next"}
+          {isFinalStep ? `${honeyToken ? "Update" : "Create"} Honey Token` : "Next"}
         </Button>
         <Button onClick={handlePrev} colorSchema="secondary">
           Back
