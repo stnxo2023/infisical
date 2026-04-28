@@ -1,3 +1,6 @@
+import { useState } from "react";
+
+import { DeleteHoneyTokenModal } from "@app/components/honey-tokens";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 import { HoneyTokenItem } from "./HoneyTokenItem";
@@ -7,6 +10,8 @@ type Props = {
 };
 
 export const HoneyTokenListView = ({ honeyTokens }: Props) => {
+  const [deleteTarget, setDeleteTarget] = useState<TDashboardHoneyToken>();
+
   return (
     <>
       {honeyTokens?.map((honeyToken) => (
@@ -14,9 +19,16 @@ export const HoneyTokenListView = ({ honeyTokens }: Props) => {
           key={honeyToken.id}
           honeyToken={honeyToken}
           onEdit={() => {}}
-          onDelete={() => {}}
+          onDelete={() => setDeleteTarget(honeyToken)}
         />
       ))}
+      <DeleteHoneyTokenModal
+        isOpen={Boolean(deleteTarget)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setDeleteTarget(undefined);
+        }}
+        honeyToken={deleteTarget}
+      />
     </>
   );
 };

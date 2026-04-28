@@ -57,6 +57,38 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    url: "/:honeyTokenId",
+    method: "DELETE",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        honeyTokenId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          honeyTokenId: z.string().uuid()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { honeyTokenId } = await server.services.honeyTokenCrud.deleteHoneyToken(
+        {
+          honeyTokenId: req.params.honeyTokenId,
+          projectId: req.body.projectId
+        },
+        req.permission
+      );
+      return { honeyTokenId };
+    }
+  });
+
+  server.route({
     url: "/configs",
     method: "PUT",
     config: {

@@ -29,6 +29,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
+import { DeleteHoneyTokenModal } from "@app/components/honey-tokens";
 import { DeleteSecretRotationV2Modal } from "@app/components/secret-rotations-v2/DeleteSecretRotationV2Modal";
 import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/EditSecretRotationV2Modal";
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
@@ -158,6 +159,7 @@ import {
   SecretRotation as SecretRotationV2,
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
+import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import {
@@ -775,7 +777,8 @@ const OverviewPageContent = () => {
     "requestAccess",
     "importFromVault",
     "importFromDoppler",
-    "confirmDisableBatchMode"
+    "confirmDisableBatchMode",
+    "deleteHoneyToken"
   ] as const);
 
   // Auto-open dynamic secret leases modal when linked via notification/email
@@ -3080,7 +3083,9 @@ const OverviewPageContent = () => {
                               tableWidth={tableWidth}
                               key={`overview-ht-${honeyTokenName}-${index + 1}`}
                               onEdit={() => {}}
-                              onDelete={() => {}}
+                              onDelete={(honeyToken) =>
+                                handlePopUpOpen("deleteHoneyToken", honeyToken)
+                              }
                             />
                           ))}
                           {mergedSecKeys.map((key, index) => (
@@ -3419,6 +3424,11 @@ const OverviewPageContent = () => {
         isOpen={popUp.deleteSecretRotation.isOpen}
         secretRotation={popUp.deleteSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretRotation", isOpen)}
+      />
+      <DeleteHoneyTokenModal
+        isOpen={popUp.deleteHoneyToken.isOpen}
+        honeyToken={popUp.deleteHoneyToken.data as TDashboardHoneyToken}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteHoneyToken", isOpen)}
       />
       <ImportSecretsModal
         isOpen={popUp.importSecrets.isOpen}

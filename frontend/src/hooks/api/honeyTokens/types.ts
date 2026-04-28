@@ -41,3 +41,8 @@ export type TCreateHoneyTokenDTO = {
   environment: string;
   secretPath: string;
 };
+
+export type TDeleteHoneyTokenDTO = {
+  honeyTokenId: string;
+  projectId: string;
+};

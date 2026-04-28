@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
-import { TCreateHoneyTokenDTO, THoneyToken } from "./types";
+import { TCreateHoneyTokenDTO, TDeleteHoneyTokenDTO, THoneyToken } from "./types";
 
 export const useCreateHoneyToken = () => {
   const queryClient = useQueryClient();
@@ -11,6 +11,24 @@ export const useCreateHoneyToken = () => {
   return useMutation<THoneyToken, object, TCreateHoneyTokenDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post<THoneyToken>("/api/v1/honey-tokens", dto);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["honeyTokens"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
+    }
+  });
+};
+
+export const useDeleteHoneyToken = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ honeyTokenId: string }, object, TDeleteHoneyTokenDTO>({
+    mutationFn: async ({ honeyTokenId, projectId }) => {
+      const { data } = await apiRequest.delete<{ honeyTokenId: string }>(
+        `/api/v1/honey-tokens/${honeyTokenId}`,
+        { data: { projectId } }
+      );
       return data;
     },
     onSuccess: () => {
