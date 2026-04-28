@@ -286,11 +286,88 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countByProject = async (projectId: string, tx?: Knex): Promise<number> => {
+    const result = await (tx || db.replicaNode())(TableName.PamAccount)
+      .where("projectId", projectId)
+      .count("id as count")
+      .first();
+    return Number((result as { count?: string | number })?.count ?? 0);
+  };
+
+  const countFailedRotationsByProject = async (projectId: string, tx?: Knex): Promise<number> => {
+    const result = await (tx || db.replicaNode())(TableName.PamAccount)
+      .where("projectId", projectId)
+      .where("rotationStatus", "failed")
+      .count("id as count")
+      .first();
+    return Number((result as { count?: string | number })?.count ?? 0);
+  };
+
+  const countByProjectGroupedByResourceType = async (
+    projectId: string,
+    tx?: Knex
+  ): Promise<{ resourceType: string; count: number }[]> => {
+    const rows = (await (tx || db.replicaNode())(TableName.PamAccount)
+      .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+      .select(`${TableName.PamResource}.resourceType as resourceType`)
+      .count(`${TableName.PamAccount}.id as count`)
+      .where(`${TableName.PamAccount}.projectId`, projectId)
+      .groupBy(`${TableName.PamResource}.resourceType`)) as unknown as {
+      resourceType: string;
+      count: string | number;
+    }[];
+
+    return rows.map((row) => ({ resourceType: row.resourceType, count: Number(row.count) }));
+  };
+
+  const findRotationCandidatesByProject = async (
+    projectId: string,
+    tx?: Knex
+  ): Promise<
+    {
+      id: string;
+      name: string;
+      resourceId: string;
+      resourceName: string;
+      resourceType: string;
+      lastRotatedAt: Date | null;
+      createdAt: Date;
+    }[]
+  > => {
+    const rows = await (tx || db.replicaNode())(TableName.PamAccount)
+      .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+      .select(
+        `${TableName.PamAccount}.id as id`,
+        `${TableName.PamAccount}.name as name`,
+        `${TableName.PamAccount}.resourceId as resourceId`,
+        `${TableName.PamAccount}.lastRotatedAt as lastRotatedAt`,
+        `${TableName.PamAccount}.createdAt as createdAt`,
+        `${TableName.PamResource}.name as resourceName`,
+        `${TableName.PamResource}.resourceType as resourceType`
+      )
+      .where(`${TableName.PamAccount}.projectId`, projectId)
+      .whereNotNull(`${TableName.PamResource}.encryptedRotationAccountCredentials`);
+
+    return rows as {
+      id: string;
+      name: string;
+      resourceId: string;
+      resourceName: string;
+      resourceType: string;
+      lastRotatedAt: Date | null;
+      createdAt: Date;
+    }[];
+  };
+
   return {
     ...orm,
     findByProjectIdWithParentDetails,
     findByIdWithParentDetails,
     findMetadataByAccountIds,
-    findRotationCandidates
+    findRotationCandidates,
+    findRotationCandidatesByProject,
+    countByProject,
+    countFailedRotationsByProject,
+    countByProjectGroupedByResourceType
   };
 };
