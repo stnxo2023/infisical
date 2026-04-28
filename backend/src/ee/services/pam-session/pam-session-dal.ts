@@ -103,9 +103,10 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .where("projectId", projectId)
       .where("createdAt", ">=", startDate)
       .groupByRaw(`("createdAt" AT TIME ZONE 'UTC')::date`)
-      .orderByRaw(
-        `("createdAt" AT TIME ZONE 'UTC')::date asc`
-      )) as unknown as { date: string; count: string | number }[];
+      .orderByRaw(`("createdAt" AT TIME ZONE 'UTC')::date asc`)) as unknown as {
+      date: string;
+      count: string | number;
+    }[];
 
     return rows.map((row) => ({ date: String(row.date), count: Number(row.count) }));
   };

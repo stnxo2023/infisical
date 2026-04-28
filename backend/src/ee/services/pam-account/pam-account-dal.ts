@@ -311,14 +311,10 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     // a synthetic "domain" type instead of being silently dropped from the breakdown.
     const rows = (await (tx || db.replicaNode())(TableName.PamAccount)
       .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-      .select(
-        db.raw(`COALESCE("${TableName.PamResource}"."resourceType", 'domain') as "resourceType"`)
-      )
+      .select(db.raw(`COALESCE("${TableName.PamResource}"."resourceType", 'domain') as "resourceType"`))
       .count(`${TableName.PamAccount}.id as count`)
       .where(`${TableName.PamAccount}.projectId`, projectId)
-      .groupByRaw(
-        `COALESCE("${TableName.PamResource}"."resourceType", 'domain')`
-      )) as unknown as {
+      .groupByRaw(`COALESCE("${TableName.PamResource}"."resourceType", 'domain')`)) as unknown as {
       resourceType: string;
       count: string | number;
     }[];
