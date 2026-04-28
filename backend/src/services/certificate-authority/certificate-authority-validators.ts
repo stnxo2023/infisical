@@ -10,9 +10,6 @@ const MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS = 4;
 const MAX_DISTRIBUTION_POINT_URL_LENGTH = 2048;
 const HTTP_URL_REGEX = new RE2("^https?://", "i");
 
-const validateDistributionPointUrl = (url: string) =>
-  url.length > 0 && url.length <= MAX_DISTRIBUTION_POINT_URL_LENGTH && HTTP_URL_REGEX.test(url);
-
 const dedupeNormalizedDistributionPointUrls = (urls: string[]) => {
   const seen = new Set<string>();
   return urls.every((url) => {
@@ -31,7 +28,8 @@ export const distributionPointUrlsSchema = z
       .max(MAX_DISTRIBUTION_POINT_URL_LENGTH, {
         message: `URL exceeds the maximum length of ${MAX_DISTRIBUTION_POINT_URL_LENGTH} characters`
       })
-      .refine(validateDistributionPointUrl, { message: "URL must use http:// or https://" })
+      .url({ message: "Must be a valid URL" })
+      .refine((url) => HTTP_URL_REGEX.test(url), { message: "URL must use http:// or https://" })
   )
   .max(MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS, {
     message: `Up to ${MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS} URLs are allowed`

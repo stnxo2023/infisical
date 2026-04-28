@@ -540,7 +540,17 @@ export const expandInternalCa = (
 
 const TRAILING_SLASHES_REGEX = new RE2("/+$");
 
-export const normalizeUrlForComparison = (url: string) => url.trim().replace(TRAILING_SLASHES_REGEX, "").toLowerCase();
+// Per RFC 3986 §6.2.2.1 only scheme and host are case-insensitive; path/query/hash are case-sensitive.
+export const normalizeUrlForComparison = (url: string) => {
+  const trimmed = url.trim();
+  try {
+    const parsed = new URL(trimmed);
+    const pathname = parsed.pathname.replace(TRAILING_SLASHES_REGEX, "");
+    return `${parsed.protocol}//${parsed.host}${pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return trimmed.replace(TRAILING_SLASHES_REGEX, "").toLowerCase();
+  }
+};
 
 export const buildCrlDistributionPointUrls = (
   managedUrl: string,

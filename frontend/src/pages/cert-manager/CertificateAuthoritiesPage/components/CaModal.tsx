@@ -50,6 +50,7 @@ const distributionPointUrlEntrySchema = z.object({
     .string()
     .trim()
     .max(2048, "URL is too long")
+    .url("Must be a valid URL")
     .refine((url) => /^https?:\/\//i.test(url), { message: "URL must use http:// or https://" })
 });
 
