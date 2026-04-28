@@ -29,18 +29,12 @@ type Props = {
   honeyToken?: TDashboardHoneyToken;
 };
 
-const CREATE_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[] }[] = [
+const FORM_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[] }[] = [
   {
     name: "Configuration",
     key: "configuration",
     fields: ["environment"]
   },
-  { name: "Mapping", key: "mapping", fields: ["secretsMapping"] },
-  { name: "Details", key: "details", fields: ["name", "description"] },
-  { name: "Review", key: "review", fields: [] }
-];
-
-const EDIT_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[] }[] = [
   { name: "Mapping", key: "mapping", fields: ["secretsMapping"] },
   { name: "Details", key: "details", fields: ["name", "description"] },
   { name: "Review", key: "review", fields: [] }
@@ -61,7 +55,9 @@ export const HoneyTokenForm = ({
   const { name: tokenTypeName } = HONEY_TOKEN_MAP[type];
 
   const isUpdate = Boolean(honeyToken);
-  const formTabs = isUpdate ? EDIT_TABS : CREATE_TABS;
+  const formTabs = isUpdate
+    ? FORM_TABS.filter((tab) => tab.key !== "configuration")
+    : FORM_TABS;
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
