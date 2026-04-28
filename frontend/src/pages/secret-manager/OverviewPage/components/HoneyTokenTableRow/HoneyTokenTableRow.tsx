@@ -58,6 +58,11 @@ export const HoneyTokenTableRow = ({
     ? getHoneyTokenByName(singleEnvSlug, honeyTokenName)
     : undefined;
 
+  const isTriggered = environments.some((env) => {
+    const ht = getHoneyTokenByName(env.slug, honeyTokenName);
+    return ht?.status === HoneyTokenStatus.Triggered;
+  });
+
   const renderActionButtons = (honeyToken: TDashboardHoneyToken) => {
     return (
       <div
@@ -165,7 +170,7 @@ export const HoneyTokenTableRow = ({
           {!isSingleEnvView && isExpanded ? (
             <ChevronDownIcon />
           ) : (
-            <SirenIcon className="text-yellow" />
+            <SirenIcon className={isTriggered ? "text-red" : "text-yellow"} />
           )}
         </TableCell>
         <TableCell

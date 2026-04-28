@@ -47,7 +47,7 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete }: Props) => {
         aria-expanded={isExpanded}
         aria-label={`${isExpanded ? "Collapse" : "Expand"} honey token secrets for ${name}`}
       >
-        <div className="flex w-11 items-center py-2 pl-5 text-yellow">
+        <div className={twMerge("flex w-11 items-center py-2 pl-5", status === HoneyTokenStatus.Triggered ? "text-red" : "text-yellow")}>
           <SirenIcon className="size-4" />
         </div>
         <div className="flex grow items-center py-2 pr-2 pl-4">
