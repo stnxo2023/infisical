@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
 
   if (!hasCrlUrls) {
     await knex.schema.alterTable(TableName.InternalCertificateAuthority, (t) => {
-      t.specificType("crlDistributionPointUrls", "text[]").notNullable().defaultTo("{}");
+      t.specificType("crlDistributionPointUrls", "text[]");
     });
   }
 }
