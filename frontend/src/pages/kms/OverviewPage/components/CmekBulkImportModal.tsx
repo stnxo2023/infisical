@@ -1,9 +1,15 @@
 import { useRef, useState } from "react";
 import slugify from "@sindresorhus/slugify";
-import { AlertTriangleIcon, UploadIcon } from "lucide-react";
+import { AlertTriangleIcon, InfoIcon, UploadIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Alert,
+  AlertTitle,
   Button,
   Dialog,
   DialogClose,
@@ -295,7 +301,7 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
       return (
         <div className="space-y-4">
           <Empty
-            className={`cursor-pointer transition-colors duration-75 ${isDragging ? "bg-container-hover" : ""}`}
+            className={`cursor-pointer border transition-colors duration-75 ${isDragging ? "bg-container-hover" : ""}`}
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => {
               e.preventDefault();
@@ -321,13 +327,20 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
           </Empty>
 
           {parseError && (
-            <p className="rounded-md bg-red/10 px-3 py-2 text-sm text-red">{parseError}</p>
+            <Alert variant="warning">
+              <AlertTriangleIcon />
+              <AlertTitle>{parseError}</AlertTitle>
+            </Alert>
           )}
 
-          <div className="rounded-md border border-mineshaft-600 bg-mineshaft-900 px-4 py-3 text-xs text-mineshaft-300">
-            <p className="mb-2 font-semibold text-mineshaft-200">Expected format</p>
-            <p className="mb-1">The file must be a JSON array. Each entry is one of:</p>
-            <pre className="mt-2 overflow-x-auto rounded bg-mineshaft-800 p-2 text-xs leading-relaxed">{`// Encrypt/Decrypt key
+          <Accordion variant="ghost" type="single" collapsible>
+            <AccordionItem value="format">
+              <AccordionTrigger>
+                Expected Format <InfoIcon className="size-3.5 text-accent" />
+              </AccordionTrigger>
+              <AccordionContent className="text-xs text-foreground/75">
+                <p>The file must be a JSON array. Each entry is one of:</p>
+                <pre className="mt-1 thin-scrollbar w-full overflow-x-auto rounded-md border border-border bg-card p-3 font-mono text-[11px] leading-relaxed text-foreground/75">{`// Encrypt/Decrypt key
 {
   "name": "...",
   "keyType": "encrypt-decrypt",
@@ -343,7 +356,9 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
   "privateKey": "<base64>",
   "publicKey": "<base64>"
 }`}</pre>
-          </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           <DialogFooter>
             <DialogClose asChild>
