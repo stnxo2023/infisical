@@ -10,10 +10,27 @@ export type TPamSessionDALFactory = ReturnType<typeof pamSessionDALFactory>;
 export const pamSessionDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamSession);
 
+  // Resolve a session's target resource via COALESCE(selectedResourceId, account.resourceId).
+  // Domain-account sessions (e.g. Active Directory) carry their target on
+  // PamSession.selectedResourceId because the account has no owning resource;
+  // local-account sessions carry it transitively via PamAccount.resourceId.
+  const sessionResourceJoin = db.raw(
+    `LEFT JOIN ?? ON COALESCE(??.??, ??.??) = ??.??`,
+    [
+      TableName.PamResource,
+      TableName.PamSession,
+      "selectedResourceId",
+      TableName.PamAccount,
+      "resourceId",
+      TableName.PamResource,
+      "id"
+    ]
+  );
+
   const findById = async (id: string, tx?: Knex) => {
     const session = await (tx || db.replicaNode())(TableName.PamSession)
       .leftJoin(TableName.PamAccount, `${TableName.PamSession}.accountId`, `${TableName.PamAccount}.id`)
-      .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+      .joinRaw(sessionResourceJoin.toQuery())
       .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
@@ -54,7 +71,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
   const findByProjectId = async (projectId: string, tx?: Knex) => {
     const sessions = await (tx || db.replicaNode())(TableName.PamSession)
       .leftJoin(TableName.PamAccount, `${TableName.PamSession}.accountId`, `${TableName.PamAccount}.id`)
-      .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+      .joinRaw(sessionResourceJoin.toQuery())
       .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
