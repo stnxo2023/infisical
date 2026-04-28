@@ -13,11 +13,15 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
-import { HoneyTokenType } from "./honey-token-enums";
-import { AwsHoneyTokenConfigSchema } from "./honey-token-types";
+import { THoneyTokenDALFactory } from "./honey-token-dal";
+import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
+import { AwsHoneyTokenConfigSchema, AwsHoneyTokenEventMetadataSchema } from "./honey-token-types";
 
 type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
+  honeyTokenDAL: Pick<THoneyTokenDALFactory, "findOne" | "updateById">;
+  honeyTokenEventDAL: Pick<THoneyTokenEventDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -27,6 +31,8 @@ export type THoneyTokenConfigServiceFactory = ReturnType<typeof honeyTokenConfig
 
 export const honeyTokenConfigServiceFactory = ({
   honeyTokenConfigDAL,
+  honeyTokenDAL,
+  honeyTokenEventDAL,
   permissionService,
   kmsService,
   licenseService
@@ -206,6 +212,41 @@ export const honeyTokenConfigServiceFactory = ({
     }
 
     logger.info({ orgId, payload }, `Honey token trigger received [orgId=${orgId}]`);
+
+    const rawEvents = Array.isArray(payload) ? (payload as unknown[]) : [payload];
+
+    for (const rawEvent of rawEvents) {
+      const wrapped = rawEvent as { type?: string; event?: unknown };
+      const eventData = wrapped.event ?? rawEvent;
+
+      const parsed = AwsHoneyTokenEventMetadataSchema.safeParse(eventData);
+      if (!parsed.success) {
+        logger.warn({ orgId, event: rawEvent, error: parsed.error }, `Failed to parse honey token event [orgId=${orgId}]`);
+        continue;
+      }
+
+      const honeyToken = await honeyTokenDAL.findOne({ tokenIdentifier: parsed.data.accessKeyId });
+      if (!honeyToken) {
+        logger.warn(
+          { orgId, accessKeyId: parsed.data.accessKeyId },
+          `No honey token found for accessKeyId [orgId=${orgId}] [accessKeyId=${parsed.data.accessKeyId}]`
+        );
+        continue;
+      }
+
+      await honeyTokenEventDAL.create({
+        honeyTokenId: honeyToken.id,
+        eventType: HoneyTokenEventType.AWS,
+        metadata: parsed.data
+      });
+
+      await honeyTokenDAL.updateById(honeyToken.id, { status: HoneyTokenStatus.Triggered });
+
+      logger.info(
+        { orgId, honeyTokenId: honeyToken.id, eventName: parsed.data.eventName },
+        `Honey token triggered [orgId=${orgId}] [honeyTokenId=${honeyToken.id}]`
+      );
+    }
 
     return { acknowledged: true };
   };

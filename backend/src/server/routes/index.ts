@@ -75,6 +75,7 @@ import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group
 import { honeyTokenConfigDALFactory } from "@app/ee/services/honey-token/honey-token-config-dal";
 import { honeyTokenConfigServiceFactory } from "@app/ee/services/honey-token/honey-token-config-service";
 import { honeyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
+import { honeyTokenEventDALFactory } from "@app/ee/services/honey-token/honey-token-event-dal";
 import { honeyTokenServiceFactory } from "@app/ee/services/honey-token/honey-token-service";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
@@ -666,6 +667,7 @@ export const registerRoutes = async (
   const githubOrgSyncDAL = githubOrgSyncDALFactory(db);
   const honeyTokenConfigDAL = honeyTokenConfigDALFactory(db);
   const honeyTokenDAL = honeyTokenDALFactory(db);
+  const honeyTokenEventDAL = honeyTokenEventDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
   const microsoftTeamsIntegrationDAL = microsoftTeamsIntegrationDALFactory(db);
@@ -958,6 +960,8 @@ export const registerRoutes = async (
 
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
     honeyTokenConfigDAL,
+    honeyTokenDAL,
+    honeyTokenEventDAL,
     permissionService,
     kmsService,
     licenseService

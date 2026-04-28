@@ -20,6 +20,7 @@ export const HoneyTokensSchema = z.object({
   connectionId: z.string().uuid(),
   encryptedCredentials: zodBuffer,
   secretsMapping: z.unknown(),
+  tokenIdentifier: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -26,6 +26,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.HoneyToken, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name", 64).notNullable();
+      t.string("description", 256).nullable();
       t.string("type").notNullable();
       t.string("status").notNullable().defaultTo("active");
       t.string("projectId").notNullable();
@@ -36,6 +37,8 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("connectionId").references("id").inTable(TableName.AppConnection);
       t.binary("encryptedCredentials").notNullable();
       t.jsonb("secretsMapping").notNullable();
+      t.string("tokenIdentifier", 256).nullable();
+      t.unique(["tokenIdentifier"]);
       t.timestamps(true, true, true);
     });
 

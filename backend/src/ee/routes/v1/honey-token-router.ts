@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { HoneyTokenConfigsSchema } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { AwsHoneyTokenConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -220,6 +221,11 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
+      logger.info(
+        { orgId: req.params.orgId, payload: req.body, headers: req.headers },
+        `Honey token trigger received [orgId=${req.params.orgId}]`
+      );
+
       const { acknowledged } = await server.services.honeyToken.handleTrigger({
         orgId: req.params.orgId,
         signature: req.headers["x-infisical-signature"] as string | undefined,

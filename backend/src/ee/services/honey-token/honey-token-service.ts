@@ -208,7 +208,8 @@ export const honeyTokenServiceFactory = ({
       folderId: folder.id,
       connectionId: orgConfig.connectionId,
       encryptedCredentials,
-      secretsMapping
+      secretsMapping,
+      tokenIdentifier: AccessKey.AccessKeyId
     });
 
     const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
