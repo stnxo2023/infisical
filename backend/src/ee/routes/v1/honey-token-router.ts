@@ -66,7 +66,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
             connectionId: z.string().nullable(),
             createdAt: z.date().nullable(),
             updatedAt: z.date().nullable(),
-            decryptedConfig: z.object({ secretToken: z.string() }).nullable()
+            decryptedConfig: z.object({ webhookSigningKey: z.string() }).nullable()
           })
         })
       }
@@ -78,6 +78,34 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       });
 
       return { config };
+    }
+  });
+
+  server.route({
+    url: "/:orgId/trigger",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        orgId: z.string().trim()
+      }),
+      body: z.unknown(),
+      response: {
+        200: z.object({
+          acknowledged: z.boolean()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { acknowledged } = await server.services.honeyToken.handleTrigger({
+        orgId: req.params.orgId,
+        signature: req.headers["x-infisical-signature"] as string | undefined,
+        payload: req.body
+      });
+
+      return { acknowledged };
     }
   });
 };

@@ -31,7 +31,7 @@ const CF_TEMPLATE_URL =
 
 const schema = z.object({
   connectionId: z.string().min(1, "AWS Connection is required"),
-  secretToken: z.string().min(1, "Secret Token is required")
+  webhookSigningKey: z.string().min(1, "Webhook Signing Key is required")
 });
 
 type FormData = z.infer<typeof schema>;
@@ -62,7 +62,7 @@ export const HoneyTokenSection = () => {
     resolver: zodResolver(schema),
     defaultValues: {
       connectionId: "",
-      secretToken: ""
+      webhookSigningKey: ""
     }
   });
 
@@ -71,11 +71,11 @@ export const HoneyTokenSection = () => {
 
     reset({
       connectionId: existingConfig.connectionId ?? "",
-      secretToken: existingConfig.decryptedConfig.secretToken
+      webhookSigningKey: existingConfig.decryptedConfig.webhookSigningKey
     });
   }, [existingConfig, reset]);
 
-  const secretToken = watch("secretToken");
+  const webhookSigningKey = watch("webhookSigningKey");
 
   const cfCommand = useMemo(
     () =>
@@ -87,9 +87,9 @@ export const HoneyTokenSection = () => {
         "  --capabilities CAPABILITY_NAMED_IAM \\",
         "  --parameters \\",
         `    ParameterKey=WebhookUrl,ParameterValue=${webhookUrl} \\`,
-        `    ParameterKey=WebhookSigningKey,ParameterValue=${secretToken}`
+        `    ParameterKey=WebhookSigningKey,ParameterValue=${webhookSigningKey}`
       ].join("\n"),
-    [secretToken, webhookUrl]
+    [webhookSigningKey, webhookUrl]
   );
 
   const onSubmit = async (data: FormData) => {
@@ -98,7 +98,7 @@ export const HoneyTokenSection = () => {
         type: HoneyTokenType.AWS,
         connectionId: data.connectionId,
         config: {
-          secretToken: data.secretToken
+          webhookSigningKey: data.webhookSigningKey
         }
       });
       createNotification({
@@ -161,14 +161,14 @@ export const HoneyTokenSection = () => {
           </div>
           <div className="flex-1">
             <Field>
-              <FieldLabel>Secret Token</FieldLabel>
+              <FieldLabel>Webhook Signing Key</FieldLabel>
               <FieldContent>
                 <div className="flex items-center gap-2">
                   <div className="flex h-9 flex-1 items-center overflow-hidden rounded-md border border-mineshaft-500 bg-mineshaft-900 px-3 font-mono text-sm text-bunker-200">
-                    {isTokenVisible ? secretToken : "•".repeat(30)}
+                    {isTokenVisible ? webhookSigningKey : "•".repeat(30)}
                   </div>
                   <IconButton
-                    aria-label="toggle secret token visibility"
+                    aria-label="toggle signing key visibility"
                     variant="outline"
                     size="md"
                     onClick={() => setIsTokenVisible.toggle()}
@@ -176,11 +176,11 @@ export const HoneyTokenSection = () => {
                     <FontAwesomeIcon icon={isTokenVisible ? faEyeSlash : faEye} />
                   </IconButton>
                   <IconButton
-                    aria-label="copy secret token"
+                    aria-label="copy signing key"
                     variant="outline"
                     size="md"
                     onClick={() => {
-                      navigator.clipboard.writeText(secretToken);
+                      navigator.clipboard.writeText(webhookSigningKey);
                       setTokenCopied(true);
                     }}
                   >

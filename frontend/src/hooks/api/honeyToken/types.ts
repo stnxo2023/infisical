@@ -10,7 +10,7 @@ export type THoneyTokenConfig = {
   createdAt: string | null;
   updatedAt: string | null;
   decryptedConfig: {
-    secretToken: string;
+    webhookSigningKey: string;
   } | null;
 };
 
@@ -18,6 +18,6 @@ export type TUpsertHoneyTokenConfigDTO = {
   type: HoneyTokenType;
   connectionId: string;
   config: {
-    secretToken: string;
+    webhookSigningKey: string;
   };
 };
