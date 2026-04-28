@@ -654,6 +654,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
           if (!isOpen) setAccessReason(undefined);
         }}
         account={popUp.accessAccount.data?.account}
+        resource={popUp.accessAccount.data?.resource}
         projectId={projectId!}
         reason={accessReason}
       />
