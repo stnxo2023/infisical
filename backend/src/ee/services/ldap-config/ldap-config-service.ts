@@ -477,6 +477,7 @@ export const ldapConfigServiceFactory = ({
         }
       });
     } else {
+      let isNewUser = false;
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -494,6 +495,7 @@ export const ldapConfigServiceFactory = ({
             },
             tx
           );
+          isNewUser = true;
         }
 
         const newUserAlias = await userAliasDAL.create(
@@ -546,16 +548,18 @@ export const ldapConfigServiceFactory = ({
         return newUserAlias;
       });
 
-      void telemetryService.sendPostHogEvents({
-        event: PostHogEventTypes.UserSignedUp,
-        distinctId: sanitizedEmail,
-        organizationId: orgId,
-        properties: {
-          username: sanitizedEmail,
-          email: sanitizedEmail,
-          signupMethod: "ldap"
-        }
-      });
+      if (isNewUser) {
+        void telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: sanitizedEmail,
+          organizationId: orgId,
+          properties: {
+            username: sanitizedEmail,
+            email: sanitizedEmail,
+            signupMethod: "ldap"
+          }
+        });
+      }
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 

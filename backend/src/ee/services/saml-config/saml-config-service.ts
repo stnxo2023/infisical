@@ -623,6 +623,7 @@ export const samlConfigServiceFactory = ({
         return foundUser;
       });
     } else {
+      let isNewUser = false;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -641,6 +642,7 @@ export const samlConfigServiceFactory = ({
             },
             tx
           );
+          isNewUser = true;
         }
 
         userAlias = await userAliasDAL.create(
@@ -719,16 +721,18 @@ export const samlConfigServiceFactory = ({
         return newUser;
       });
 
-      void telemetryService.sendPostHogEvents({
-        event: PostHogEventTypes.UserSignedUp,
-        distinctId: user.username ?? "",
-        organizationId: orgId,
-        properties: {
-          username: user.username,
-          email: user.email ?? "",
-          signupMethod: "saml"
-        }
-      });
+      if (isNewUser) {
+        void telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: user.username ?? "",
+          organizationId: orgId,
+          properties: {
+            username: user.username,
+            email: user.email ?? "",
+            signupMethod: "saml"
+          }
+        });
+      }
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 

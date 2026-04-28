@@ -260,6 +260,7 @@ export const oidcConfigServiceFactory = ({
         return foundUser;
       });
     } else {
+      let isNewUser = false;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -282,6 +283,7 @@ export const oidcConfigServiceFactory = ({
             },
             tx
           );
+          isNewUser = true;
         }
 
         userAlias = await userAliasDAL.create(
@@ -333,16 +335,18 @@ export const oidcConfigServiceFactory = ({
         return newUser;
       });
 
-      void telemetryService.sendPostHogEvents({
-        event: PostHogEventTypes.UserSignedUp,
-        distinctId: user.username ?? "",
-        organizationId: orgId,
-        properties: {
-          username: user.username,
-          email: user.email ?? "",
-          signupMethod: "oidc"
-        }
-      });
+      if (isNewUser) {
+        void telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: user.username ?? "",
+          organizationId: orgId,
+          properties: {
+            username: user.username,
+            email: user.email ?? "",
+            signupMethod: "oidc"
+          }
+        });
+      }
     }
 
     if (manageGroupMemberships) {

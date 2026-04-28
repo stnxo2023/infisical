@@ -432,9 +432,14 @@ export const scimServiceFactory = ({
 
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
 
-    const { user: createdUser, orgMembership: createdOrgMembership } = await userDAL.transaction(async (tx) => {
+    const {
+      user: createdUser,
+      orgMembership: createdOrgMembership,
+      isNewUser
+    } = await userDAL.transaction(async (tx) => {
       let user: TUsers | undefined;
       let orgMembership: TMemberships;
+      let newUserCreated = false;
       if (userAlias) {
         user = await userDAL.findById(userAlias.userId, tx);
         const effectiveMembership = await membershipUserDAL.findOne(
@@ -486,6 +491,7 @@ export const scimServiceFactory = ({
             },
             tx
           );
+          newUserCreated = true;
         }
 
         await userAliasDAL.create(
@@ -550,19 +556,21 @@ export const scimServiceFactory = ({
         tx
       );
       await licenseService.updateSubscriptionOrgMemberCount(org.id);
-      return { user, orgMembership };
+      return { user, orgMembership, isNewUser: newUserCreated };
     });
 
-    void telemetryService.sendPostHogEvents({
-      event: PostHogEventTypes.UserSignedUp,
-      distinctId: createdUser.username ?? "",
-      organizationId: orgId,
-      properties: {
-        username: createdUser.username,
-        email: createdUser.email ?? "",
-        signupMethod: "scim"
-      }
-    });
+    if (isNewUser) {
+      void telemetryService.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: createdUser.username ?? "",
+        organizationId: orgId,
+        properties: {
+          username: createdUser.username,
+          email: createdUser.email ?? "",
+          signupMethod: "scim"
+        }
+      });
+    }
 
     if (email) {
       await smtpService.sendMail({
