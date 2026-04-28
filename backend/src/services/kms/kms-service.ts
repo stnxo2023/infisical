@@ -406,6 +406,15 @@ export const kmsServiceFactory = ({
   ) => {
     verifyKeyTypeAndAlgorithm(keyUsage, algorithm);
 
+    if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
+      const expectedLength = getByteLengthForSymmetricEncryptionAlgorithm(algorithm as SymmetricKeyAlgorithm);
+      if (key.length !== expectedLength) {
+        throw new BadRequestError({
+          message: `Invalid key material length for ${algorithm}. Expected ${expectedLength} bytes, got ${key.length}.`
+        });
+      }
+    }
+
     if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
       const { getPublicKeyFromPrivateKey } = signingService(algorithm as AsymmetricKeyAlgorithm);
       try {

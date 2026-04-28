@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import slugify from "@sindresorhus/slugify";
 import { AlertTriangleIcon, UploadIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -48,6 +49,30 @@ type ValidationError = {
   message: string;
 };
 
+const KEY_NAME_MAX_LENGTH = 32;
+
+const SYMMETRIC_KEY_BYTE_LENGTHS: Record<SymmetricKeyAlgorithm, number> = {
+  [SymmetricKeyAlgorithm.AES_GCM_128]: 16,
+  [SymmetricKeyAlgorithm.AES_GCM_256]: 32
+};
+
+const BASE64_REGEX =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
+
+const isBase64 = (value: string) =>
+  value.length > 0 && value.length % 4 === 0 && BASE64_REGEX.test(value);
+
+const getBase64PaddingLength = (value: string) => {
+  if (value.endsWith("==")) return 2;
+  if (value.endsWith("=")) return 1;
+  return 0;
+};
+
+const getBase64ByteLength = (value: string) => {
+  if (!isBase64(value)) return null;
+  return (value.length * 3) / 4 - getBase64PaddingLength(value);
+};
+
 const validateEntry = (entry: unknown, index: number): ValidationError | null => {
   if (typeof entry !== "object" || entry === null) {
     return { index, message: "must be an object" };
@@ -56,6 +81,18 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
 
   if (!e.name || typeof e.name !== "string") {
     return { index, message: '"name" is required' };
+  }
+  if (e.name.length > KEY_NAME_MAX_LENGTH) {
+    return {
+      index,
+      message: `"name" must be at most ${KEY_NAME_MAX_LENGTH} characters`
+    };
+  }
+  if (slugify(e.name, { lowercase: true }) !== e.name) {
+    return {
+      index,
+      message: '"name" can only contain lowercase letters, numbers, and hyphens'
+    };
   }
   if (e.keyType !== "encrypt-decrypt" && e.keyType !== "sign-verify") {
     return {
@@ -80,6 +117,17 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
         message: '"keyMaterial" is required for encrypt-decrypt keys'
       };
     }
+    if (!isBase64(e.keyMaterial)) {
+      return { index, message: '"keyMaterial" must be base64 encoded' };
+    }
+    const expectedLength = SYMMETRIC_KEY_BYTE_LENGTHS[e.algorithm as SymmetricKeyAlgorithm];
+    const actualLength = getBase64ByteLength(e.keyMaterial);
+    if (actualLength !== expectedLength) {
+      return {
+        index,
+        message: `"keyMaterial" must decode to ${expectedLength} bytes for ${e.algorithm} (got ${actualLength ?? "invalid"})`
+      };
+    }
   }
   if (e.keyType === "sign-verify") {
     const validAsymmetric = Object.values(AsymmetricKeyAlgorithm) as string[];
@@ -94,6 +142,9 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
         index,
         message: '"privateKey" is required for sign-verify keys'
       };
+    }
+    if (!isBase64(e.privateKey)) {
+      return { index, message: '"privateKey" must be base64 encoded' };
     }
   }
   return null;

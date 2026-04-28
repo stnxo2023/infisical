@@ -73,6 +73,12 @@ export type TCmekBulkImportKeysDTO = {
   keys: TCmekBulkImportKeyEntry[];
 };
 
+export type TCmekBulkImportKeysResult = {
+  keys: { id: string; name: string }[];
+  errors: { name: string; message: string }[];
+  projectId: string;
+};
+
 export type TCmekSignDTO = {
   keyId: string;
   data: string;

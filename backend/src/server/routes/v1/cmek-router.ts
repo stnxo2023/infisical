@@ -557,6 +557,13 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
                     message: `encryptionAlgorithm must be an asymmetric algorithm for sign-verify keys`
                   });
                 }
+                if (!isBase64(data.keyMaterial)) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["keyMaterial"],
+                    message: "keyMaterial must be base64 encoded"
+                  });
+                }
               })
           )
           .min(1)

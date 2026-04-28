@@ -10,6 +10,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import {
   TCmekBulkGetPrivateKeysDTO,
   TCmekBulkImportKeysDTO,
+  TCmekBulkImportKeysResult,
   TCmekDecryptDTO,
   TCmekEncryptDTO,
   TCmekGetPrivateKeyDTO,
@@ -494,7 +495,10 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     };
   };
 
-  const bulkImportKeys = async ({ projectId, keys }: TCmekBulkImportKeysDTO, actor: OrgServiceActor) => {
+  const bulkImportKeys = async (
+    { projectId, keys }: TCmekBulkImportKeysDTO,
+    actor: OrgServiceActor
+  ): Promise<TCmekBulkImportKeysResult> => {
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,

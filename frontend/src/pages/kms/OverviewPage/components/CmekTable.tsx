@@ -319,7 +319,7 @@ export const CmekTable = () => {
               >
                 {(isAllowed) => (
                   <Tooltip open={!isAllowed ? undefined : false}>
-                    <TooltipTrigger>
+                    <TooltipTrigger asChild>
                       <Button
                         className="rounded-r-none"
                         variant="project"
@@ -347,7 +347,7 @@ export const CmekTable = () => {
                   >
                     {(isAllowed) => (
                       <Tooltip open={!isAllowed ? undefined : false}>
-                        <TooltipTrigger className="block w-full">
+                        <TooltipTrigger asChild className="block w-full">
                           <DropdownMenuItem
                             onClick={() => handlePopUpOpen("importKeys")}
                             isDisabled={!isAllowed}
