@@ -156,6 +156,7 @@ export type TUserSignedUpEvent = {
     username: string;
     email: string;
     attributionSource?: string;
+    signupMethod?: string;
   };
 };
 

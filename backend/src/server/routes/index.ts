@@ -916,6 +916,19 @@ export const registerRoutes = async (
     secretTagDAL,
     resourceMetadataDAL
   });
+
+  const telemetryService = telemetryServiceFactory({
+    keyStore,
+    licenseService,
+    orgDAL
+  });
+  const telemetryQueue = telemetryQueueServiceFactory({
+    keyStore,
+    telemetryDAL,
+    queueService,
+    telemetryService
+  });
+
   const scimService = scimServiceFactory({
     licenseService,
     scimDAL,
@@ -935,7 +948,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     additionalPrivilegeDAL,
-    emailDomainDAL
+    emailDomainDAL,
+    telemetryService
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -951,18 +965,6 @@ export const registerRoutes = async (
   });
 
   // ldapService is created after loginService (below) due to dependency on processProviderCallback
-
-  const telemetryService = telemetryServiceFactory({
-    keyStore,
-    licenseService,
-    orgDAL
-  });
-  const telemetryQueue = telemetryQueueServiceFactory({
-    keyStore,
-    telemetryDAL,
-    queueService,
-    telemetryService
-  });
 
   const invalidateCacheQueue = invalidateCacheQueueFactory({
     keyStore,
@@ -1028,7 +1030,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipGroupDAL,
     loginService,
-    emailDomainDAL
+    emailDomainDAL,
+    telemetryService
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1050,7 +1053,8 @@ export const registerRoutes = async (
     membershipGroupDAL,
     membershipRoleDAL,
     loginService,
-    emailDomainDAL
+    emailDomainDAL,
+    telemetryService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -2229,7 +2233,8 @@ export const registerRoutes = async (
     membershipGroupDAL,
     membershipRoleDAL,
     loginService,
-    emailDomainDAL
+    emailDomainDAL,
+    telemetryService
   });
 
   const userEngagementService = userEngagementServiceFactory({

@@ -36,6 +36,8 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -90,6 +92,7 @@ type TSamlConfigServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -111,7 +114,8 @@ export const samlConfigServiceFactory = ({
   membershipRoleDAL,
   membershipGroupDAL,
   loginService,
-  emailDomainDAL
+  emailDomainDAL,
+  telemetryService
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -713,6 +717,17 @@ export const samlConfigServiceFactory = ({
         }
 
         return newUser;
+      });
+
+      void telemetryService.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: user.username ?? "",
+        organizationId: orgId,
+        properties: {
+          username: user.username,
+          email: user.email ?? "",
+          signupMethod: "saml"
+        }
       });
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
