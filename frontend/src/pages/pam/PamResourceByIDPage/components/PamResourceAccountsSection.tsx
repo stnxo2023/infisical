@@ -274,6 +274,14 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
 
     if (account.resource?.resourceType === PamResourceType.AwsIam) {
       handlePopUpOpen("awsIamReason", { account });
+    } else if (account.domainId) {
+      // Domain account being accessed from a resource page — the resource is
+      // implicitly the one we're viewing. Pass it through so the access modal
+      // can build the CLI command without going through PamSelectResourceModal.
+      handlePopUpOpen("accessAccount", {
+        account,
+        resource: { id: resource.id, name: resource.name, resourceType: resource.resourceType, projectId: resource.projectId }
+      });
     } else {
       handlePopUpOpen("accessAccount", { account });
     }
@@ -528,25 +536,22 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {/* AD-joined accounts (account.domainId) still disabled; AD/RDP is a later phase. */}
-                      {!account.domainId && (
-                        <ProjectPermissionCan
-                          I={ProjectPermissionPamAccountActions.Access}
-                          a={ProjectPermissionSub.PamAccounts}
+                      <ProjectPermissionCan
+                        I={ProjectPermissionPamAccountActions.Access}
+                        a={ProjectPermissionSub.PamAccounts}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            accessAccount(account);
+                          }}
                         >
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              accessAccount(account);
-                            }}
-                          >
-                            <LogInIcon />
-                            Connect
-                          </Button>
-                        </ProjectPermissionCan>
-                      )}
+                          <LogInIcon />
+                          Connect
+                        </Button>
+                      </ProjectPermissionCan>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs">
