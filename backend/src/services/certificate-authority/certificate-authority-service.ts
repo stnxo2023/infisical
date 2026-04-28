@@ -590,11 +590,14 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
+      const internalConfig = configuration as { crlDistributionPointUrls?: string[] } | undefined;
+
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
         isInternal: true,
         caId: certificateAuthority.id,
         status,
-        name
+        name,
+        crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls
       });
 
       if (!updatedCa.internalCa) {

@@ -1,5 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
@@ -535,4 +536,24 @@ export const expandInternalCa = (
     ...ca,
     requireTemplateForIssuance: !ca.enableDirectIssuance
   } as const;
+};
+
+const TRAILING_SLASHES_REGEX = new RE2("/+$");
+
+export const normalizeUrlForComparison = (url: string) => url.trim().replace(TRAILING_SLASHES_REGEX, "").toLowerCase();
+
+export const buildCrlDistributionPointUrls = (
+  managedUrl: string,
+  customUrls: string[] | null | undefined
+): string[] => {
+  const seen = new Set<string>();
+  return [managedUrl, ...(customUrls ?? [])].reduce<string[]>((acc, rawUrl) => {
+    if (!rawUrl) return acc;
+    const trimmed = rawUrl.trim();
+    const normalized = normalizeUrlForComparison(trimmed);
+    if (seen.has(normalized)) return acc;
+    seen.add(normalized);
+    acc.push(trimmed);
+    return acc;
+  }, []);
 };

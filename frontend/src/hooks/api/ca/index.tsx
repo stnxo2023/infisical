@@ -40,4 +40,9 @@ export {
   useListCasByTypeAndProjectId,
   useListExternalCasByProjectId
 } from "./queries";
-export type { TOrderCertificateDTO, TOrderCertificateResponse } from "./types";
+export type {
+  TInternalCertificateAuthority,
+  TOrderCertificateDTO,
+  TOrderCertificateResponse
+} from "./types";
+export { MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS } from "./types";
