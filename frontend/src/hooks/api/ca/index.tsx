@@ -45,4 +45,7 @@ export type {
   TOrderCertificateDTO,
   TOrderCertificateResponse
 } from "./types";
-export { MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS } from "./types";
+export {
+  MAX_DISTRIBUTION_POINT_URL_LENGTH,
+  MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS
+} from "./types";

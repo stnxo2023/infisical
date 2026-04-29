@@ -34,6 +34,7 @@ import {
 import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
 import {
   CaType,
+  MAX_DISTRIBUTION_POINT_URL_LENGTH,
   MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS,
   useGetCa,
   useUpdateCa
@@ -49,7 +50,7 @@ const distributionPointUrlEntrySchema = z.object({
   value: z
     .string()
     .trim()
-    .max(2048, "URL is too long")
+    .max(MAX_DISTRIBUTION_POINT_URL_LENGTH, "URL is too long")
     .url("Must be a valid URL")
     .refine((url) => /^https?:\/\//i.test(url), { message: "URL must use http:// or https://" })
 });
