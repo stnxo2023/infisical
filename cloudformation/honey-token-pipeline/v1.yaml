@@ -1,7 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   Infisical Honey Token detection. Deploys a CloudTrail trail with CloudWatch
-  Logs subscription that triggers a Lambda to alert on honey token usage.
+  Logs subscription that forwards honey token events through an SQS queue
+  for reliable webhook delivery with automatic retries.
 
 Parameters:
   NamePrefix:
@@ -20,9 +21,9 @@ Parameters:
 
 Resources:
   # =============================================
-  # Lambda IAM role
+  # IAM roles
   # =============================================
-  LambdaRole:
+  ForwarderLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -34,62 +35,82 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: sqs-send
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt AlertQueue.Arn
+
+  AlertLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
 
   # =============================================
-  # Lambda function
+  # SQS queues
   # =============================================
-  HoneyTokenAlertFunction:
+  AlertDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${NamePrefix}-alert-dlq'
+      MessageRetentionPeriod: 1209600
+
+  AlertQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${NamePrefix}-alert-queue'
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 14400
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt AlertDeadLetterQueue.Arn
+        maxReceiveCount: 36
+
+  # =============================================
+  # Forwarder Lambda (CloudWatch Logs -> SQS)
+  # =============================================
+  ForwarderFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${NamePrefix}-alert'
-      Role: !GetAtt LambdaRole.Arn
+      FunctionName: !Sub '${NamePrefix}-forwarder'
+      Role: !GetAtt ForwarderLambdaRole.Arn
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 30
       Environment:
         Variables:
-          WEBHOOK_URL: !Ref WebhookUrl
-          WEBHOOK_SIGNING_KEY: !Ref WebhookSigningKey
+          QUEUE_URL: !Ref AlertQueue
       Code:
         ZipFile: |
           const { gunzipSync } = require("node:zlib");
-          const { createHmac } = require("node:crypto");
+          const { SQSClient, SendMessageCommand } = require("@aws-sdk/client-sqs");
 
-          const WEBHOOK_URL = process.env.WEBHOOK_URL;
-          const WEBHOOK_SIGNING_KEY = process.env.WEBHOOK_SIGNING_KEY;
+          const sqs = new SQSClient();
+          const QUEUE_URL = process.env.QUEUE_URL;
 
           exports.handler = async function (event) {
             const payload = Buffer.from(event.awslogs.data, "base64");
             const { logEvents } = JSON.parse(gunzipSync(payload).toString());
-            const alerts = logEvents.map(function (e) { return buildAlert(JSON.parse(e.message)); });
 
-            for (const alert of alerts) {
-              const authorized = !alert.errorCode;
-              const label = authorized ? "AUTHORIZED" : "UNAUTHORIZED";
-              console.log(JSON.stringify({ level: "ALERT", message: "Honey token used (" + label + ")", ...alert }));
-
-              const body = JSON.stringify({ type: "aws", event: alert });
-              const resp = await fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: signedHeaders(body),
-                body,
-              });
-              console.log("Webhook response: " + resp.status);
+            for (const e of logEvents) {
+              const alert = buildAlert(JSON.parse(e.message));
+              await sqs.send(new SendMessageCommand({
+                QueueUrl: QUEUE_URL,
+                MessageBody: JSON.stringify(alert),
+              }));
             }
-
-            return alerts;
           };
-
-          function signedHeaders(body) {
-            var timestamp = Math.floor(Date.now() / 1000);
-            var signature = createHmac("sha256", WEBHOOK_SIGNING_KEY)
-              .update(timestamp + "." + body)
-              .digest("hex");
-            return {
-              "Content-Type": "application/json",
-              "X-Infisical-Signature": "t=" + timestamp + ",v1=" + signature,
-            };
-          }
 
           function buildAlert(detail) {
             var userIdentity = detail.userIdentity || {};
@@ -110,7 +131,76 @@ Resources:
             };
           }
 
-  LambdaLogGroup:
+  ForwarderLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${NamePrefix}-forwarder'
+      RetentionInDays: 30
+
+  # =============================================
+  # Alert Lambda (SQS -> Webhook)
+  # =============================================
+  AlertFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${NamePrefix}-alert'
+      Role: !GetAtt AlertLambdaRole.Arn
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          WEBHOOK_URL: !Ref WebhookUrl
+          WEBHOOK_SIGNING_KEY: !Ref WebhookSigningKey
+      Code:
+        ZipFile: |
+          const { createHmac } = require("node:crypto");
+
+          const WEBHOOK_URL = process.env.WEBHOOK_URL;
+          const WEBHOOK_SIGNING_KEY = process.env.WEBHOOK_SIGNING_KEY;
+
+          exports.handler = async function (event) {
+            for (const record of event.Records) {
+              const alert = JSON.parse(record.body);
+              const authorized = !alert.errorCode;
+              const label = authorized ? "AUTHORIZED" : "UNAUTHORIZED";
+              console.log(JSON.stringify({ level: "ALERT", message: "Honey token used (" + label + ")", ...alert }));
+
+              const body = JSON.stringify({ type: "aws", event: alert });
+              const resp = await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: signedHeaders(body),
+                body,
+              });
+
+              if (!resp.ok) {
+                throw new Error("Webhook request failed with status " + resp.status);
+              }
+
+              console.log("Webhook response: " + resp.status);
+            }
+          };
+
+          function signedHeaders(body) {
+            var timestamp = Math.floor(Date.now() / 1000);
+            var signature = createHmac("sha256", WEBHOOK_SIGNING_KEY)
+              .update(timestamp + "." + body)
+              .digest("hex");
+            return {
+              "Content-Type": "application/json",
+              "X-Infisical-Signature": "t=" + timestamp + ",v1=" + signature,
+            };
+          }
+
+  AlertFunctionEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt AlertQueue.Arn
+      FunctionName: !GetAtt AlertFunction.Arn
+      BatchSize: 1
+      Enabled: true
+
+  AlertLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${NamePrefix}-alert'
@@ -209,12 +299,12 @@ Resources:
                 - Management
 
   # =============================================
-  # CloudWatch Logs subscription -> Lambda
+  # CloudWatch Logs subscription -> Forwarder Lambda
   # =============================================
   CloudWatchLogsLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref HoneyTokenAlertFunction
+      FunctionName: !Ref ForwarderFunction
       Action: lambda:InvokeFunction
       Principal: logs.amazonaws.com
       SourceArn: !GetAtt CloudTrailLogGroup.Arn
@@ -228,16 +318,24 @@ Resources:
       FilterName: !Sub '${NamePrefix}-filter'
       LogGroupName: !Ref CloudTrailLogGroup
       FilterPattern: '{ $.userIdentity.userName = "inf_ht_*" }'
-      DestinationArn: !GetAtt HoneyTokenAlertFunction.Arn
+      DestinationArn: !GetAtt ForwarderFunction.Arn
 
 Outputs:
-  LambdaFunctionArn:
-    Description: ARN of the honey token alert Lambda function
-    Value: !GetAtt HoneyTokenAlertFunction.Arn
+  ForwarderFunctionArn:
+    Description: ARN of the forwarder Lambda (CloudWatch Logs to SQS)
+    Value: !GetAtt ForwarderFunction.Arn
 
-  LambdaLogGroupName:
-    Description: CloudWatch log group for the Lambda function
-    Value: !Ref LambdaLogGroup
+  AlertFunctionArn:
+    Description: ARN of the alert Lambda (SQS to webhook)
+    Value: !GetAtt AlertFunction.Arn
+
+  AlertQueueUrl:
+    Description: URL of the SQS queue buffering honey token alerts
+    Value: !Ref AlertQueue
+
+  AlertDeadLetterQueueUrl:
+    Description: URL of the dead-letter queue for failed alerts
+    Value: !Ref AlertDeadLetterQueue
 
   CloudTrailArn:
     Description: ARN of the CloudTrail trail
