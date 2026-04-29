@@ -3,7 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { decryptOneChunk, detectChunkGaps, importSessionKeyFromBase64 } from "./decrypt";
+import {
+  decryptOneChunk,
+  detectChunkGaps,
+  importSessionKeyFromBase64,
+  PAM_PLAYBACK_MAX_CHUNKS,
+  PAM_PLAYBACK_MAX_TOTAL_EVENTS
+} from "./decrypt";
 import { TBrokenChunkMarker, TPamPlaybackBundle } from "./types";
 
 export const pamPlaybackKeys = {
@@ -110,6 +116,18 @@ export const useDecryptedSessionLogs = (
 
       const projectId = bundle.projectId ?? "";
       const sortedChunks = [...bundle.chunks].sort((a, b) => a.chunkIndex - b.chunkIndex);
+
+      if (sortedChunks.length > PAM_PLAYBACK_MAX_CHUNKS) {
+        if (!cancelled) {
+          setState((s) => ({
+            ...s,
+            loading: false,
+            error: `Session has ${sortedChunks.length} chunks, exceeds playback limit of ${PAM_PLAYBACK_MAX_CHUNKS}`
+          }));
+        }
+        return;
+      }
+
       const missingChunks = detectChunkGaps(sortedChunks);
       const missingSet = new Set(missingChunks);
 
@@ -143,6 +161,14 @@ export const useDecryptedSessionLogs = (
           chunkIdx += 1;
           if (r.ok) {
             events.push(...r.events);
+            if (events.length > PAM_PLAYBACK_MAX_TOTAL_EVENTS) {
+              brokenChunks.push({
+                chunkIndex: r.chunkIndex,
+                reason: "limit",
+                message: `Total event count exceeds playback limit of ${PAM_PLAYBACK_MAX_TOTAL_EVENTS}; remaining chunks skipped`
+              });
+              break;
+            }
           } else {
             const marker: TBrokenChunkMarker = {
               __brokenChunk: true,

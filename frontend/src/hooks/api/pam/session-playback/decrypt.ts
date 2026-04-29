@@ -15,6 +15,11 @@ import { TPamPlaybackChunk, TPamRecordingStorageBackend } from "./types";
 
 const PAM_RECORDING_AAD_VERSION = "v1";
 
+export const PAM_PLAYBACK_MAX_CHUNK_BYTES = 256 * 1024 * 1024;
+export const PAM_PLAYBACK_MAX_EVENTS_PER_CHUNK = 50_000;
+export const PAM_PLAYBACK_MAX_CHUNKS = 10_000;
+export const PAM_PLAYBACK_MAX_TOTAL_EVENTS = 500_000;
+
 const base64ToBytes = (b64: string): Uint8Array => {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
@@ -98,6 +103,15 @@ export const decryptOneChunk = async ({
   sessionId,
   fallbackUrlBuilder
 }: DecryptChunkInput): Promise<DecryptedChunkResult> => {
+  if (chunk.ciphertextBytes > PAM_PLAYBACK_MAX_CHUNK_BYTES) {
+    return {
+      ok: false,
+      chunkIndex: chunk.chunkIndex,
+      reason: "size",
+      message: `declared ciphertextBytes ${chunk.ciphertextBytes} exceeds limit ${PAM_PLAYBACK_MAX_CHUNK_BYTES}`
+    };
+  }
+
   let body: Uint8Array;
   try {
     body = await fetchCiphertext(chunk, fallbackUrlBuilder);
@@ -187,6 +201,14 @@ export const decryptOneChunk = async ({
         chunkIndex: chunk.chunkIndex,
         reason: "json",
         message: "plaintext is not a JSON array"
+      };
+    }
+    if (parsed.length > PAM_PLAYBACK_MAX_EVENTS_PER_CHUNK) {
+      return {
+        ok: false,
+        chunkIndex: chunk.chunkIndex,
+        reason: "json",
+        message: `chunk contains ${parsed.length} events, exceeds limit ${PAM_PLAYBACK_MAX_EVENTS_PER_CHUNK}`
       };
     }
     events = parsed;
