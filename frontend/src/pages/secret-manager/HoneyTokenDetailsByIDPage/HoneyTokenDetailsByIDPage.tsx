@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   AlertTriangle,
   CalendarIcon,
+  ChevronLeftIcon,
   ClockIcon,
   KeyIcon,
   MapPinIcon,
@@ -19,21 +18,40 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CredentialDisplay } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/shared/CredentialDisplay";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  Badge,
   Button,
-  ContentLoader,
-  DeleteActionModal,
-  EmptyState,
-  Spinner,
-  Tag,
-  Tooltip
-} from "@app/components/v2";
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  Field,
+  FieldContent,
+  FieldLabel,
+  Input,
+  PageLoader,
+  Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_CREDENTIAL_FIELDS, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { useDeleteHoneyToken, useResetHoneyToken } from "@app/hooks/api/honeyTokens/mutations";
-import { useGetHoneyTokenById, useGetHoneyTokenCredentials } from "@app/hooks/api/honeyTokens/queries";
+import {
+  useGetHoneyTokenById,
+  useGetHoneyTokenCredentials
+} from "@app/hooks/api/honeyTokens/queries";
 
 import { HoneyTokenEventsSection } from "./components";
 
@@ -52,16 +70,21 @@ const PageContent = () => {
   const { mutateAsync: resetHoneyToken } = useResetHoneyToken();
   const { mutateAsync: deleteHoneyToken } = useDeleteHoneyToken();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteInput, setDeleteInput] = useState("");
   const { data: credentials, isPending: isCredentialsPending } = useGetHoneyTokenCredentials({
     honeyTokenId,
     projectId,
     enabled: Boolean(honeyTokenId && projectId)
   });
 
+  useEffect(() => {
+    setDeleteInput("");
+  }, [isDeleteOpen]);
+
   if (isPending) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <ContentLoader />
+        <PageLoader />
       </div>
     );
   }
@@ -69,10 +92,11 @@ const PageContent = () => {
   if (!honeyToken) {
     return (
       <div className="flex h-full w-full items-center justify-center px-20">
-        <EmptyState
-          className="max-w-2xl rounded-md text-center"
-          title={`Could not find honey token with ID ${honeyTokenId}`}
-        />
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Could not find honey token with ID {honeyTokenId}</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       </div>
     );
   }
@@ -114,9 +138,7 @@ const PageContent = () => {
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Button
-            variant="link"
-            type="submit"
-            leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
+            variant="ghost"
             onClick={() => {
               navigate({
                 to: ROUTE_PATHS.SecretManager.OverviewPage.path,
@@ -124,10 +146,11 @@ const PageContent = () => {
               });
             }}
           >
+            <ChevronLeftIcon size={14} />
             Overview
           </Button>
 
-          <div className="mb-4 mt-2 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-5">
+          <div className="mt-2 mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-5">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-mineshaft-600 bg-mineshaft-800">
@@ -139,19 +162,19 @@ const PageContent = () => {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2.5">
                     <p className="truncate text-lg font-medium text-white">{honeyToken.name}</p>
-                    <Tag colorSchema={isTriggered ? "red" : "green"}>
+                    <Badge variant={isTriggered ? "danger" : "success"}>
                       {isTriggered && <AlertTriangle size={12} className="mr-1" />}
                       {isTriggered ? "Triggered" : "Active"}
-                    </Tag>
+                    </Badge>
                     {tokenInfo && (
-                      <Tag className="flex items-center gap-1 px-1.5 py-0 text-xs normal-case">
+                      <Badge variant="neutral" className="flex items-center gap-1">
                         <img
                           src={`/images/integrations/${tokenInfo.image}`}
                           style={{ width: "11px" }}
                           alt={`${tokenInfo.name} logo`}
                         />
                         {tokenInfo.name}
-                      </Tag>
+                      </Badge>
                     )}
                   </div>
                   <p className="text-xs text-bunker-300">
@@ -160,37 +183,31 @@ const PageContent = () => {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <Button
-                  variant="outline_bg"
-                  size="xs"
-                  leftIcon={<RotateCcw size={14} />}
-                  onClick={handleReset}
-                >
+                <Button variant="outline" size="xs" onClick={handleReset}>
+                  <RotateCcw size={14} />
                   Reset
                 </Button>
-                <Button
-                  variant="outline_bg"
-                  size="xs"
-                  colorSchema="danger"
-                  leftIcon={<Trash2Icon size={14} />}
-                  onClick={() => setIsDeleteOpen(true)}
-                >
+                <Button variant="danger" size="xs" onClick={() => setIsDeleteOpen(true)}>
+                  <Trash2Icon size={14} />
                   Delete
                 </Button>
               </div>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-mineshaft-600 pt-4 text-xs text-bunker-300">
-              <Tooltip
-                content={format(new Date(honeyToken.createdAt), "MMMM do, yyyy 'at' h:mm a")}
-              >
-                <div className="flex items-center gap-1.5">
-                  <CalendarIcon size={13} />
-                  <span>
-                    Created{" "}
-                    {formatDistanceToNow(new Date(honeyToken.createdAt), { addSuffix: true })}
-                  </span>
-                </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5">
+                    <CalendarIcon size={13} />
+                    <span>
+                      Created{" "}
+                      {formatDistanceToNow(new Date(honeyToken.createdAt), { addSuffix: true })}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {format(new Date(honeyToken.createdAt), "MMMM do, yyyy 'at' h:mm a")}
+                </TooltipContent>
               </Tooltip>
               {honeyToken.environment && (
                 <div className="flex items-center gap-1.5">
@@ -226,12 +243,13 @@ const PageContent = () => {
                       <KeyIcon size={13} />
                       <span>Credentials</span>
                     </div>
-                    {isCredentialsPending ? (
-                      <div className="flex items-center gap-2 py-2">
-                        <Spinner size="xs" className="text-mineshaft-500" />
-                        <span className="text-xs text-mineshaft-400">Loading credentials...</span>
+                    {isCredentialsPending && (
+                      <div className="flex flex-col gap-2 py-2">
+                        <Skeleton className="h-8 w-full rounded-md" />
+                        <Skeleton className="h-8 w-full rounded-md" />
                       </div>
-                    ) : credentials ? (
+                    )}
+                    {!isCredentialsPending && credentials && (
                       <div className="flex flex-col gap-x-8 gap-y-2 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-2">
                         {(
                           HONEY_TOKEN_CREDENTIAL_FIELDS[honeyToken.type as HoneyTokenType] ?? []
@@ -246,7 +264,8 @@ const PageContent = () => {
                           );
                         })}
                       </div>
-                    ) : (
+                    )}
+                    {!isCredentialsPending && !credentials && (
                       <p className="text-xs text-bunker-400">No credentials available.</p>
                     )}
                   </div>
@@ -297,14 +316,49 @@ const PageContent = () => {
           <HoneyTokenEventsSection honeyTokenId={honeyTokenId} projectId={projectId} />
         </div>
       </div>
-      <DeleteActionModal
-        isOpen={isDeleteOpen}
-        onChange={setIsDeleteOpen}
-        title={`Are you sure you want to delete ${honeyToken.name}?`}
-        subTitle="This will revoke the AWS IAM credentials and remove the associated decoy secrets from this environment."
-        deleteKey={honeyToken.name}
-        onDeleteApproved={handleDelete}
-      />
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent className="sm:max-w-xl!">
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Trash2Icon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Are you sure you want to delete {honeyToken.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will revoke the AWS IAM credentials and remove the associated decoy secrets from
+              this environment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (deleteInput === honeyToken.name) handleDelete();
+            }}
+          >
+            <Field>
+              <FieldLabel>
+                Type <span className="font-bold">{honeyToken.name}</span> to confirm
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  value={deleteInput}
+                  onChange={(e) => setDeleteInput(e.target.value)}
+                  placeholder={`Type ${honeyToken.name} here`}
+                />
+              </FieldContent>
+            </Field>
+          </form>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={handleDelete}
+              disabled={deleteInput !== honeyToken.name}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

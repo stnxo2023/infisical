@@ -1,19 +1,18 @@
 import { useState } from "react";
-import {
-  faAsterisk,
-  faEdit,
-  faExternalLinkAlt,
-  faInfoCircle,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { SirenIcon } from "lucide-react";
+import {
+  AsteriskIcon,
+  ExternalLinkIcon,
+  InfoIcon,
+  PencilIcon,
+  SirenIcon,
+  Trash2Icon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { IconButton, Tag, Tooltip } from "@app/components/v2";
+import { Badge, IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
@@ -69,30 +68,28 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
           <div className="flex w-full flex-wrap items-center">
             <span>{name}</span>
             {honeyTokenInfo && (
-              <Tag className="mx-2.5 flex items-center gap-1 px-1.5 py-0 text-xs normal-case">
+              <Badge variant="neutral" className="mx-2.5">
                 <img
                   src={`/images/integrations/${honeyTokenInfo.image}`}
                   style={{ width: "11px" }}
                   alt={`${honeyTokenInfo.name} logo`}
                 />
                 {honeyTokenInfo.name} Honey Token
-              </Tag>
+              </Badge>
             )}
-            <Tag
-              className={twMerge(
-                "px-1.5 py-0 text-xs normal-case",
-                status === HoneyTokenStatus.Active ? "bg-green/20 text-green" : "bg-red/20 text-red"
-              )}
-            >
+            <Badge variant={status === HoneyTokenStatus.Active ? "success" : "danger"}>
               {status === HoneyTokenStatus.Active ? "Active" : "Triggered"}
-            </Tag>
+            </Badge>
           </div>
           <div
             key="actions"
             className="ml-2 flex h-full shrink-0 self-start transition-all group-hover:gap-x-2"
           >
-            <Tooltip content={`${mappedSecretKeys.length} mapped secret(s)`}>
-              <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="size-4 text-mineshaft-400" />
+              </TooltipTrigger>
+              <TooltipContent>{mappedSecretKeys.length} mapped secret(s)</TooltipContent>
             </Tooltip>
           </div>
         </div>
@@ -104,21 +101,25 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 10, opacity: 0 }}
           >
-            <Tooltip content="View details">
-              <IconButton
-                ariaLabel="View details"
-                variant="plain"
-                className="opacity-0 group-hover:opacity-100"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate({
-                    to: ROUTE_PATHS.SecretManager.HoneyTokenDetailsByIDPage.path,
-                    params: { orgId, projectId, honeyTokenId: honeyToken.id }
-                  });
-                }}
-              >
-                <FontAwesomeIcon icon={faExternalLinkAlt} />
-              </IconButton>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton
+                  aria-label="View details"
+                  variant="ghost"
+                  size="xs"
+                  className="opacity-0 group-hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate({
+                      to: ROUTE_PATHS.SecretManager.HoneyTokenDetailsByIDPage.path,
+                      params: { orgId, projectId, honeyTokenId: honeyToken.id }
+                    });
+                  }}
+                >
+                  <ExternalLinkIcon className="size-4" />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>View details</TooltipContent>
             </Tooltip>
             <ProjectPermissionCan
               I={ProjectPermissionSecretActions.DescribeAndReadValue}
@@ -128,8 +129,9 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
             >
               {(isAllowed) => (
                 <IconButton
-                  ariaLabel="View credentials"
-                  variant="plain"
+                  aria-label="View credentials"
+                  variant="ghost"
+                  size="xs"
                   isDisabled={!isAllowed}
                   className="opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
@@ -137,7 +139,7 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
                     onViewCredentials();
                   }}
                 >
-                  <FontAwesomeIcon icon={faAsterisk} />
+                  <AsteriskIcon className="size-4" />
                 </IconButton>
               )}
             </ProjectPermissionCan>
@@ -149,8 +151,9 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
             >
               {(isAllowed) => (
                 <IconButton
-                  ariaLabel="Edit honey token"
-                  variant="plain"
+                  aria-label="Edit honey token"
+                  variant="ghost"
+                  size="xs"
                   isDisabled={!isAllowed}
                   className="opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
@@ -158,7 +161,7 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
                     onEdit();
                   }}
                 >
-                  <FontAwesomeIcon icon={faEdit} />
+                  <PencilIcon className="size-4" />
                 </IconButton>
               )}
             </ProjectPermissionCan>
@@ -170,9 +173,9 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
             >
               {(isAllowed) => (
                 <IconButton
-                  ariaLabel="Delete honey token"
-                  variant="plain"
-                  colorSchema="danger"
+                  aria-label="Delete honey token"
+                  variant="danger"
+                  size="xs"
                   className="opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -180,7 +183,7 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
                   }}
                   isDisabled={!isAllowed}
                 >
-                  <FontAwesomeIcon icon={faTrash} />
+                  <Trash2Icon className="size-4" />
                 </IconButton>
               )}
             </ProjectPermissionCan>
@@ -195,7 +198,9 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
               className="flex items-center border-b border-mineshaft-700 px-5 py-2 pl-16 last:border-b-0"
             >
               <span className="font-mono text-sm text-bunker-200">{secretKey}</span>
-              <Tag className="ml-2 px-1.5 py-0 text-xs text-yellow normal-case">Decoy</Tag>
+              <Badge variant="warning" className="ml-2">
+                Decoy
+              </Badge>
             </div>
           ))}
         </div>

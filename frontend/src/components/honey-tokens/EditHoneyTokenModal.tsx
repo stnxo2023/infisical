@@ -1,6 +1,6 @@
 import { HoneyTokenForm } from "@app/components/honey-tokens/forms";
 import { HoneyTokenModalHeader } from "@app/components/honey-tokens/HoneyTokenModalHeader";
-import { Modal, ModalContent } from "@app/components/v2";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@app/components/v3";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
@@ -14,12 +14,13 @@ export const EditHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props)
   if (!honeyToken) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title={<HoneyTokenModalHeader type={honeyToken.type as HoneyTokenType} isEdit />}
-        className="max-w-2xl"
-        bodyClassName="overflow-visible"
-      >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl overflow-visible">
+        <DialogHeader>
+          <DialogTitle>
+            <HoneyTokenModalHeader type={honeyToken.type as HoneyTokenType} isEdit />
+          </DialogTitle>
+        </DialogHeader>
         <HoneyTokenForm
           onComplete={() => onOpenChange(false)}
           onCancel={() => onOpenChange(false)}
@@ -28,7 +29,7 @@ export const EditHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props)
           secretPath={honeyToken.folder.path}
           environment={honeyToken.environment.slug}
         />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

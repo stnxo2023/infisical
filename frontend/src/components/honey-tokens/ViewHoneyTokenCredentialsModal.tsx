@@ -1,6 +1,13 @@
 import { ReactNode } from "react";
 
-import { Modal, ModalContent, Spinner } from "@app/components/v2";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  PageLoader
+} from "@app/components/v3";
 import { useGetHoneyTokenCredentials } from "@app/hooks/api/honeyTokens";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
@@ -47,12 +54,7 @@ const ModalBody = ({
   });
 
   if (isPending) {
-    return (
-      <div className="flex flex-col items-center justify-center py-4">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading credentials...</p>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (credentials && honeyToken) {
@@ -69,14 +71,16 @@ export const ViewHoneyTokenCredentialsModal = ({
   onOpenChange
 }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        title="Honey Token Credentials"
-        subTitle={honeyToken ? `Credentials for "${honeyToken.name}".` : ""}
-      >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Honey Token Credentials</DialogTitle>
+          {honeyToken && (
+            <DialogDescription>Credentials for &quot;{honeyToken.name}&quot;.</DialogDescription>
+          )}
+        </DialogHeader>
         <ModalBody honeyToken={honeyToken} projectId={projectId} isOpen={isOpen} />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -2,8 +2,17 @@ import { useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ActivityIcon } from "lucide-react";
 
-import { ContentLoader, EmptyState, Tag, Tooltip } from "@app/components/v2";
-import { Pagination } from "@app/components/v3";
+import {
+  Badge,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  PageLoader,
+  Pagination,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useGetHoneyTokenEvents } from "@app/hooks/api/honeyTokens/queries";
 
 type Props = {
@@ -39,10 +48,14 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         )}
       </div>
 
-      {isPending && <ContentLoader />}
+      {isPending && <PageLoader />}
 
       {!isPending && (!events || events.length === 0) && (
-        <EmptyState title="No events recorded yet" className="rounded-md" />
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>No events recorded yet</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       )}
 
       {events && events.length > 0 && (
@@ -50,7 +63,7 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-mineshaft-600 text-xs uppercase text-bunker-300">
+                <tr className="border-b border-mineshaft-600 text-xs text-bunker-300 uppercase">
                   <th className="px-3 py-2">Timestamp</th>
                   <th className="px-3 py-2">Action</th>
                   <th className="px-3 py-2">Region</th>
@@ -70,25 +83,29 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
                       key={event.id}
                       className="border-b border-mineshaft-700 text-sm text-white last:border-0"
                     >
-                      <td className="whitespace-nowrap px-3 py-3 text-bunker-300">
-                        <Tooltip
-                          content={format(eventDate, "MMMM do, yyyy 'at' h:mm:ss a")}
-                        >
-                          <span>{formatDistanceToNow(eventDate, { addSuffix: true })}</span>
+                      <td className="px-3 py-3 whitespace-nowrap text-bunker-300">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>{formatDistanceToNow(eventDate, { addSuffix: true })}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {format(eventDate, "MMMM do, yyyy 'at' h:mm:ss a")}
+                          </TooltipContent>
                         </Tooltip>
                       </td>
                       <td className="px-3 py-3">
-                        {meta?.eventName ? <Tag>{meta.eventName}</Tag> : "—"}
+                        {meta?.eventName ? <Badge variant="neutral">{meta.eventName}</Badge> : "—"}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-bunker-300">
+                      <td className="px-3 py-3 whitespace-nowrap text-bunker-300">
                         {meta?.awsRegion ?? "—"}
                       </td>
-                      <td className="px-3 py-3 text-bunker-300">
-                        {meta?.sourceIp ?? "—"}
-                      </td>
+                      <td className="px-3 py-3 text-bunker-300">{meta?.sourceIp ?? "—"}</td>
                       <td className="max-w-[300px] px-3 py-3 text-bunker-300">
-                        <Tooltip content={meta?.userAgent}>
-                          <span className="block truncate">{meta?.userAgent ?? "—"}</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="block truncate">{meta?.userAgent ?? "—"}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>{meta?.userAgent}</TooltipContent>
                         </Tooltip>
                       </td>
                     </tr>

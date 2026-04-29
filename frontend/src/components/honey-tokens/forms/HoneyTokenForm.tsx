@@ -4,7 +4,7 @@ import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
@@ -55,9 +55,7 @@ export const HoneyTokenForm = ({
   const { name: tokenTypeName } = HONEY_TOKEN_MAP[type];
 
   const isUpdate = Boolean(honeyToken);
-  const formTabs = isUpdate
-    ? FORM_TABS.filter((tab) => tab.key !== "configuration")
-    : FORM_TABS;
+  const formTabs = isUpdate ? FORM_TABS.filter((tab) => tab.key !== "configuration") : FORM_TABS;
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
@@ -248,13 +246,13 @@ export const HoneyTokenForm = ({
       <div className="flex w-full flex-shrink-0 flex-row-reverse justify-between gap-4 pt-4">
         <Button
           onClick={handleNext}
-          isLoading={isSubmitting || isValidating}
+          isPending={isSubmitting || isValidating}
           isDisabled={isSubmitting || isValidating}
-          colorSchema="secondary"
+          variant="outline"
         >
           {isFinalStep ? `${honeyToken ? "Update" : "Create"} Honey Token` : "Next"}
         </Button>
-        <Button onClick={handlePrev} colorSchema="secondary">
+        <Button onClick={handlePrev} variant="outline">
           Back
         </Button>
       </div>

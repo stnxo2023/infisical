@@ -1,6 +1,14 @@
 import { Controller, useFormContext } from "react-hook-form";
 
-import { FormControl, Input, TextArea } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input,
+  TextArea
+} from "@app/components/v3";
 
 import { THoneyTokenForm } from "./schemas";
 
@@ -8,44 +16,54 @@ export const HoneyTokenDetailsFields = () => {
   const { control } = useFormContext<THoneyTokenForm>();
 
   return (
-    <>
-      <p className="mb-4 text-sm text-bunker-300">
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-bunker-300">
         Provide a name and description for this honey token.
       </p>
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            helperText="Must be slug-friendly"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Name"
-          >
-            <Input autoFocus value={value} onChange={onChange} placeholder="aws-canary-prod-key" />
-          </FormControl>
+          <Field>
+            <FieldLabel>Name</FieldLabel>
+            <FieldContent>
+              <Input
+                autoFocus
+                value={value}
+                onChange={onChange}
+                placeholder="aws-canary-prod-key"
+                isError={Boolean(error)}
+              />
+              {error ? (
+                <FieldError>{error.message}</FieldError>
+              ) : (
+                <FieldDescription>Must be slug-friendly</FieldDescription>
+              )}
+            </FieldContent>
+          </Field>
         )}
         control={control}
         name="name"
       />
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            isOptional
-            errorText={error?.message}
-            label="Description"
-          >
-            <TextArea
-              value={value ?? ""}
-              onChange={onChange}
-              placeholder="Describe where this decoy is planted and who should respond..."
-              className="resize-none!"
-              rows={4}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Description <span className="text-muted-foreground text-xs">(optional)</span>
+            </FieldLabel>
+            <FieldContent>
+              <TextArea
+                value={value ?? ""}
+                onChange={onChange}
+                placeholder="Describe where this decoy is planted and who should respond..."
+                className="resize-none!"
+                rows={4}
+              />
+              {error && <FieldError>{error.message}</FieldError>}
+            </FieldContent>
+          </Field>
         )}
         control={control}
         name="description"
       />
-    </>
+    </div>
   );
 };

@@ -3,8 +3,14 @@ import { useState } from "react";
 import { HoneyTokenForm } from "@app/components/honey-tokens/forms";
 import { HoneyTokenModalHeader } from "@app/components/honey-tokens/HoneyTokenModalHeader";
 import { HoneyTokenSelect } from "@app/components/honey-tokens/HoneyTokenSelect";
-import { Modal, ModalContent } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DocumentationLinkBadge
+} from "@app/components/v3";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 
@@ -42,8 +48,8 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <Dialog
+      open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
           handleReset();
@@ -51,21 +57,24 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
         onOpenChange(open);
       }}
     >
-      <ModalContent
-        title={
-          selectedType ? (
-            <HoneyTokenModalHeader type={selectedType} />
-          ) : (
-            <div className="flex items-center gap-x-2 text-mineshaft-300">
-              Add Honey Token
-              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/honey-tokens/overview" />
-            </div>
-          )
-        }
-        className={selectedType ? "max-w-2xl" : "max-w-3xl"}
-        subTitle={selectedType ? undefined : "Select a provider to create a honey token for."}
-        bodyClassName="overflow-visible"
+      <DialogContent
+        className={selectedType ? "max-w-2xl overflow-visible" : "max-w-3xl overflow-visible"}
       >
+        <DialogHeader>
+          <DialogTitle>
+            {selectedType ? (
+              <HoneyTokenModalHeader type={selectedType} />
+            ) : (
+              <div className="flex items-center gap-x-2">
+                Add Honey Token
+                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/honey-tokens/overview" />
+              </div>
+            )}
+          </DialogTitle>
+          {!selectedType && (
+            <DialogDescription>Select a provider to create a honey token for.</DialogDescription>
+          )}
+        </DialogHeader>
         <Content
           onComplete={() => {
             handleReset();
@@ -76,7 +85,7 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
           setSelectedType={setSelectedType}
           {...props}
         />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -1,9 +1,17 @@
 import { Controller, useFormContext } from "react-hook-form";
 import { faArrowRight, faKey, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
-import { FormControl, FormLabel, Input } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  FieldError,
+  Input,
+  Label,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES } from "@app/helpers/honeyTokens";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
@@ -39,16 +47,23 @@ export const AwsHoneyTokenMappingFields = () => {
       <table className="w-full table-auto">
         <thead>
           <tr className="text-left">
-            <th className="whitespace-nowrap">
-              <FormLabel label="Decoy Credential" />
+            <th className="whitespace-nowrap pb-3">
+              <Label className="text-xs">Decoy Credential</Label>
             </th>
-            <th />
-            <th>
-              <FormLabel
-                tooltipClassName="max-w-sm"
-                tooltipText="The name of the secret that the decoy credential will be mapped to in your project."
-                label="Secret Name"
-              />
+            <th className="pb-3" />
+            <th className="pb-3">
+              <div className="flex items-center gap-1">
+                <Label className="text-xs">Secret Name</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="text-muted-foreground size-3.5" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The name of the secret that the decoy credential will be mapped to in your
+                    project.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </th>
           </tr>
         </thead>
@@ -71,16 +86,22 @@ export const AwsHoneyTokenMappingFields = () => {
               <td className="w-full">
                 <Controller
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <FormControl isError={Boolean(error)} errorText={error?.message}>
+                    <div className="mb-4">
                       <div className="relative">
-                        <Input value={value} onChange={onChange} placeholder={placeholder} />
+                        <Input
+                          value={value}
+                          onChange={onChange}
+                          placeholder={placeholder}
+                          isError={Boolean(error)}
+                        />
                         <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">
                           <Badge variant="warning" className="text-[10px]">
                             Decoy
                           </Badge>
                         </span>
                       </div>
-                    </FormControl>
+                      {error && <FieldError>{error.message}</FieldError>}
+                    </div>
                   )}
                   control={control}
                   name={fieldName}

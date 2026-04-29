@@ -1,5 +1,22 @@
+import { useEffect, useState } from "react";
+import { Trash2Icon } from "lucide-react";
+
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  Field,
+  FieldContent,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useDeleteHoneyToken } from "@app/hooks/api/honeyTokens";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
@@ -11,6 +28,11 @@ type Props = {
 
 export const DeleteHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props) => {
   const deleteHoneyToken = useDeleteHoneyToken();
+  const [inputData, setInputData] = useState("");
+
+  useEffect(() => {
+    setInputData("");
+  }, [isOpen]);
 
   if (!honeyToken) return null;
 
@@ -29,13 +51,48 @@ export const DeleteHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Prop
   };
 
   return (
-    <DeleteActionModal
-      isOpen={isOpen}
-      onChange={onOpenChange}
-      title={`Are you sure you want to delete ${honeyToken.name}?`}
-      subTitle="This will revoke the AWS IAM credentials and remove the associated decoy secrets from this environment."
-      deleteKey={honeyToken.name}
-      onDeleteApproved={handleDelete}
-    />
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="sm:max-w-xl!">
+        <AlertDialogHeader>
+          <AlertDialogMedia>
+            <Trash2Icon />
+          </AlertDialogMedia>
+          <AlertDialogTitle>Are you sure you want to delete {honeyToken.name}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will revoke the AWS IAM credentials and remove the associated decoy secrets from
+            this environment.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (inputData === honeyToken.name) handleDelete();
+          }}
+        >
+          <Field>
+            <FieldLabel>
+              Type <span className="font-bold">{honeyToken.name}</span> to confirm
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                value={inputData}
+                onChange={(e) => setInputData(e.target.value)}
+                placeholder={`Type ${honeyToken.name} here`}
+              />
+            </FieldContent>
+          </Field>
+        </form>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="danger"
+            onClick={handleDelete}
+            disabled={inputData !== honeyToken.name}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };

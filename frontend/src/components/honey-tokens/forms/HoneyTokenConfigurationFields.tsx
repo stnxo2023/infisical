@@ -1,6 +1,6 @@
 import { Controller, useFormContext } from "react-hook-form";
 
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import { Field, FieldContent, FieldError, FieldLabel, FilterableSelect } from "@app/components/v3";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 import { THoneyTokenForm } from "./schemas";
@@ -20,16 +20,21 @@ export const HoneyTokenConfigurationFields = ({ environments }: Props) => {
           control={control}
           name="environment"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl label="Environment" isError={Boolean(error)} errorText={error?.message}>
-              <FilterableSelect
-                value={value}
-                onChange={onChange}
-                options={environments}
-                placeholder="Select an environment..."
-                getOptionLabel={(option) => option?.name}
-                getOptionValue={(option) => option?.id}
-              />
-            </FormControl>
+            <Field>
+              <FieldLabel>Environment</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  value={value}
+                  onChange={onChange}
+                  options={environments}
+                  placeholder="Select an environment..."
+                  getOptionLabel={(option) => option?.name}
+                  getOptionValue={(option) => option?.id}
+                  isError={Boolean(error)}
+                />
+              </FieldContent>
+              {error && <FieldError>{error.message}</FieldError>}
+            </Field>
           )}
         />
       )}

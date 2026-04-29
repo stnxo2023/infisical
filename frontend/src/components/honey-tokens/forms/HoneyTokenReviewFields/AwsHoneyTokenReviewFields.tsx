@@ -1,6 +1,6 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 import { THoneyTokenForm } from "../schemas";
@@ -13,8 +13,14 @@ export const AwsHoneyTokenReviewFields = () => {
 
   return (
     <HoneyTokenReviewSection label="Secret Mapping">
-      <GenericFieldLabel label="Access Key ID">{accessKeyId}</GenericFieldLabel>
-      <GenericFieldLabel label="Secret Access Key">{secretAccessKey}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Access Key ID</DetailLabel>
+        <DetailValue>{accessKeyId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Secret Access Key</DetailLabel>
+        <DetailValue>{secretAccessKey}</DetailValue>
+      </Detail>
     </HoneyTokenReviewSection>
   );
 };

@@ -1,6 +1,6 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
@@ -23,12 +23,21 @@ export const HoneyTokenReviewFields = () => {
   return (
     <div className="mb-4 flex flex-col gap-6">
       <HoneyTokenReviewSection label="Configuration">
-        <GenericFieldLabel label="Type">{tokenDetails.name}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Type</DetailLabel>
+          <DetailValue>{tokenDetails.name}</DetailValue>
+        </Detail>
       </HoneyTokenReviewSection>
       <MappingComponent />
       <HoneyTokenReviewSection label="Details">
-        <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
-        <GenericFieldLabel label="Description">{description}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Name</DetailLabel>
+          <DetailValue>{name}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Description</DetailLabel>
+          <DetailValue>{description}</DetailValue>
+        </Detail>
       </HoneyTokenReviewSection>
     </div>
   );
