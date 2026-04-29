@@ -71,11 +71,11 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub '${NamePrefix}-alert-queue'
-      VisibilityTimeout: 300
-      MessageRetentionPeriod: 14400
+      VisibilityTimeout: 60
+      MessageRetentionPeriod: 86400
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt AlertDeadLetterQueue.Arn
-        maxReceiveCount: 36
+        maxReceiveCount: 200
 
   # =============================================
   # Forwarder Lambda (CloudWatch Logs -> SQS)
