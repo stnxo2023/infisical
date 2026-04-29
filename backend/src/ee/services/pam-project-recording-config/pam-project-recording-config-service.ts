@@ -13,6 +13,7 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
 import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "../pam-session-recording-storage/pam-session-recording-storage-factory";
 import {
@@ -28,6 +29,7 @@ import {
 
 type TPamProjectRecordingConfigServiceFactoryDep = {
   pamProjectRecordingConfigDAL: TPamProjectRecordingConfigDALFactory;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "countActiveByProjectId">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "findAppConnectionById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -38,6 +40,7 @@ export type TPamProjectRecordingConfigServiceFactory = ReturnType<typeof pamProj
 
 export const pamProjectRecordingConfigServiceFactory = ({
   pamProjectRecordingConfigDAL,
+  pamSessionDAL,
   permissionService,
   appConnectionService,
   appConnectionDAL,
@@ -133,6 +136,22 @@ export const pamProjectRecordingConfigServiceFactory = ({
     const { resolvedConfig } = await testConfig(input, actor);
 
     const existing = await pamProjectRecordingConfigDAL.findByProjectId(input.projectId);
+
+    const bucketChanging =
+      existing &&
+      (existing.bucket !== input.bucket ||
+        existing.region !== input.region ||
+        existing.keyPrefix !== (input.keyPrefix ?? null));
+
+    if (bucketChanging) {
+      const activeCount = await pamSessionDAL.countActiveByProjectId(input.projectId);
+      if (activeCount > 0) {
+        throw new BadRequestError({
+          message: `Cannot change bucket configuration while ${activeCount} session${activeCount > 1 ? "s are" : " is"} in progress. End all active sessions first.`
+        });
+      }
+    }
+
     let config;
     if (existing) {
       config = await pamProjectRecordingConfigDAL.updateById(existing.id, {

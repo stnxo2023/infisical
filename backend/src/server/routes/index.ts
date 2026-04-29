@@ -2885,6 +2885,7 @@ export const registerRoutes = async (
 
   const pamProjectRecordingConfigService = pamProjectRecordingConfigServiceFactory({
     pamProjectRecordingConfigDAL,
+    pamSessionDAL,
     permissionService,
     appConnectionService,
     appConnectionDAL,
