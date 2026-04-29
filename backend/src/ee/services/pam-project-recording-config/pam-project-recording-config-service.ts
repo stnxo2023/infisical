@@ -200,6 +200,14 @@ export const pamProjectRecordingConfigServiceFactory = ({
 
     const existing = await pamProjectRecordingConfigDAL.findByProjectId(projectId);
     if (!existing) return { ok: true as const };
+
+    const activeCount = await pamSessionDAL.countActiveByProjectId(projectId);
+    if (activeCount > 0) {
+      throw new BadRequestError({
+        message: `Cannot disable recording configuration while ${activeCount} session${activeCount > 1 ? "s are" : " is"} in progress. End all active sessions first.`
+      });
+    }
+
     await pamProjectRecordingConfigDAL.deleteById(existing.id);
     return { ok: true as const };
   };
