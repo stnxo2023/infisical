@@ -69,7 +69,7 @@ export const getAddedFiles = (fromTag: string | null, toTag: string) => {
 
   return runGit(["diff", "--name-status", `${fromTag}..${toTag}`])
     .split("\n")
-    .map((line) => line.trim().split(/\s+/))
+    .map((line) => line.split("\t"))
     .filter(([status]) => status === "A")
     .map(([, file]) => file)
     .filter(Boolean);

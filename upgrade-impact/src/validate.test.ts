@@ -60,10 +60,12 @@ const makeIndex = (versions: ReleaseIndex["versions"]): ReleaseIndex => ({
 
 const writeFixture = async ({
   index,
-  releases
+  releases,
+  invalidJsonFiles = []
 }: {
   index: ReleaseIndex;
   releases: { fileName: string; release: ReleaseImpact }[];
+  invalidJsonFiles?: { relativePath: string; content: string }[];
 }) => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "upgrade-impact-"));
   const releasesDir = path.join(dataDir, "releases");
@@ -75,6 +77,10 @@ const writeFixture = async ({
     await fs.writeFile(path.join(releasesDir, fileName), `${JSON.stringify(release, null, 2)}\n`);
   }
 
+  for (const { relativePath, content } of invalidJsonFiles) {
+    await fs.writeFile(path.join(dataDir, relativePath), content);
+  }
+
   return dataDir;
 };
 
@@ -82,6 +88,7 @@ type ValidationCase = {
   name: string;
   index: ReleaseIndex;
   releases: { fileName: string; release: ReleaseImpact }[];
+  invalidJsonFiles?: { relativePath: string; content: string }[];
   expectedErrors: string[];
 };
 
@@ -135,12 +142,30 @@ const validationCases: ValidationCase[] = [
       }
     ],
     expectedErrors: [`${validRelease.version}.json failed schema validation`]
+  },
+  {
+    name: "reports invalid release JSON without aborting validation",
+    index: makeIndex([
+      {
+        version: validRelease.version,
+        releasedAt: validRelease.releasedAt,
+        file: `releases/${validRelease.version}.json`
+      }
+    ]),
+    releases: [],
+    invalidJsonFiles: [
+      {
+        relativePath: `releases/${validRelease.version}.json`,
+        content: "{"
+      }
+    ],
+    expectedErrors: [`${validRelease.version}.json contains invalid JSON`]
   }
 ];
 
 describe("validateUpgradeImpactData", () => {
-  it.each(validationCases)("$name", async ({ index, releases, expectedErrors }) => {
-    const dataDir = await writeFixture({ index, releases });
+  it.each(validationCases)("$name", async ({ index, releases, invalidJsonFiles, expectedErrors }) => {
+    const dataDir = await writeFixture({ index, releases, invalidJsonFiles });
     const result = await validateUpgradeImpactData({ dataDir, skipGitChecks: true });
 
     for (const expectedError of expectedErrors) {

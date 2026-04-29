@@ -70,6 +70,7 @@ jobs:
         if: steps.release.outputs.stable == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.UPGRADE_IMPACT_PR_TOKEN }}
           branch: chore/upgrade-impact-${{ steps.release.outputs.tag }}
           base: main
           title: "chore: add upgrade impact for ${{ steps.release.outputs.tag }}"

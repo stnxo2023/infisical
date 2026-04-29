@@ -13,7 +13,14 @@ export type ValidateUpgradeImpactDataResult = {
   errors: string[];
 };
 
-const readJson = async (file: string) => JSON.parse(await fs.readFile(file, "utf8")) as unknown;
+const readJson = async (file: string, errors: string[]) => {
+  try {
+    return JSON.parse(await fs.readFile(file, "utf8")) as unknown;
+  } catch (error) {
+    errors.push(`${path.basename(file)} contains invalid JSON: ${(error as Error).message}`);
+    return null;
+  }
+};
 
 const listReleaseFiles = async (releasesDir: string) => {
   try {
@@ -63,7 +70,13 @@ const validateReleaseFile = async (
   skipGitChecks: boolean
 ): Promise<ReleaseImpact | null> => {
   const fullPath = path.join(releasesDir, file);
-  const parsed = ReleaseImpactSchema.safeParse(await readJson(fullPath));
+  const json = await readJson(fullPath, errors);
+
+  if (!json) {
+    return null;
+  }
+
+  const parsed = ReleaseImpactSchema.safeParse(json);
 
   if (!parsed.success) {
     errors.push(`${file} failed schema validation: ${parsed.error.message}`);
@@ -112,7 +125,8 @@ export const validateUpgradeImpactData = async ({
   const errors: string[] = [];
   const indexPath = path.join(dataDir, "index.json");
   const releasesDir = path.join(dataDir, "releases");
-  const parsedIndex = ReleaseIndexSchema.safeParse(await readJson(indexPath));
+  const indexJson = await readJson(indexPath, errors);
+  const parsedIndex = ReleaseIndexSchema.safeParse(indexJson ?? {});
 
   if (!parsedIndex.success) {
     errors.push(`index.json failed schema validation: ${parsedIndex.error.message}`);

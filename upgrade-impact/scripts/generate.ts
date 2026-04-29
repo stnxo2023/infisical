@@ -54,21 +54,6 @@ const evidenceForFile = (file: string, description?: string) => ({
   description
 });
 
-const evidenceForRelease = (bundle: ReleaseEvidenceBundle) => {
-  if (!bundle.release.url) {
-    return [];
-  }
-
-  return [
-    {
-      type: "release" as const,
-      ref: bundle.tag,
-      url: bundle.release.url,
-      description: "GitHub release notes"
-    }
-  ];
-};
-
 const deterministicDraft = (bundle: ReleaseEvidenceBundle): GeneratedDraft => {
   const dbSchemaChanges: GeneratedDraft["dbSchemaChanges"] = [];
   const configChanges: GeneratedDraft["configChanges"] = [];
@@ -197,20 +182,8 @@ const generateWithOpenAi = async (bundle: ReleaseEvidenceBundle, model: string):
 };
 
 const assembleReleaseImpact = (bundle: ReleaseEvidenceBundle, draft: GeneratedDraft, model: string): ReleaseImpact => {
-  const releaseEvidence = evidenceForRelease(bundle);
   const withReleaseEvidence = (entries: GeneratedDraft[keyof Pick<GeneratedDraft, "breakingChanges">]) =>
-    entries.map((entry) => {
-      let evidence = entry.evidence;
-
-      if (evidence.length === 0) {
-        evidence = releaseEvidence;
-      }
-
-      return {
-        ...entry,
-        evidence
-      };
-    });
+    entries.map((entry) => ({ ...entry }));
 
   return ReleaseImpactSchema.parse({
     version: bundle.tag,

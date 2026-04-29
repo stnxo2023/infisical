@@ -82,7 +82,7 @@ const isDeploymentFile = (file: string) =>
     "helm-charts/",
     "render.yaml",
     "nginx/"
-  ].some((pattern) => file === pattern || file.startsWith(pattern) || file.includes(pattern));
+  ].some((pattern) => file === pattern || file.startsWith(pattern));
 
 const isConfigFile = (file: string) =>
   [
