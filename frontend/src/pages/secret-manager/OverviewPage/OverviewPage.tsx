@@ -2517,7 +2517,13 @@ const OverviewPageContent = () => {
                       });
                     }}
                     onAddHoneyToken={() => {
-                      handlePopUpOpen("addHoneyToken");
+                      if (subscription?.honeyTokens) {
+                        handlePopUpOpen("addHoneyToken");
+                        return;
+                      }
+                      handlePopUpOpen("upgradePlan", {
+                        text: "Adding honey tokens can be unlocked if you upgrade to Infisical Pro plan."
+                      });
                     }}
                     onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
                     isDyanmicSecretAvailable={userAvailableDynamicSecretEnvs.length > 0}

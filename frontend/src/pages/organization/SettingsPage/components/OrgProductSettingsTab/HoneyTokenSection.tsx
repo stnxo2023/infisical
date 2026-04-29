@@ -32,7 +32,7 @@ import {
 } from "@app/hooks/api/honeyToken";
 
 const CF_TEMPLATE_URL =
-  "https://s3.amazonaws.com/infisical-honeytokens/cfn/aws-honey-token-v1.yaml";
+  "https://infisical-static-assets.s3.us-east-1.amazonaws.com/honey-tokens/honey-tokens-v1.yaml";
 
 const DEFAULT_STACK_NAME = "infisical-honey-tokens";
 
