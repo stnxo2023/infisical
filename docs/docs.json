@@ -610,6 +610,7 @@
                       "integrations/secret-syncs/octopus-deploy",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
+                      "integrations/secret-syncs/snowflake",
                       "integrations/secret-syncs/supabase",
                       "integrations/secret-syncs/teamcity",
                       "integrations/secret-syncs/terraform-cloud",
@@ -2847,6 +2848,19 @@
                       "api-reference/endpoints/secret-syncs/render/sync-secrets",
                       "api-reference/endpoints/secret-syncs/render/import-secrets",
                       "api-reference/endpoints/secret-syncs/render/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Snowflake",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/snowflake/list",
+                      "api-reference/endpoints/secret-syncs/snowflake/get-by-id",
+                      "api-reference/endpoints/secret-syncs/snowflake/get-by-name",
+                      "api-reference/endpoints/secret-syncs/snowflake/create",
+                      "api-reference/endpoints/secret-syncs/snowflake/update",
+                      "api-reference/endpoints/secret-syncs/snowflake/delete",
+                      "api-reference/endpoints/secret-syncs/snowflake/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/snowflake/remove-secrets"
                     ]
                   },
                   {

@@ -172,6 +172,12 @@ import {
   TRenderSyncWithCredentials
 } from "./render/render-sync-types";
 import {
+  TSnowflakeSync,
+  TSnowflakeSyncInput,
+  TSnowflakeSyncListItem,
+  TSnowflakeSyncWithCredentials
+} from "./snowflake";
+import {
   TSupabaseSync,
   TSupabaseSyncInput,
   TSupabaseSyncListItem,
@@ -231,7 +237,8 @@ export type TSecretSync =
   | TAzureEntraIdScimSync
   | TExternalInfisicalSync
   | TOnaSync
-  | TTravisCISync;
+  | TTravisCISync
+  | TSnowflakeSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -272,7 +279,8 @@ export type TSecretSyncWithCredentials =
   | TAzureEntraIdScimSyncWithCredentials
   | TExternalInfisicalSyncWithCredentials
   | TOnaSyncWithCredentials
-  | TTravisCISyncWithCredentials;
+  | TTravisCISyncWithCredentials
+  | TSnowflakeSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -313,7 +321,8 @@ export type TSecretSyncInput =
   | TAzureEntraIdScimSyncInput
   | TExternalInfisicalSyncInput
   | TOnaSyncInput
-  | TTravisCISyncInput;
+  | TTravisCISyncInput
+  | TSnowflakeSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -354,7 +363,8 @@ export type TSecretSyncListItem =
   | TAzureEntraIdScimSyncListItem
   | TExternalInfisicalSyncListItem
   | TOnaSyncListItem
-  | TTravisCISyncListItem;
+  | TTravisCISyncListItem
+  | TSnowflakeSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

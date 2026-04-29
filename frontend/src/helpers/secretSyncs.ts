@@ -153,6 +153,10 @@ export const SECRET_SYNC_MAP: Record<
   [SecretSync.TravisCI]: {
     name: "Travis CI",
     image: "Travis CI.png"
+  },
+  [SecretSync.Snowflake]: {
+    name: "Snowflake",
+    image: "Snowflake.png"
   }
 };
 
@@ -195,7 +199,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId,
   [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical,
   [SecretSync.Ona]: AppConnection.Ona,
-  [SecretSync.TravisCI]: AppConnection.TravisCI
+  [SecretSync.TravisCI]: AppConnection.TravisCI,
+  [SecretSync.Snowflake]: AppConnection.Snowflake
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

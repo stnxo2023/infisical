@@ -29,16 +29,29 @@ export const validateSnowflakeConnectionCredentials = async (config: TSnowflakeC
       application: "Infisical"
     });
 
-    await client.connectAsync(noop);
+    await new Promise<void>((resolve, reject) => {
+      client.connectAsync((err) => (err ? reject(err) : resolve())).catch(reject);
+    });
 
-    await Promise.race([
+    let timeoutHandle: NodeJS.Timeout | undefined;
+    const isValid = await Promise.race<boolean>([
       client.isValidAsync(),
-      new Promise((resolve) => {
-        setTimeout(resolve, 10000);
-      }).then(() => {
-        throw new BadRequestError({ message: "Unable to establish connection - verify credentials" });
+      new Promise<boolean>((_, reject) => {
+        timeoutHandle = setTimeout(
+          () => reject(new BadRequestError({ message: "Snowflake connection validation timed out" })),
+          10000
+        );
       })
-    ]);
+    ]).finally(() => {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    });
+
+    if (!isValid) {
+      throw new BadRequestError({
+        message:
+          "Snowflake connection is not valid - heartbeat failed; verify credentials, network access, and that the account is not locked"
+      });
+    }
 
     return config.credentials;
   } catch (err) {
