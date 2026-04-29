@@ -70,6 +70,7 @@ const PageContent = () => {
   const { mutateAsync: resetHoneyToken } = useResetHoneyToken();
   const { mutateAsync: deleteHoneyToken } = useDeleteHoneyToken();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isResetOpen, setIsResetOpen] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
   const { data: credentials, isPending: isCredentialsPending } = useGetHoneyTokenCredentials({
     honeyTokenId,
@@ -183,10 +184,12 @@ const PageContent = () => {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <Button variant="outline" size="xs" onClick={handleReset}>
-                  <RotateCcw size={14} />
-                  Reset
-                </Button>
+                {isTriggered && (
+                  <Button variant="outline" size="xs" onClick={() => setIsResetOpen(true)}>
+                    <RotateCcw size={14} />
+                    Reset
+                  </Button>
+                )}
                 <Button variant="danger" size="xs" onClick={() => setIsDeleteOpen(true)}>
                   <Trash2Icon size={14} />
                   Delete
@@ -316,6 +319,31 @@ const PageContent = () => {
           <HoneyTokenEventsSection honeyTokenId={honeyTokenId} projectId={projectId} />
         </div>
       </div>
+      <AlertDialog open={isResetOpen} onOpenChange={setIsResetOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <RotateCcw />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Reset {honeyToken.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will revert the honey token status to active and hide past events. The honey
+              token will be able to trigger again on new activity.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await handleReset();
+                setIsResetOpen(false);
+              }}
+            >
+              Reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent className="sm:max-w-xl!">
           <AlertDialogHeader>
