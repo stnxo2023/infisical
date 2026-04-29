@@ -105,7 +105,8 @@ export enum QueueName {
   PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
   CertificateCleanup = "certificate-cleanup",
-  DigiCertOrderPolling = "digicert-order-polling"
+  DigiCertOrderPolling = "digicert-order-polling",
+  IdentityAccessTokenPgMirror = "identity-access-token-pg-mirror"
 }
 
 export enum QueueJobs {
@@ -177,7 +178,9 @@ export enum QueueJobs {
   CaAdcsInstall = "ca-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
-  DigiCertOrderPolling = "digicert-order-polling-job"
+  DigiCertOrderPolling = "digicert-order-polling-job",
+  IdentityAccessTokenPgMirrorRevokeToken = "identity-access-token-pg-mirror-revoke-token",
+  IdentityAccessTokenPgMirrorRevokeAll = "identity-access-token-pg-mirror-revoke-all"
 }
 
 export type TQueueOptions = {
@@ -551,6 +554,24 @@ export type TQueueJobTypes = {
     name: QueueJobs.DigiCertOrderPolling;
     payload: undefined;
   };
+  [QueueName.IdentityAccessTokenPgMirror]:
+    | {
+        name: QueueJobs.IdentityAccessTokenPgMirrorRevokeToken;
+        payload: {
+          kind: "revoke-token";
+          tokenId: string;
+          identityId: string;
+          expiresAt: string;
+        };
+      }
+    | {
+        name: QueueJobs.IdentityAccessTokenPgMirrorRevokeAll;
+        payload: {
+          kind: "revoke-all-for-identity";
+          identityId: string;
+          revokedAt: string;
+        };
+      };
 };
 
 const SECRET_SCANNING_QUEUES = [

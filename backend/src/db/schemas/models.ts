@@ -93,6 +93,7 @@ export enum TableName {
   Webhook = "webhooks",
   Identity = "identities",
   IdentityAccessToken = "identity_access_tokens",
+  IdentityAccessTokenRevocation = "identity_access_token_revocations",
   IdentityTokenAuth = "identity_token_auths",
   IdentityUniversalAuth = "identity_universal_auths",
   IdentityKubernetesAuth = "identity_kubernetes_auths",

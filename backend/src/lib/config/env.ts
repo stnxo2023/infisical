@@ -238,6 +238,9 @@ const envSchema = z
     JWT_INVITE_LIFETIME: zpStr(z.string().default("1d")),
     JWT_MFA_LIFETIME: zpStr(z.string().default("5m")),
     JWT_PROVIDER_AUTH_LIFETIME: zpStr(z.string().default("15m")),
+    // Server-enforced ceiling on identity access token lifetime (in seconds). Caps `exp`
+    // at issuance and renewal so machine-identity JWTs cannot be immortal.
+    MAX_MACHINE_IDENTITY_TOKEN_AGE: zpStr(z.coerce.number().int().positive().default(7_776_000)),
     // Oauth
     CLIENT_ID_GOOGLE_LOGIN: zpStr(z.string().optional()),
     CLIENT_SECRET_GOOGLE_LOGIN: zpStr(z.string().optional()),
