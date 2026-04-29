@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link } from "@tanstack/react-router";
 import { AlertTriangleIcon, TrashIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -31,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
@@ -53,6 +54,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export const PamRecordingConfigTab = () => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const projectId = currentProject?.id ?? "";
   const recordingConfig = useGetPamRecordingConfig(projectId);
   const [isDisableDialogOpen, setIsDisableDialogOpen] = useState(false);
@@ -159,7 +161,7 @@ export const PamRecordingConfigTab = () => {
               <FieldLabel>AWS Connection</FieldLabel>
               <FieldContent>
                 <Select
-                  disabled={connectionsLoading}
+                  disabled={connectionsLoading || !awsConnections?.length}
                   value={field.value}
                   onValueChange={field.onChange}
                 >
@@ -183,6 +185,18 @@ export const PamRecordingConfigTab = () => {
             </Field>
           )}
         />
+        {!connectionsLoading && !awsConnections?.length && (
+          <p className="-mt-2 text-xs text-yellow-500">
+            No AWS connections available.{" "}
+            <Link
+              to="/organizations/$orgId/app-connections"
+              params={{ orgId: currentOrg?.id ?? "" }}
+              className="underline hover:text-yellow-400"
+            >
+              Create one in Organization Settings
+            </Link>
+          </p>
+        )}
 
         <Controller
           control={control}
