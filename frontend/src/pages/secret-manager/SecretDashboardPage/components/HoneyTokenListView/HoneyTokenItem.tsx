@@ -1,12 +1,20 @@
 import { useState } from "react";
-import { faAsterisk, faEdit, faInfoCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faAsterisk,
+  faEdit,
+  faExternalLinkAlt,
+  faInfoCircle,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { SirenIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { IconButton, Tag, Tooltip } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
@@ -21,6 +29,10 @@ type Props = {
 };
 
 export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials }: Props) => {
+  const navigate = useNavigate();
+  const { orgId, projectId } = useParams({
+    from: ROUTE_PATHS.SecretManager.SecretDashboardPage.id
+  });
   const { name, type, status, secretsMapping } = honeyToken;
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -87,11 +99,27 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
         <AnimatePresence mode="wait">
           <motion.div
             key="options"
-            className="flex w-24 items-center justify-between border-l border-mineshaft-600 px-2 py-3"
+            className="flex w-32 items-center justify-between border-l border-mineshaft-600 px-2 py-3"
             initial={{ x: 0, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 10, opacity: 0 }}
           >
+            <Tooltip content="View details">
+              <IconButton
+                ariaLabel="View details"
+                variant="plain"
+                className="opacity-0 group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate({
+                    to: ROUTE_PATHS.SecretManager.HoneyTokenDetailsByIDPage.path,
+                    params: { orgId, projectId, honeyTokenId: honeyToken.id }
+                  });
+                }}
+              >
+                <FontAwesomeIcon icon={faExternalLinkAlt} />
+              </IconButton>
+            </Tooltip>
             <ProjectPermissionCan
               I={ProjectPermissionSecretActions.DescribeAndReadValue}
               a={ProjectPermissionSub.Secrets}

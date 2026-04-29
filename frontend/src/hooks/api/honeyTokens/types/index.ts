@@ -56,5 +56,7 @@ export {
   type TDashboardHoneyTokenBase,
   type THoneyTokenBase,
   type THoneyTokenCredentialsResponseBase,
+  type THoneyTokenDetails,
+  type THoneyTokenEvent,
   type THoneyTokenOptionBase
 } from "./honey-token-base";

@@ -38,3 +38,40 @@ export type THoneyTokenCredentialsResponseBase<U, T> = {
   honeyTokenId: string;
   credentials: T;
 };
+
+export type THoneyTokenDetails = THoneyTokenBase & {
+  type: string;
+  secretsMapping: Record<string, string>;
+  environment: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+  folder: {
+    path: string;
+  } | null;
+  openEvents: number;
+};
+
+export type THoneyTokenEvent = {
+  id: string;
+  honeyTokenId: string;
+  eventType: string;
+  metadata: {
+    username?: string;
+    eventName?: string;
+    eventSource?: string;
+    sourceIp?: string;
+    userAgent?: string;
+    awsRegion?: string;
+    eventTime?: string;
+    accountId?: string;
+    accessKeyId?: string;
+    errorCode?: string;
+    errorMessage?: string;
+    eventId?: string;
+    requestParameters?: unknown;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+};

@@ -9,6 +9,8 @@ export type {
   THoneyToken,
   THoneyTokenCredentialsResponse,
   THoneyTokenCredentialsResponseMap,
+  THoneyTokenDetails,
+  THoneyTokenEvent,
   THoneyTokenOption,
   THoneyTokenOptionMap,
   TUpdateHoneyTokenDTO

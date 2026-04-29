@@ -22,6 +22,11 @@ export const HoneyTokensSchema = z.object({
   secretsMapping: z.unknown(),
   tokenIdentifier: z.string().nullable().optional(),
   lastTriggeredAt: z.date().nullable().optional(),
+  lastResetAt: z.date().nullable().optional(),
+  revokedAt: z.date().nullable().optional(),
+  createdByUserId: z.string().uuid().nullable().optional(),
+  resetByUserId: z.string().uuid().nullable().optional(),
+  revokedByUserId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

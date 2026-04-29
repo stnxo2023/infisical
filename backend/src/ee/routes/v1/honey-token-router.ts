@@ -60,6 +60,62 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     url: "/:honeyTokenId",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        honeyTokenId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          honeyToken: z.object({
+            id: z.string().uuid(),
+            name: z.string(),
+            description: z.string().nullable().optional(),
+            type: z.string(),
+            status: z.string(),
+            projectId: z.string(),
+            folderId: z.string().uuid(),
+            secretsMapping: z.unknown(),
+            createdAt: z.date(),
+            updatedAt: z.date(),
+            environment: z
+              .object({
+                id: z.string(),
+                name: z.string(),
+                slug: z.string()
+              })
+              .nullable(),
+            folder: z
+              .object({
+                path: z.string()
+              })
+              .nullable(),
+            openEvents: z.number()
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const { honeyToken } = await server.services.honeyTokenCrud.getHoneyTokenById(
+        {
+          honeyTokenId: req.params.honeyTokenId,
+          projectId: req.query.projectId
+        },
+        req.permission
+      );
+      return { honeyToken };
+    }
+  });
+
+  server.route({
+    url: "/:honeyTokenId",
     method: "PATCH",
     config: {
       rateLimit: writeLimit
@@ -104,6 +160,48 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
       return { honeyToken };
+    }
+  });
+
+  server.route({
+    url: "/:honeyTokenId/reset",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        honeyTokenId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          honeyToken: z.object({
+            id: z.string().uuid(),
+            status: z.string(),
+            lastResetAt: z.date().nullable()
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const { honeyToken } = await server.services.honeyTokenCrud.resetHoneyToken(
+        {
+          honeyTokenId: req.params.honeyTokenId,
+          projectId: req.body.projectId
+        },
+        req.permission
+      );
+      return {
+        honeyToken: {
+          id: honeyToken.id,
+          status: honeyToken.status,
+          lastResetAt: honeyToken.lastResetAt ?? null
+        }
+      };
     }
   });
 
@@ -168,6 +266,52 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
       return { credentials };
+    }
+  });
+
+  server.route({
+    url: "/:honeyTokenId/events",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        honeyTokenId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectId: z.string().trim(),
+        offset: z.coerce.number().min(0).default(0),
+        limit: z.coerce.number().min(1).max(100).default(25)
+      }),
+      response: {
+        200: z.object({
+          events: z.array(
+            z.object({
+              id: z.string().uuid(),
+              honeyTokenId: z.string().uuid(),
+              eventType: z.string(),
+              metadata: z.unknown().nullable().optional(),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+          ),
+          totalCount: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { events, totalCount } = await server.services.honeyTokenCrud.getHoneyTokenEvents(
+        {
+          honeyTokenId: req.params.honeyTokenId,
+          projectId: req.query.projectId,
+          offset: req.query.offset,
+          limit: req.query.limit
+        },
+        req.permission
+      );
+      return { events, totalCount };
     }
   });
 

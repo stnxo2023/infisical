@@ -31,12 +31,14 @@ import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapsho
 import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
 
 const HONEY_TOKEN_IAM_USER_PREFIX = "inf_ht_";
 
 type THoneyTokenServiceFactoryDep = {
   honeyTokenDAL: THoneyTokenDALFactory;
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
+  honeyTokenEventDAL: Pick<THoneyTokenEventDALFactory, "find" | "countByHoneyTokenId" | "findByHoneyTokenId">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -64,6 +66,7 @@ export type THoneyTokenServiceFactory = ReturnType<typeof honeyTokenServiceFacto
 export const honeyTokenServiceFactory = ({
   honeyTokenDAL,
   honeyTokenConfigDAL,
+  honeyTokenEventDAL,
   permissionService,
   licenseService,
   kmsService,
@@ -223,7 +226,8 @@ export const honeyTokenServiceFactory = ({
       connectionId: orgConfig.connectionId,
       encryptedCredentials,
       secretsMapping,
-      tokenIdentifier: AccessKey.AccessKeyId
+      tokenIdentifier: AccessKey.AccessKeyId,
+      createdByUserId: actor.id
     });
 
     const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
@@ -551,6 +555,41 @@ export const honeyTokenServiceFactory = ({
     return { honeyTokenId };
   };
 
+  const resetHoneyToken = async (
+    { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
+    actor: OrgServiceActor
+  ) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
+
+    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
+
+    if (!honeyToken || honeyToken.projectId !== projectId) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
+
+    if (honeyToken.status !== HoneyTokenStatus.Triggered) {
+      throw new BadRequestError({ message: "Only triggered honey tokens can be reset" });
+    }
+
+    const updated = await honeyTokenDAL.updateById(honeyTokenId, {
+      status: HoneyTokenStatus.Active,
+      lastResetAt: new Date(),
+      lastTriggeredAt: null,
+      resetByUserId: actor.id
+    });
+
+    return { honeyToken: updated };
+  };
+
   const getDashboardHoneyTokenCount = async (
     {
       projectId,
@@ -679,11 +718,107 @@ export const honeyTokenServiceFactory = ({
     return { credentials };
   };
 
+  const getHoneyTokenById = async (
+    { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
+    actor: OrgServiceActor
+  ) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSub.Secrets
+    );
+
+    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
+
+    if (!honeyToken || honeyToken.projectId !== projectId) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
+
+    const allInFolder = await honeyTokenDAL.findByFolderIds([honeyToken.folderId]);
+    const match = allInFolder.find((ht) => ht.id === honeyTokenId);
+
+    const openEvents = await honeyTokenEventDAL.countByHoneyTokenId(honeyTokenId, honeyToken.lastResetAt ?? undefined);
+
+    return {
+      honeyToken: {
+        id: honeyToken.id,
+        name: honeyToken.name,
+        description: honeyToken.description,
+        type: honeyToken.type,
+        status: honeyToken.status,
+        projectId: honeyToken.projectId,
+        folderId: honeyToken.folderId,
+        connectionId: honeyToken.connectionId,
+        secretsMapping: honeyToken.secretsMapping,
+        createdAt: honeyToken.createdAt,
+        updatedAt: honeyToken.updatedAt,
+        lastResetAt: honeyToken.lastResetAt,
+        revokedAt: honeyToken.revokedAt,
+        createdByUserId: honeyToken.createdByUserId,
+        resetByUserId: honeyToken.resetByUserId,
+        revokedByUserId: honeyToken.revokedByUserId,
+        environment: match?.environment ?? null,
+        folder: match?.folder ?? null,
+        openEvents
+      }
+    };
+  };
+
+  const getHoneyTokenEvents = async (
+    {
+      honeyTokenId,
+      projectId,
+      offset,
+      limit
+    }: { honeyTokenId: string; projectId: string; offset?: number; limit?: number },
+    actor: OrgServiceActor
+  ) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSub.Secrets
+    );
+
+    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
+
+    if (!honeyToken || honeyToken.projectId !== projectId) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
+
+    const since = honeyToken.lastResetAt ?? undefined;
+
+    const [events, totalCount] = await Promise.all([
+      honeyTokenEventDAL.findByHoneyTokenId(honeyTokenId, { since, offset, limit }),
+      honeyTokenEventDAL.countByHoneyTokenId(honeyTokenId, since)
+    ]);
+
+    return { events, totalCount };
+  };
+
   return {
     create,
     updateHoneyToken,
     deleteHoneyToken,
+    resetHoneyToken,
     getCredentials,
+    getHoneyTokenById,
+    getHoneyTokenEvents,
     getDashboardHoneyTokenCount,
     getDashboardHoneyTokens
   };

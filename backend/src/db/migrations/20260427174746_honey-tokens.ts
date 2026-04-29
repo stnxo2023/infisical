@@ -40,6 +40,14 @@ export async function up(knex: Knex): Promise<void> {
       t.string("tokenIdentifier", 256).nullable();
       t.unique(["tokenIdentifier"]);
       t.datetime("lastTriggeredAt").nullable();
+      t.datetime("lastResetAt").nullable();
+      t.datetime("revokedAt").nullable();
+      t.uuid("createdByUserId").nullable();
+      t.foreign("createdByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
+      t.uuid("resetByUserId").nullable();
+      t.foreign("resetByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
+      t.uuid("revokedByUserId").nullable();
+      t.foreign("revokedByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
       t.timestamps(true, true, true);
     });
 

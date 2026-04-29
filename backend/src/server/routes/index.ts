@@ -1647,6 +1647,7 @@ export const registerRoutes = async (
   const honeyTokenService = honeyTokenServiceFactory({
     honeyTokenDAL,
     honeyTokenConfigDAL,
+    honeyTokenEventDAL,
     permissionService,
     licenseService,
     kmsService,

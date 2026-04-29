@@ -43,6 +43,27 @@ export const useUpdateHoneyToken = () => {
   });
 };
 
+export const useResetHoneyToken = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { honeyToken: { id: string; status: string; lastResetAt: string | null } },
+    object,
+    { honeyTokenId: string; projectId: string }
+  >({
+    mutationFn: async ({ honeyTokenId, projectId }) => {
+      const { data } = await apiRequest.post<{
+        honeyToken: { id: string; status: string; lastResetAt: string | null };
+      }>(`/api/v1/honey-tokens/${honeyTokenId}/reset`, { projectId });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["honeyTokens"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
+    }
+  });
+};
+
 export const useDeleteHoneyToken = () => {
   const queryClient = useQueryClient();
 

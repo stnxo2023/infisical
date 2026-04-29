@@ -1,7 +1,9 @@
+import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   AsteriskIcon,
   ChevronDownIcon,
   EditIcon,
+  ExternalLinkIcon,
   InfoIcon,
   SirenIcon,
   TrashIcon
@@ -22,6 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
@@ -54,6 +57,10 @@ export const HoneyTokenTableRow = ({
   onDelete,
   onViewCredentials
 }: Props) => {
+  const navigate = useNavigate();
+  const { orgId, projectId } = useParams({
+    from: ROUTE_PATHS.SecretManager.OverviewPage.id
+  });
   const [isExpanded, setIsExpanded] = useToggle(false);
 
   const isSingleEnvView = environments.length === 1;
@@ -78,6 +85,24 @@ export const HoneyTokenTableRow = ({
           "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
         )}
       >
+        <Tooltip>
+          <TooltipTrigger>
+            <IconButton
+              variant="ghost"
+              size="xs"
+              className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+              onClick={() =>
+                navigate({
+                  to: ROUTE_PATHS.SecretManager.HoneyTokenDetailsByIDPage.path,
+                  params: { orgId, projectId, honeyTokenId: honeyToken.id }
+                })
+              }
+            >
+              <ExternalLinkIcon />
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent>View details</TooltipContent>
+        </Tooltip>
         <ProjectPermissionCan
           I={ProjectPermissionSecretActions.DescribeAndReadValue}
           a={ProjectPermissionSub.Secrets}

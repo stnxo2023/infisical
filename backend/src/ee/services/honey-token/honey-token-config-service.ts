@@ -201,7 +201,7 @@ export const honeyTokenConfigServiceFactory = ({
           eventTime: eventMetadata.eventTime,
           sourceIp: eventMetadata.sourceIp || "Unknown",
           awsRegion: eventMetadata.awsRegion,
-          projectUrl: `${siteUrl}/project/${project.id}/honey-tokens`
+          projectUrl: `${siteUrl}/organizations/${orgId}/projects/secret-management/${project.id}/honey-tokens/${honeyToken.id}`
         }
       });
     } catch (err) {
