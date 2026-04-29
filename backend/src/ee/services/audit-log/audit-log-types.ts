@@ -613,7 +613,7 @@ export enum EventType {
   VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
   VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
   VIEW_INSIGHTS_PAM_RESOURCE_BREAKDOWN = "view-insights-pam-resource-breakdown",
-  VIEW_INSIGHTS_PAM_UPCOMING_ROTATIONS = "view-insights-pam-upcoming-rotations",
+  VIEW_INSIGHTS_PAM_ROTATION_CALENDAR = "view-insights-pam-rotation-calendar",
 
   PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
@@ -4817,10 +4817,12 @@ interface ViewPamInsightsResourceBreakdownEvent {
   };
 }
 
-interface ViewPamInsightsUpcomingRotationsEvent {
-  type: EventType.VIEW_INSIGHTS_PAM_UPCOMING_ROTATIONS;
+interface ViewPamInsightsRotationCalendarEvent {
+  type: EventType.VIEW_INSIGHTS_PAM_ROTATION_CALENDAR;
   metadata: {
     projectId: string;
+    month: number;
+    year: number;
   };
 }
 
@@ -6641,7 +6643,7 @@ export type Event =
   | ViewPamInsightsSessionActivityEvent
   | ViewPamInsightsTopActorsEvent
   | ViewPamInsightsResourceBreakdownEvent
-  | ViewPamInsightsUpcomingRotationsEvent
+  | ViewPamInsightsRotationCalendarEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent

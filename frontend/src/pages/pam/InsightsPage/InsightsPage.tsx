@@ -8,9 +8,9 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   PamInsightsKpiCards,
   PamResourceBreakdown,
+  PamRotationCalendar,
   PamSessionActivityChart,
-  PamTopActors,
-  PamUpcomingRotations
+  PamTopActors
 } from "./components";
 
 export const InsightsPage = withProjectPermission(
@@ -27,10 +27,16 @@ export const InsightsPage = withProjectPermission(
         />
         <PamInsightsKpiCards />
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_1fr]">
-          <PamSessionActivityChart />
-          <PamTopActors />
-          <PamResourceBreakdown />
-          <PamUpcomingRotations />
+          <div className="flex flex-col gap-6">
+            <PamRotationCalendar />
+            <PamResourceBreakdown />
+          </div>
+          <div className="flex flex-col gap-6">
+            <PamSessionActivityChart />
+            <div className="flex-1">
+              <PamTopActors />
+            </div>
+          </div>
         </div>
       </>
     );

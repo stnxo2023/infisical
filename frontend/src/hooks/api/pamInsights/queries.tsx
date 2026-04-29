@@ -4,11 +4,12 @@ import { apiRequest } from "@app/config/request";
 
 import {
   TGetPamInsightsParams,
+  TGetPamRotationCalendarParams,
   TPamInsightsSummary,
   TPamResourceBreakdownResponse,
+  TPamRotationCalendarResponse,
   TPamSessionActivityResponse,
-  TPamTopActorsResponse,
-  TPamUpcomingRotationsResponse
+  TPamTopActorsResponse
 } from "./types";
 
 export const pamInsightsKeys = {
@@ -21,8 +22,8 @@ export const pamInsightsKeys = {
     [...pamInsightsKeys.all(), "top-actors", params] as const,
   resourceBreakdown: (params: TGetPamInsightsParams) =>
     [...pamInsightsKeys.all(), "resource-breakdown", params] as const,
-  upcomingRotations: (params: TGetPamInsightsParams) =>
-    [...pamInsightsKeys.all(), "upcoming-rotations", params] as const
+  rotationCalendar: (params: TGetPamRotationCalendarParams) =>
+    [...pamInsightsKeys.all(), "rotation-calendar", params] as const
 };
 
 const PAM_INSIGHTS_STALE_TIME = 5 * 60 * 1000;
@@ -130,23 +131,23 @@ export const useGetPamResourceBreakdown = (
     ...options
   });
 
-export const useGetPamUpcomingRotations = (
-  params: TGetPamInsightsParams,
+export const useGetPamRotationCalendar = (
+  params: TGetPamRotationCalendarParams,
   options?: Omit<
     UseQueryOptions<
-      TPamUpcomingRotationsResponse,
+      TPamRotationCalendarResponse,
       unknown,
-      TPamUpcomingRotationsResponse,
-      ReturnType<typeof pamInsightsKeys.upcomingRotations>
+      TPamRotationCalendarResponse,
+      ReturnType<typeof pamInsightsKeys.rotationCalendar>
     >,
     "queryKey" | "queryFn"
   >
 ) =>
   useQuery({
-    queryKey: pamInsightsKeys.upcomingRotations(params),
+    queryKey: pamInsightsKeys.rotationCalendar(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TPamUpcomingRotationsResponse>(
-        "/api/v1/insights/pam/upcoming-rotations",
+      const { data } = await apiRequest.get<TPamRotationCalendarResponse>(
+        "/api/v1/insights/pam/rotation-calendar",
         { params }
       );
       return data;

@@ -23,6 +23,16 @@ export const registerPamInsightsRouter = async (server: FastifyZodProvider) => {
           resourcesWithRotation: z.number(),
           totalAccounts: z.number(),
           failedRotations: z.number(),
+          failedRotationAccounts: z.array(
+            z.object({
+              accountId: z.string(),
+              accountName: z.string(),
+              resourceId: z.string(),
+              resourceName: z.string(),
+              resourceType: z.string(),
+              lastRotatedAt: z.date().nullable()
+            })
+          ),
           activeSessions: z.number(),
           resourceTypeCount: z.number()
         })
@@ -147,19 +157,22 @@ export const registerPamInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/upcoming-rotations",
+    url: "/rotation-calendar",
     config: { rateLimit: readLimit },
     schema: {
-      operationId: "getPamInsightsUpcomingRotations",
-      description: "Get accounts with a configured rotation schedule, ordered by next rotation time (capped at 100)",
+      operationId: "getPamInsightsRotationCalendar",
+      description: "Get rotation events for a calendar month, expanded across the visible grid",
       security: [{ bearerAuth: [] }],
       querystring: z.object({
-        projectId: z.string().trim()
+        projectId: z.string().trim(),
+        month: z.coerce.number().int().min(1).max(12),
+        year: z.coerce.number().int().min(1970).max(9999)
       }),
       response: {
         200: z.object({
           rotations: z.array(
             z.object({
+              id: z.string(),
               accountId: z.string(),
               accountName: z.string(),
               resourceId: z.string(),
@@ -168,18 +181,20 @@ export const registerPamInsightsRouter = async (server: FastifyZodProvider) => {
               intervalSeconds: z.number(),
               nextRotationAt: z.date()
             })
-          ),
-          totalScheduled: z.number()
+          )
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId } = req.query;
-      const result = await server.services.pamInsights.getUpcomingRotations(projectId, req.permission);
+      const { projectId, month, year } = req.query;
+      const result = await server.services.pamInsights.getRotationCalendar(projectId, month, year, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
-        event: { type: EventType.VIEW_INSIGHTS_PAM_UPCOMING_ROTATIONS, metadata: { projectId } },
+        event: {
+          type: EventType.VIEW_INSIGHTS_PAM_ROTATION_CALENDAR,
+          metadata: { projectId, month, year }
+        },
         ...req.auditLogInfo
       });
       return result;

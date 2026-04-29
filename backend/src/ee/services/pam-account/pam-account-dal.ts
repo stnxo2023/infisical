@@ -303,6 +303,45 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return Number((result as { count?: string | number })?.count ?? 0);
   };
 
+  const findFailedRotationsByProject = async (
+    projectId: string,
+    limit: number,
+    tx?: Knex
+  ): Promise<
+    {
+      id: string;
+      name: string;
+      resourceId: string;
+      resourceName: string;
+      resourceType: string;
+      lastRotatedAt: Date | null;
+    }[]
+  > => {
+    const rows = await (tx || db.replicaNode())(TableName.PamAccount)
+      .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+      .select(
+        `${TableName.PamAccount}.id as id`,
+        `${TableName.PamAccount}.name as name`,
+        `${TableName.PamAccount}.resourceId as resourceId`,
+        `${TableName.PamAccount}.lastRotatedAt as lastRotatedAt`,
+        `${TableName.PamResource}.name as resourceName`,
+        `${TableName.PamResource}.resourceType as resourceType`
+      )
+      .where(`${TableName.PamAccount}.projectId`, projectId)
+      .where(`${TableName.PamAccount}.rotationStatus`, "failed")
+      .orderBy(`${TableName.PamAccount}.lastRotatedAt`, "desc")
+      .limit(limit);
+
+    return rows as {
+      id: string;
+      name: string;
+      resourceId: string;
+      resourceName: string;
+      resourceType: string;
+      lastRotatedAt: Date | null;
+    }[];
+  };
+
   const countByProjectGroupedByResourceType = async (
     projectId: string,
     tx?: Knex
@@ -370,6 +409,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     findRotationCandidatesByProject,
     countByProject,
     countFailedRotationsByProject,
+    findFailedRotationsByProject,
     countByProjectGroupedByResourceType
   };
 };

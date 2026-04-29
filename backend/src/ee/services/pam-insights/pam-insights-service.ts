@@ -18,7 +18,7 @@ import { OrgServiceActor } from "@app/lib/types";
 const SESSION_ACTIVITY_DAYS = 30;
 const TOP_ACTORS_DAYS = 30;
 const TOP_ACTORS_LIMIT = 10;
-const UPCOMING_ROTATIONS_LIMIT = 100;
+const FAILED_ROTATIONS_LIMIT = 25;
 
 type TPamInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -31,6 +31,7 @@ type TPamInsightsServiceFactoryDep = {
     TPamAccountDALFactory,
     | "countByProject"
     | "countFailedRotationsByProject"
+    | "findFailedRotationsByProject"
     | "countByProjectGroupedByResourceType"
     | "findRotationCandidatesByProject"
   >;
@@ -87,6 +88,7 @@ export const pamInsightsServiceFactory = ({
           resourcesWithRotation,
           totalAccounts,
           failedRotations,
+          failedRotationAccounts,
           activeSessions,
           resourceTypeCount
         ] = await Promise.all([
@@ -94,6 +96,7 @@ export const pamInsightsServiceFactory = ({
           pamResourceDAL.countWithRotationByProject(projectId),
           pamAccountDAL.countByProject(projectId),
           pamAccountDAL.countFailedRotationsByProject(projectId),
+          pamAccountDAL.findFailedRotationsByProject(projectId, FAILED_ROTATIONS_LIMIT),
           pamSessionDAL.countActiveByProject(projectId),
           pamResourceDAL.countByProjectGroupedByType(projectId)
         ]);
@@ -103,6 +106,14 @@ export const pamInsightsServiceFactory = ({
           resourcesWithRotation,
           totalAccounts,
           failedRotations,
+          failedRotationAccounts: failedRotationAccounts.map((a) => ({
+            accountId: a.id,
+            accountName: a.name,
+            resourceId: a.resourceId,
+            resourceName: a.resourceName,
+            resourceType: a.resourceType,
+            lastRotatedAt: a.lastRotatedAt
+          })),
           activeSessions,
           resourceTypeCount: resourceTypeCount.length
         };
@@ -191,20 +202,30 @@ export const pamInsightsServiceFactory = ({
     });
   };
 
-  const getUpcomingRotations = async (projectId: string, actor: OrgServiceActor) => {
+  const getRotationCalendar = async (projectId: string, month: number, year: number, actor: OrgServiceActor) => {
     await checkPamInsightsPermission(permissionService, projectId, actor);
 
     return withCache({
       keyStore,
-      key: KeyStorePrefixes.InsightsCache(projectId, "pam:upcoming-rotations"),
+      key: KeyStorePrefixes.InsightsCache(projectId, `pam:rotation-calendar:${year}-${month}`),
       ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
       fetcher: async () => {
+        // Build the visible calendar grid range: from the Monday on/before the 1st through
+        // the Sunday on/after the last day of the month, mirroring how the frontend renders.
+        const monthStart = new Date(Date.UTC(year, month - 1, 1));
+        const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+        // weekday: 0=Sun..6=Sat. For Monday-start weeks, offset = (day + 6) % 7
+        const startOffset = (monthStart.getUTCDay() + 6) % 7;
+        const endOffset = 6 - ((monthEnd.getUTCDay() + 6) % 7);
+        const rangeStart = new Date(monthStart.getTime() - startOffset * 24 * 60 * 60 * 1000);
+        const rangeEnd = new Date(monthEnd.getTime() + endOffset * 24 * 60 * 60 * 1000);
+
         const candidates = await pamAccountDAL.findRotationCandidatesByProject(projectId);
-        if (!candidates.length) return { rotations: [], totalScheduled: 0 };
+        if (!candidates.length) return { rotations: [] };
 
         const resourceIds = [...new Set(candidates.map((c) => c.resourceId))];
         const allRules = await pamResourceRotationRulesDAL.findByResourceIds(resourceIds);
-        if (!allRules.length) return { rotations: [], totalScheduled: 0 };
+        if (!allRules.length) return { rotations: [] };
 
         const rulesByResource: Record<string, typeof allRules> = {};
         for (const rule of allRules) {
@@ -212,9 +233,8 @@ export const pamInsightsServiceFactory = ({
           rulesByResource[rule.resourceId].push(rule);
         }
 
-        const now = Date.now();
-
-        type TUpcomingRotation = {
+        type TCalendarRotationEvent = {
+          id: string;
           accountId: string;
           accountName: string;
           resourceId: string;
@@ -224,9 +244,11 @@ export const pamInsightsServiceFactory = ({
           nextRotationAt: Date;
         };
 
-        // Sort by raw nextRotationMs so the most-overdue rotations stay at the top
-        // even after clamping the displayed timestamp to "now" for past-due entries.
-        const candidatesWithRotation: { row: TUpcomingRotation; nextRotationMs: number }[] = [];
+        const events: TCalendarRotationEvent[] = [];
+        const rangeStartMs = rangeStart.getTime();
+        const rangeEndMs = rangeEnd.getTime();
+        const MAX_EVENTS_PER_ACCOUNT = 100;
+
         for (const candidate of candidates) {
           const rules = rulesByResource[candidate.resourceId];
           // eslint-disable-next-line no-continue
@@ -236,31 +258,42 @@ export const pamInsightsServiceFactory = ({
           // eslint-disable-next-line no-continue
           if (!matchedRule || !matchedRule.enabled || !matchedRule.intervalSeconds) continue;
 
-          const lastRotated = candidate.lastRotatedAt
+          const baseMs = candidate.lastRotatedAt
             ? new Date(candidate.lastRotatedAt).getTime()
             : candidate.createdAt.getTime();
-          const nextRotationMs = lastRotated + matchedRule.intervalSeconds * 1000;
+          const intervalMs = matchedRule.intervalSeconds * 1000;
+          if (intervalMs <= 0) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
 
-          candidatesWithRotation.push({
-            row: {
+          // Fast-forward to the first occurrence within the visible range.
+          let occurrenceMs = baseMs;
+          if (occurrenceMs < rangeStartMs) {
+            const skips = Math.ceil((rangeStartMs - occurrenceMs) / intervalMs);
+            occurrenceMs = baseMs + skips * intervalMs;
+          }
+
+          let count = 0;
+          while (occurrenceMs <= rangeEndMs && count < MAX_EVENTS_PER_ACCOUNT) {
+            events.push({
+              id: `${candidate.id}-${occurrenceMs}`,
               accountId: candidate.id,
               accountName: candidate.name,
               resourceId: candidate.resourceId,
               resourceName: candidate.resourceName,
               resourceType: candidate.resourceType,
               intervalSeconds: matchedRule.intervalSeconds,
-              nextRotationAt: new Date(Math.max(nextRotationMs, now))
-            },
-            nextRotationMs
-          });
+              nextRotationAt: new Date(occurrenceMs)
+            });
+            occurrenceMs += intervalMs;
+            count += 1;
+          }
         }
 
-        candidatesWithRotation.sort((a, b) => a.nextRotationMs - b.nextRotationMs);
+        events.sort((a, b) => a.nextRotationAt.getTime() - b.nextRotationAt.getTime());
 
-        return {
-          rotations: candidatesWithRotation.slice(0, UPCOMING_ROTATIONS_LIMIT).map((c) => c.row),
-          totalScheduled: candidatesWithRotation.length
-        };
+        return { rotations: events };
       },
       reviver: (parsed) => {
         parsed.rotations.forEach((r) => {
@@ -277,6 +310,6 @@ export const pamInsightsServiceFactory = ({
     getSessionActivity,
     getTopActors,
     getResourceBreakdown,
-    getUpcomingRotations
+    getRotationCalendar
   };
 };

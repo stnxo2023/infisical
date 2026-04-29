@@ -2,11 +2,21 @@ export type TGetPamInsightsParams = {
   projectId: string;
 };
 
+export type TPamFailedRotationAccount = {
+  accountId: string;
+  accountName: string;
+  resourceId: string;
+  resourceName: string;
+  resourceType: string;
+  lastRotatedAt: string | null;
+};
+
 export type TPamInsightsSummary = {
   totalResources: number;
   resourcesWithRotation: number;
   totalAccounts: number;
   failedRotations: number;
+  failedRotationAccounts: TPamFailedRotationAccount[];
   activeSessions: number;
   resourceTypeCount: number;
 };
@@ -42,7 +52,8 @@ export type TPamResourceBreakdownResponse = {
   breakdown: TPamResourceBreakdownEntry[];
 };
 
-export type TPamUpcomingRotation = {
+export type TPamRotationCalendarEvent = {
+  id: string;
   accountId: string;
   accountName: string;
   resourceId: string;
@@ -52,7 +63,12 @@ export type TPamUpcomingRotation = {
   nextRotationAt: string;
 };
 
-export type TPamUpcomingRotationsResponse = {
-  rotations: TPamUpcomingRotation[];
-  totalScheduled: number;
+export type TPamRotationCalendarResponse = {
+  rotations: TPamRotationCalendarEvent[];
+};
+
+export type TGetPamRotationCalendarParams = {
+  projectId: string;
+  month: number;
+  year: number;
 };

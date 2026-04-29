@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import {
   Card,
@@ -15,11 +14,12 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useGetPamSessionActivity } from "@app/hooks/api/pamInsights";
+import { LineChart } from "@app/pages/secret-manager/InsightsPage/components/LineChart";
 
 type ChartPoint = {
   date: string;
-  count: number;
   label: string;
+  value: number;
   showTickLabel: string | null;
 };
 
@@ -28,10 +28,10 @@ const buildAxisTicks = (data: ChartPoint[]): string[] => {
   const ticks: string[] = [];
   data.forEach((point, index) => {
     if (index === 0 || index === data.length - 1) {
-      ticks.push(point.date);
+      ticks.push(point.label);
       return;
     }
-    if (index % 7 === 0) ticks.push(point.date);
+    if (index % 7 === 0) ticks.push(point.label);
   });
   return ticks;
 };
@@ -51,16 +51,21 @@ export const PamSessionActivityChart = () => {
       else if (isFirst || index % 7 === 0) tickLabel = format(parsed, "MMM d");
       return {
         date: day.date,
-        count: day.count,
-        label: format(parsed, "MMM d"),
+        label: day.date,
+        value: day.count,
         showTickLabel: tickLabel
       };
     });
   }, [data]);
 
   const ticks = useMemo(() => buildAxisTicks(chartData), [chartData]);
-  const totalSessions = chartData.reduce((sum, d) => sum + d.count, 0);
+  const totalSessions = chartData.reduce((sum, d) => sum + d.value, 0);
   const hasAnyData = totalSessions > 0;
+
+  const tickFormatter = (date: string) => {
+    const point = chartData.find((p) => p.date === date);
+    return point?.showTickLabel ?? "";
+  };
 
   const renderBody = () => {
     if (isPending) return <Skeleton className="h-[280px] w-full" />;
@@ -74,52 +79,14 @@ export const PamSessionActivityChart = () => {
       );
     }
     return (
-      <div className="flex flex-col gap-4 [&_*]:focus:outline-none [&_*:focus]:outline-none">
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-            <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} />
-            <XAxis
-              dataKey="date"
-              ticks={ticks}
-              tickFormatter={(date: string) => {
-                const point = chartData.find((p) => p.date === date);
-                return point?.showTickLabel ?? "";
-              }}
-              tick={{ fontSize: 11, fill: "var(--color-label)" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: "var(--color-label)" }}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "var(--color-popover)",
-                border: "1px solid var(--color-border)",
-                borderRadius: 8,
-                fontSize: 12
-              }}
-              labelStyle={{ color: "var(--color-foreground)" }}
-              itemStyle={{ color: "var(--color-primary)" }}
-              cursor={false}
-              isAnimationActive={false}
-              labelFormatter={(date) => {
-                const point = chartData.find((p) => p.date === date);
-                return point?.label ?? String(date);
-              }}
-              formatter={(value) => [Number(value).toLocaleString(), "Sessions"]}
-            />
-            <Bar
-              dataKey="count"
-              fill="var(--color-primary)"
-              radius={[2, 2, 0, 0]}
-              style={{ outline: "none" }}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="flex flex-col gap-4">
+        <LineChart
+          data={chartData}
+          ticks={ticks}
+          tickFormatter={tickFormatter}
+          valueLabel="Sessions"
+          gradientId="pam-session-activity-gradient"
+        />
         <span className="text-xs text-muted">
           {totalSessions.toLocaleString()} sessions in the last 30 days &middot;{" "}
           {(data?.avgPerDay ?? 0).toLocaleString()} per day on average
@@ -129,7 +96,7 @@ export const PamSessionActivityChart = () => {
   };
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader>
         <CardTitle>Session Activity</CardTitle>
         <CardDescription>PAM sessions started over the past 30 days</CardDescription>
