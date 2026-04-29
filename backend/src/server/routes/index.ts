@@ -2977,6 +2977,7 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     pamAccountDependenciesDAL,
     keyStore,
+    pamProjectRecordingConfigDAL,
     pamProjectRecordingConfigService
   });
 
