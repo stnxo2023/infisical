@@ -191,6 +191,11 @@ import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnect
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
+import {
+  getSnowflakeConnectionListItem,
+  SnowflakeConnectionMethod,
+  validateSnowflakeConnectionCredentials
+} from "./snowflake";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
 import {
   getSupabaseConnectionListItem,
@@ -317,7 +322,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getNetScalerConnectionListItem(),
     getOnaConnectionListItem(),
     getDigiCertConnectionListItem(),
-    getTravisCIConnectionListItem()
+    getTravisCIConnectionListItem(),
+    getSnowflakeConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -477,7 +483,8 @@ export const validateAppConnectionCredentials = async (
         deps.identityUaDAL
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -541,6 +548,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return "Username & Password";
+    case SnowflakeConnectionMethod.UsernameAndToken:
+      return "Username & Token";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
@@ -691,7 +700,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
   [AppConnection.Ona]: platformManagedCredentialsNotSupported,
   [AppConnection.DigiCert]: platformManagedCredentialsNotSupported,
-  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported
+  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Snowflake]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

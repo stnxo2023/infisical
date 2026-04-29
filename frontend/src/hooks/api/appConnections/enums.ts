@@ -59,5 +59,6 @@ export enum AppConnection {
   Anthropic = "anthropic",
   Ona = "ona",
   DigiCert = "digicert",
-  TravisCI = "travis-ci"
+  TravisCI = "travis-ci",
+  Snowflake = "snowflake"
 }

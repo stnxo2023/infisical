@@ -71,6 +71,7 @@ import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
+import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
@@ -171,7 +172,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" },
   [AppConnection.Ona]: { name: "Ona", image: "Ona.png", aliases: ["gitpod"] },
   [AppConnection.DigiCert]: { name: "DigiCert", image: "DigiCert.png" },
-  [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" }
+  [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" },
+  [AppConnection.Snowflake]: { name: "Snowflake", image: "Snowflake.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -228,6 +230,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
+    case SnowflakeConnectionMethod.UsernameAndToken:
+      return { name: "Username & Token", icon: faKey };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
