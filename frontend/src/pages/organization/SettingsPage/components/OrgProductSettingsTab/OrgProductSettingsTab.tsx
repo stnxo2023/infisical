@@ -64,8 +64,8 @@ export const OrgProductSettingsTab = () => {
             )}
           </OrgPermissionCan>
         </div>
+        <HoneyTokenSection />
       </div>
-      <HoneyTokenSection />
     </>
   );
 };

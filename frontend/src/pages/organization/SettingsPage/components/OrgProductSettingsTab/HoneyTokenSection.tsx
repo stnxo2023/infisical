@@ -114,9 +114,9 @@ export const HoneyTokenSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+    <div className="mt-6 border-t border-mineshaft-600 pt-6">
       <div className="mb-4">
-        <h2 className="text-xl font-medium text-mineshaft-100">Honey Token Settings</h2>
+        <h3 className="text-lg font-medium text-mineshaft-100">Honey Tokens</h3>
         <p className="mt-1 text-sm text-mineshaft-400">
           Plant a decoy IAM credential in your AWS account. Infisical alerts on every access
           attempt.
