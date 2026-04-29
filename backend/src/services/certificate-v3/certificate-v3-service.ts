@@ -281,7 +281,9 @@ const validateRenewalEligibility = (
     caType === CaType.ACME ||
     caType === CaType.AZURE_AD_CS ||
     caType === CaType.AWS_PCA ||
-    caType === CaType.AWS_ACM_PUBLIC_CA;
+    caType === CaType.AWS_ACM_PUBLIC_CA ||
+    caType === CaType.DIGICERT ||
+    caType === CaType.VENAFI_TPP;
   const isImportedCertificate = certificate.pkiSubscriberId != null && !certificate.profileId;
 
   if (!isInternalCa && !isConnectedExternalCa) {
@@ -1884,7 +1886,9 @@ export const certificateV3ServiceFactory = ({
       caType === CaType.ACME ||
       caType === CaType.AZURE_AD_CS ||
       caType === CaType.AWS_PCA ||
-      caType === CaType.AWS_ACM_PUBLIC_CA
+      caType === CaType.DIGICERT ||
+      caType === CaType.AWS_ACM_PUBLIC_CA ||
+      caType === CaType.VENAFI_TPP
     ) {
       // Pre-flight validation for ACM — reject bad inputs synchronously so the user
       // gets a 400 on submit rather than a FAILED request row after the job runs.
@@ -2236,7 +2240,9 @@ export const certificateV3ServiceFactory = ({
           caType === CaType.ACME ||
           caType === CaType.AZURE_AD_CS ||
           caType === CaType.AWS_PCA ||
-          caType === CaType.AWS_ACM_PUBLIC_CA
+          caType === CaType.DIGICERT ||
+          caType === CaType.AWS_ACM_PUBLIC_CA ||
+          caType === CaType.VENAFI_TPP
         ) {
           // External CA renewal - mark for async processing outside transaction
           return {
@@ -2537,7 +2543,7 @@ export const certificateV3ServiceFactory = ({
 
     if (profile.enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: "Certificate is not eligible for auto-renewal: EST certificates cannot be auto-renewed"
+        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
       });
     }
 
@@ -2654,7 +2660,7 @@ export const certificateV3ServiceFactory = ({
 
     if (profile.enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: "Certificate is not eligible for auto-renewal: EST certificates cannot be auto-renewed"
+        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
       });
     }
 

@@ -341,11 +341,6 @@ export const certificateProfileServiceFactory = ({
       })
     );
 
-    const project = await projectDAL.findById(projectId);
-    if (!project) {
-      throw new NotFoundError({ message: "Project not found" });
-    }
-
     // Validate that certificate policy exists and belongs to the same project
     if (data.certificatePolicyId) {
       const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);

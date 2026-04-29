@@ -13,6 +13,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TUserDALFactory = ReturnType<typeof userDALFactory>;
@@ -38,10 +39,10 @@ export const userDALFactory = (db: TDbClient) => {
       if (searchTerm) {
         query = query.where((qb) => {
           void qb
-            .whereILike("email", `%${searchTerm}%`)
-            .orWhereILike("firstName", `%${searchTerm}%`)
-            .orWhereILike("lastName", `%${searchTerm}%`)
-            .orWhereRaw('lower("username") like ?', `%${searchTerm}%`);
+            .whereILike("email", `%${sanitizeSqlLikeString(searchTerm)}%`)
+            .orWhereILike("firstName", `%${sanitizeSqlLikeString(searchTerm)}%`)
+            .orWhereILike("lastName", `%${sanitizeSqlLikeString(searchTerm)}%`)
+            .orWhereRaw('lower("username") like ?', `%${sanitizeSqlLikeString(searchTerm)}%`);
         });
       }
 

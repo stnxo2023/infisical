@@ -158,6 +158,7 @@ import {
   TOctopusDeploySyncListItem,
   TOctopusDeploySyncWithCredentials
 } from "./octopus-deploy";
+import { TOnaSync, TOnaSyncInput, TOnaSyncListItem, TOnaSyncWithCredentials } from "./ona";
 import { TOvhSync, TOvhSyncInput, TOvhSyncListItem, TOvhSyncWithCredentials } from "./ovh";
 import {
   TRailwaySync,
@@ -189,6 +190,7 @@ import {
   TTerraformCloudSyncListItem,
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud";
+import { TTravisCISync, TTravisCISyncInput, TTravisCISyncListItem, TTravisCISyncWithCredentials } from "./travis-ci";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
 import { TZabbixSync, TZabbixSyncInput, TZabbixSyncListItem, TZabbixSyncWithCredentials } from "./zabbix";
 
@@ -229,7 +231,9 @@ export type TSecretSync =
   | TCircleCISync
   | TAzureEntraIdScimSync
   | TExternalInfisicalSync
-  | TOvhSync;
+  | TOvhSync
+  | TOnaSync
+  | TTravisCISync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -269,7 +273,9 @@ export type TSecretSyncWithCredentials =
   | TCircleCISyncWithCredentials
   | TAzureEntraIdScimSyncWithCredentials
   | TExternalInfisicalSyncWithCredentials
-  | TOvhSyncWithCredentials;
+  | TOvhSyncWithCredentials
+  | TOnaSyncWithCredentials
+  | TTravisCISyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -309,7 +315,9 @@ export type TSecretSyncInput =
   | TCircleCISyncInput
   | TAzureEntraIdScimSyncInput
   | TExternalInfisicalSyncInput
-  | TOvhSyncInput;
+  | TOvhSyncInput
+  | TOnaSyncInput
+  | TTravisCISyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -349,7 +357,9 @@ export type TSecretSyncListItem =
   | TCircleCISyncListItem
   | TAzureEntraIdScimSyncListItem
   | TExternalInfisicalSyncListItem
-  | TOvhSyncListItem;
+  | TOvhSyncListItem
+  | TOnaSyncListItem
+  | TTravisCISyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

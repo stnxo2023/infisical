@@ -49,6 +49,20 @@ export type TAwsPcaCertificateAuthority = {
   };
 };
 
+export type TDigiCertCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.DIGICERT;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    appConnectionId: string;
+    organizationId: number;
+    productNameId: string;
+  };
+};
+
 export type TAwsAcmPublicCaCertificateAuthority = {
   id: string;
   projectId: string;
@@ -61,6 +75,19 @@ export type TAwsAcmPublicCaCertificateAuthority = {
     dnsAppConnectionId: string;
     hostedZoneId: string;
     region: string;
+  };
+};
+
+export type TVenafiTppCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.VENAFI_TPP;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    appConnectionId: string;
+    policyDN: string;
   };
 };
 
@@ -95,7 +122,9 @@ export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
   | TAzureAdCsCertificateAuthority
   | TAwsPcaCertificateAuthority
+  | TDigiCertCertificateAuthority
   | TAwsAcmPublicCaCertificateAuthority
+  | TVenafiTppCertificateAuthority
   | TInternalCertificateAuthority;
 
 export type TCreateCertificateAuthorityDTO = Omit<

@@ -449,6 +449,7 @@ export enum EventType {
   GET_CERTIFICATE_REQUEST = "get-certificate-request",
   GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
   LIST_CERTIFICATE_REQUESTS = "list-certificate-requests",
+  TRIGGER_CERTIFICATE_REQUEST_VALIDATION = "trigger-certificate-request-validation",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -474,6 +475,7 @@ export enum EventType {
   CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
   CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",
+  CMEK_BULK_EXPORT_PRIVATE_KEYS = "cmek-bulk-export-private-keys",
 
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
@@ -542,6 +544,7 @@ export enum EventType {
   CREATE_SECRET_ROTATION = "create-secret-rotation",
   UPDATE_SECRET_ROTATION = "update-secret-rotation",
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
+  MOVE_SECRET_ROTATION = "move-secret-rotation",
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
   RECONCILE_SECRET_ROTATION = "reconcile-secret-rotation",
 
@@ -622,6 +625,7 @@ export enum EventType {
   PAM_ACCOUNT_LIST = "pam-account-list",
   PAM_ACCOUNT_GET = "pam-account-get",
   PAM_ACCOUNT_ACCESS = "pam-account-access",
+  PAM_ACCOUNT_AWS_CONSOLE_URL_GENERATED = "pam-account-aws-console-url-generated",
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
@@ -772,7 +776,14 @@ export enum EventType {
   // Gateway Enrollment Tokens
   GATEWAY_CREATE = "gateway-create",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
-  GATEWAY_ENROLL = "gateway-enroll"
+  GATEWAY_ENROLL = "gateway-enroll",
+
+  // Gateway Pools
+  GATEWAY_POOL_CREATE = "gateway-pool-create",
+  GATEWAY_POOL_UPDATE = "gateway-pool-update",
+  GATEWAY_POOL_DELETE = "gateway-pool-delete",
+  GATEWAY_POOL_ADD_MEMBER = "gateway-pool-add-member",
+  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -2288,6 +2299,9 @@ interface CreateWebhookEvent {
     environment: string;
     secretPath: string;
     isDisabled: boolean;
+    eventsFilter?: {
+      eventName: string;
+    }[];
   };
 }
 
@@ -2298,6 +2312,9 @@ interface UpdateWebhookStatusEvent {
     environment: string;
     secretPath: string;
     isDisabled: boolean;
+    eventsFilter?: {
+      eventName: string;
+    }[];
   };
 }
 
@@ -3658,6 +3675,13 @@ interface CmekGetPrivateKeyEvent {
   };
 }
 
+interface CmekBulkGetPrivateKeysEvent {
+  type: EventType.CMEK_BULK_EXPORT_PRIVATE_KEYS;
+  metadata: {
+    keys: { keyId: string; name: string }[];
+  };
+}
+
 interface GetExternalGroupOrgRoleMappingsEvent {
   type: EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS;
   metadata?: Record<string, never>; // not needed, based off orgId
@@ -4357,6 +4381,18 @@ interface DeleteSecretRotationEvent {
   metadata: TDeleteSecretRotationV2DTO;
 }
 
+interface MoveSecretRotationEvent {
+  type: EventType.MOVE_SECRET_ROTATION;
+  metadata: {
+    type: string;
+    rotationId: string;
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+  };
+}
+
 interface RotateSecretRotationEvent {
   type: EventType.SECRET_ROTATION_ROTATE_SECRETS;
   metadata: Pick<TSecretRotationV2Raw, "parameters" | "secretsMapping" | "type" | "connectionId" | "folderId"> & {
@@ -4933,12 +4969,23 @@ interface PamAccountAccessEvent {
     resourceName: string;
     accountName: string;
     duration?: string;
+    reason?: string;
   };
 }
 
 interface PamWebAccessSessionTicketCreatedEvent {
   type: EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED;
   metadata: {
+    accountId: string;
+    resourceName: string;
+    accountName: string;
+  };
+}
+
+interface PamAccountAwsConsoleUrlGeneratedEvent {
+  type: EventType.PAM_ACCOUNT_AWS_CONSOLE_URL_GENERATED;
+  metadata: {
+    sessionId: string;
     accountId: string;
     resourceName: string;
     accountName: string;
@@ -5361,6 +5408,15 @@ interface GetCertificateFromRequestEvent {
   metadata: {
     certificateRequestId: string;
     certificateId?: string;
+  };
+}
+
+interface TriggerCertificateRequestValidationEvent {
+  type: EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION;
+  metadata: {
+    certificateRequestId: string;
+    status: string;
+    orderStatus?: string;
   };
 }
 
@@ -6099,6 +6155,50 @@ interface GatewayEnrollEvent {
   };
 }
 
+interface GatewayPoolCreateEvent {
+  type: EventType.GATEWAY_POOL_CREATE;
+  metadata: {
+    poolId: string;
+    name: string;
+  };
+}
+
+interface GatewayPoolUpdateEvent {
+  type: EventType.GATEWAY_POOL_UPDATE;
+  metadata: {
+    poolId: string;
+    name: string;
+  };
+}
+
+interface GatewayPoolDeleteEvent {
+  type: EventType.GATEWAY_POOL_DELETE;
+  metadata: {
+    poolId: string;
+    name: string;
+  };
+}
+
+interface GatewayPoolAddMemberEvent {
+  type: EventType.GATEWAY_POOL_ADD_MEMBER;
+  metadata: {
+    poolId: string;
+    poolName: string;
+    gatewayId: string;
+    gatewayName: string;
+  };
+}
+
+interface GatewayPoolRemoveMemberEvent {
+  type: EventType.GATEWAY_POOL_REMOVE_MEMBER;
+  metadata: {
+    poolId: string;
+    poolName: string;
+    gatewayId: string;
+    gatewayName: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -6371,6 +6471,7 @@ export type Event =
   | CmekListSigningAlgorithmsEvent
   | CmekGetPublicKeyEvent
   | CmekGetPrivateKeyEvent
+  | CmekBulkGetPrivateKeysEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent
@@ -6464,6 +6565,7 @@ export type Event =
   | CreateSecretRotationEvent
   | UpdateSecretRotationEvent
   | DeleteSecretRotationEvent
+  | MoveSecretRotationEvent
   | RotateSecretRotationEvent
   | ReconcileSecretRotationEvent
   | MicrosoftTeamsWorkflowIntegrationCreateEvent
@@ -6529,6 +6631,7 @@ export type Event =
   | PamAccountListEvent
   | PamAccountGetEvent
   | PamAccountAccessEvent
+  | PamAccountAwsConsoleUrlGeneratedEvent
   | PamWebAccessSessionTicketCreatedEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
@@ -6573,6 +6676,7 @@ export type Event =
   | GetCertificateRequestEvent
   | GetCertificateFromRequestEvent
   | ListCertificateRequestsEvent
+  | TriggerCertificateRequestValidationEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent
@@ -6652,4 +6756,9 @@ export type Event =
   | DeleteEmailDomainEvent
   | GatewayCreateEvent
   | GatewayEnrollmentTokenCreateEvent
-  | GatewayEnrollEvent;
+  | GatewayEnrollEvent
+  | GatewayPoolCreateEvent
+  | GatewayPoolUpdateEvent
+  | GatewayPoolDeleteEvent
+  | GatewayPoolAddMemberEvent
+  | GatewayPoolRemoveMemberEvent;
