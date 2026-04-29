@@ -200,8 +200,8 @@ export const honeyTokenServiceFactory = ({
 
     const iamUserName = `${HONEY_TOKEN_IAM_USER_PREFIX}${crypto.randomBytes(8).toString("hex")}`;
 
-    const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
-    const iam = new IAMClient({ credentials: awsCredentials });
+    const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
+    const iam = new IAMClient({ credentials: awsCredentials, region });
 
     await iam.send(new CreateUserCommand({ UserName: iamUserName }));
 
@@ -516,8 +516,8 @@ export const honeyTokenServiceFactory = ({
     if (appConnection) {
       const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
       const awsConfig = decryptedConnection as unknown as TAwsConnectionConfig;
-      const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
-      const iam = new IAMClient({ credentials: awsCredentials });
+      const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
+      const iam = new IAMClient({ credentials: awsCredentials, region });
 
       try {
         await iam.send(
