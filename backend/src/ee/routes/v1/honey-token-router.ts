@@ -206,8 +206,8 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:honeyTokenId",
-    method: "DELETE",
+    url: "/:honeyTokenId/revoke",
+    method: "POST",
     config: {
       rateLimit: writeLimit
     },
@@ -226,7 +226,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { honeyTokenId } = await server.services.honeyTokenCrud.deleteHoneyToken(
+      const { honeyTokenId } = await server.services.honeyTokenCrud.revokeHoneyToken(
         {
           honeyTokenId: req.params.honeyTokenId,
           projectId: req.body.projectId

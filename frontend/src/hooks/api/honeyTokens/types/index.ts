@@ -46,6 +46,11 @@ export type TDeleteHoneyTokenDTO = {
   projectId: string;
 };
 
+export type TRevokeHoneyTokenDTO = {
+  honeyTokenId: string;
+  projectId: string;
+};
+
 export {
   type TAwsHoneyToken,
   type TAwsHoneyTokenCredentialsResponse,

@@ -4,7 +4,8 @@ export enum HoneyTokenType {
 
 export enum HoneyTokenStatus {
   Active = "active",
-  Triggered = "triggered"
+  Triggered = "triggered",
+  Revoked = "revoked"
 }
 
 export enum HoneyTokenEventType {

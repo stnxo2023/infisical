@@ -4,15 +4,16 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   AlertTriangle,
+  BanIcon,
   CalendarIcon,
   ChevronLeftIcon,
   ClockIcon,
   KeyIcon,
   MapPinIcon,
   RotateCcw,
-  SirenIcon,
-  Trash2Icon
+  SirenIcon
 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -47,7 +48,7 @@ import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_CREDENTIAL_FIELDS, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
-import { useDeleteHoneyToken, useResetHoneyToken } from "@app/hooks/api/honeyTokens/mutations";
+import { useResetHoneyToken, useRevokeHoneyToken } from "@app/hooks/api/honeyTokens/mutations";
 import {
   useGetHoneyTokenById,
   useGetHoneyTokenCredentials
@@ -68,10 +69,10 @@ const PageContent = () => {
   });
 
   const { mutateAsync: resetHoneyToken } = useResetHoneyToken();
-  const { mutateAsync: deleteHoneyToken } = useDeleteHoneyToken();
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const { mutateAsync: revokeHoneyToken } = useRevokeHoneyToken();
+  const [isRevokeOpen, setIsRevokeOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
-  const [deleteInput, setDeleteInput] = useState("");
+  const [revokeInput, setRevokeInput] = useState("");
   const { data: credentials, isPending: isCredentialsPending } = useGetHoneyTokenCredentials({
     honeyTokenId,
     projectId,
@@ -79,8 +80,8 @@ const PageContent = () => {
   });
 
   useEffect(() => {
-    setDeleteInput("");
-  }, [isDeleteOpen]);
+    setRevokeInput("");
+  }, [isRevokeOpen]);
 
   if (isPending) {
     return (
@@ -103,7 +104,18 @@ const PageContent = () => {
   }
 
   const isTriggered = honeyToken.status === HoneyTokenStatus.Triggered;
+  const isRevoked = honeyToken.status === HoneyTokenStatus.Revoked;
   const tokenInfo = HONEY_TOKEN_MAP[honeyToken.type as HoneyTokenType];
+
+  let statusBadgeVariant: "danger" | "neutral" | "success" = "success";
+  let statusLabel = "Active";
+  if (isTriggered) {
+    statusBadgeVariant = "danger";
+    statusLabel = "Triggered";
+  } else if (isRevoked) {
+    statusBadgeVariant = "neutral";
+    statusLabel = "Revoked";
+  }
 
   const handleReset = async () => {
     await resetHoneyToken({
@@ -116,18 +128,14 @@ const PageContent = () => {
     });
   };
 
-  const handleDelete = async () => {
-    await deleteHoneyToken({
+  const handleRevoke = async () => {
+    await revokeHoneyToken({
       honeyTokenId: honeyToken.id,
       projectId
     });
     createNotification({
-      text: `Successfully deleted honey token "${honeyToken.name}"`,
+      text: `Successfully revoked honey token "${honeyToken.name}"`,
       type: "success"
-    });
-    navigate({
-      to: ROUTE_PATHS.SecretManager.OverviewPage.path,
-      params: { orgId, projectId }
     });
   };
 
@@ -156,16 +164,20 @@ const PageContent = () => {
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-mineshaft-600 bg-mineshaft-800">
                   <SirenIcon
-                    className={isTriggered ? "text-red-500" : "text-yellow-500"}
+                    className={twMerge(
+                      isTriggered && "text-red-500",
+                      isRevoked && "text-mineshaft-400",
+                      !isTriggered && !isRevoked && "text-yellow-500"
+                    )}
                     size={22}
                   />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2.5">
                     <p className="truncate text-lg font-medium text-white">{honeyToken.name}</p>
-                    <Badge variant={isTriggered ? "danger" : "success"}>
+                    <Badge variant={statusBadgeVariant}>
                       {isTriggered && <AlertTriangle size={12} className="mr-1" />}
-                      {isTriggered ? "Triggered" : "Active"}
+                      {statusLabel}
                     </Badge>
                     {tokenInfo && (
                       <Badge variant="neutral" className="flex items-center gap-1">
@@ -190,10 +202,12 @@ const PageContent = () => {
                     Reset
                   </Button>
                 )}
-                <Button variant="danger" size="xs" onClick={() => setIsDeleteOpen(true)}>
-                  <Trash2Icon size={14} />
-                  Delete
-                </Button>
+                {!isRevoked && (
+                  <Button variant="danger" size="xs" onClick={() => setIsRevokeOpen(true)}>
+                    <BanIcon size={14} />
+                    Revoke
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -235,46 +249,61 @@ const PageContent = () => {
               </div>
             </div>
 
-            <ProjectPermissionCan
-              I={ProjectPermissionSecretActions.DescribeAndReadValue}
-              a={ProjectPermissionSub.Secrets}
-            >
-              {(isAllowed) =>
-                isAllowed && (
-                  <div className="mt-4 border-t border-mineshaft-600 pt-4">
-                    <div className="mb-2 flex items-center gap-1.5 text-xs text-bunker-300">
-                      <KeyIcon size={13} />
-                      <span>Credentials</span>
+            {!isRevoked && (
+              <ProjectPermissionCan
+                I={ProjectPermissionSecretActions.DescribeAndReadValue}
+                a={ProjectPermissionSub.Secrets}
+              >
+                {(isAllowed) =>
+                  isAllowed && (
+                    <div className="mt-4 border-t border-mineshaft-600 pt-4">
+                      <div className="mb-2 flex items-center gap-1.5 text-xs text-bunker-300">
+                        <KeyIcon size={13} />
+                        <span>Credentials</span>
+                      </div>
+                      {isCredentialsPending && (
+                        <div className="flex flex-col gap-2 py-2">
+                          <Skeleton className="h-8 w-full rounded-md" />
+                          <Skeleton className="h-8 w-full rounded-md" />
+                        </div>
+                      )}
+                      {!isCredentialsPending && credentials && (
+                        <div className="flex flex-col gap-x-8 gap-y-2 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-2">
+                          {(
+                            HONEY_TOKEN_CREDENTIAL_FIELDS[honeyToken.type as HoneyTokenType] ?? []
+                          ).map(({ key, label }) => {
+                            const mapping = honeyToken.secretsMapping as Record<string, string>;
+                            const secretName = mapping[key];
+                            const value = secretName ? credentials[secretName] : undefined;
+                            return (
+                              <CredentialDisplay key={key} label={label} isSensitive>
+                                {value}
+                              </CredentialDisplay>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {!isCredentialsPending && !credentials && (
+                        <p className="text-xs text-bunker-400">No credentials available.</p>
+                      )}
                     </div>
-                    {isCredentialsPending && (
-                      <div className="flex flex-col gap-2 py-2">
-                        <Skeleton className="h-8 w-full rounded-md" />
-                        <Skeleton className="h-8 w-full rounded-md" />
-                      </div>
-                    )}
-                    {!isCredentialsPending && credentials && (
-                      <div className="flex flex-col gap-x-8 gap-y-2 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-2">
-                        {(
-                          HONEY_TOKEN_CREDENTIAL_FIELDS[honeyToken.type as HoneyTokenType] ?? []
-                        ).map(({ key, label }) => {
-                          const mapping = honeyToken.secretsMapping as Record<string, string>;
-                          const secretName = mapping[key];
-                          const value = secretName ? credentials[secretName] : undefined;
-                          return (
-                            <CredentialDisplay key={key} label={label} isSensitive>
-                              {value}
-                            </CredentialDisplay>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {!isCredentialsPending && !credentials && (
-                      <p className="text-xs text-bunker-400">No credentials available.</p>
-                    )}
-                  </div>
-                )
-              }
-            </ProjectPermissionCan>
+                  )
+                }
+              </ProjectPermissionCan>
+            )}
+
+            {isRevoked && (
+              <div className="mt-4 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <BanIcon size={16} className="text-mineshaft-400" />
+                  <p className="text-sm font-medium text-mineshaft-300">Honey token revoked</p>
+                </div>
+                <p className="text-xs text-bunker-300">
+                  The AWS IAM credentials have been revoked and the decoy secrets removed. The honey
+                  token record and its events are preserved for audit purposes.
+                </p>
+              </div>
+            )}
 
             {isTriggered && (
               <div className="mt-4 rounded-md border border-yellow-800/50 bg-yellow-900/20 p-4">
@@ -344,22 +373,23 @@ const PageContent = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+      <AlertDialog open={isRevokeOpen} onOpenChange={setIsRevokeOpen}>
         <AlertDialogContent className="sm:max-w-xl!">
           <AlertDialogHeader>
             <AlertDialogMedia>
-              <Trash2Icon />
+              <BanIcon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Are you sure you want to delete {honeyToken.name}?</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure you want to revoke {honeyToken.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               This will revoke the AWS IAM credentials and remove the associated decoy secrets from
-              this environment.
+              this environment. The honey token record and its events will be preserved for audit
+              purposes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (deleteInput === honeyToken.name) handleDelete();
+              if (revokeInput === honeyToken.name) handleRevoke();
             }}
           >
             <Field>
@@ -368,8 +398,8 @@ const PageContent = () => {
               </FieldLabel>
               <FieldContent>
                 <Input
-                  value={deleteInput}
-                  onChange={(e) => setDeleteInput(e.target.value)}
+                  value={revokeInput}
+                  onChange={(e) => setRevokeInput(e.target.value)}
                   placeholder={`Type ${honeyToken.name} here`}
                 />
               </FieldContent>
@@ -379,10 +409,10 @@ const PageContent = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              onClick={handleDelete}
-              disabled={deleteInput !== honeyToken.name}
+              onClick={handleRevoke}
+              disabled={revokeInput !== honeyToken.name}
             >
-              Delete
+              Revoke
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

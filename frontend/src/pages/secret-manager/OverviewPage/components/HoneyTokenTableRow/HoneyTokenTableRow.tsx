@@ -1,12 +1,12 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   AsteriskIcon,
+  BanIcon,
   ChevronDownIcon,
   EditIcon,
   ExternalLinkIcon,
   InfoIcon,
-  SirenIcon,
-  TrashIcon
+  SirenIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -36,6 +36,12 @@ import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 
+const STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "neutral"> = {
+  [HoneyTokenStatus.Active]: "success",
+  [HoneyTokenStatus.Triggered]: "danger",
+  [HoneyTokenStatus.Revoked]: "neutral"
+};
+
 type Props = {
   honeyTokenName: string;
   environments: { name: string; slug: string }[];
@@ -43,7 +49,7 @@ type Props = {
   getHoneyTokenByName: (slug: string, name: string) => TDashboardHoneyToken | undefined;
   tableWidth: number;
   onEdit: (honeyToken: TDashboardHoneyToken) => void;
-  onDelete: (honeyToken: TDashboardHoneyToken) => void;
+  onRevoke: (honeyToken: TDashboardHoneyToken) => void;
   onViewCredentials: (honeyToken: TDashboardHoneyToken) => void;
 };
 
@@ -54,7 +60,7 @@ export const HoneyTokenTableRow = ({
   getHoneyTokenByName,
   tableWidth,
   onEdit,
-  onDelete,
+  onRevoke,
   onViewCredentials
 }: Props) => {
   const navigate = useNavigate();
@@ -74,6 +80,11 @@ export const HoneyTokenTableRow = ({
   const isTriggered = environments.some((env) => {
     const ht = getHoneyTokenByName(env.slug, honeyTokenName);
     return ht?.status === HoneyTokenStatus.Triggered;
+  });
+
+  const isAllRevoked = environments.every((env) => {
+    const ht = getHoneyTokenByName(env.slug, honeyTokenName);
+    return !ht || ht.status === HoneyTokenStatus.Revoked;
   });
 
   const renderActionButtons = (honeyToken: TDashboardHoneyToken) => {
@@ -147,27 +158,29 @@ export const HoneyTokenTableRow = ({
             </Tooltip>
           )}
         </ProjectPermissionCan>
-        <ProjectPermissionCan
-          I={ProjectPermissionSecretActions.Delete}
-          a={ProjectPermissionSub.Secrets}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger>
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
-                  onClick={() => onDelete(honeyToken)}
-                  isDisabled={!isAllowed}
-                >
-                  <TrashIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Delete</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
+        {honeyToken.status !== HoneyTokenStatus.Revoked && (
+          <ProjectPermissionCan
+            I={ProjectPermissionSecretActions.Delete}
+            a={ProjectPermissionSub.Secrets}
+          >
+            {(isAllowed) => (
+              <Tooltip>
+                <TooltipTrigger>
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                    onClick={() => onRevoke(honeyToken)}
+                    isDisabled={!isAllowed}
+                  >
+                    <BanIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Revoke</TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+        )}
       </div>
     );
   };
@@ -188,11 +201,10 @@ export const HoneyTokenTableRow = ({
             {tokenInfo.name} Honey Token
           </Badge>
         )}
-        <Badge
-          variant={honeyToken.status === HoneyTokenStatus.Active ? "success" : "danger"}
-          className="mx-1"
-        >
-          {honeyToken.status === HoneyTokenStatus.Active ? "Active" : "Triggered"}
+        <Badge variant={STATUS_BADGE_VARIANT[honeyToken.status] ?? "neutral"} className="mx-1">
+          {honeyToken.status === HoneyTokenStatus.Active && "Active"}
+          {honeyToken.status === HoneyTokenStatus.Triggered && "Triggered"}
+          {honeyToken.status === HoneyTokenStatus.Revoked && "Revoked"}
         </Badge>
         {mappedKeys.length > 0 && (
           <Tooltip>
@@ -222,7 +234,13 @@ export const HoneyTokenTableRow = ({
           {!isSingleEnvView && isExpanded ? (
             <ChevronDownIcon />
           ) : (
-            <SirenIcon className={isTriggered ? "text-red" : "text-yellow"} />
+            <SirenIcon
+              className={twMerge(
+                isTriggered && "text-red",
+                !isTriggered && !isAllRevoked && "text-yellow",
+                isAllRevoked && "text-mineshaft-400"
+              )}
+            />
           )}
         </TableCell>
         <TableCell
@@ -249,7 +267,7 @@ export const HoneyTokenTableRow = ({
               </div>
             </div>
           ) : (
-            <>{honeyTokenName}</>
+            honeyTokenName
           )}
         </TableCell>
         {environments.length > 1 &&

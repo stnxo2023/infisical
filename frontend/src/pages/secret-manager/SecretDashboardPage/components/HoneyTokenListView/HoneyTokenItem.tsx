@@ -3,11 +3,11 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AsteriskIcon,
+  BanIcon,
   ExternalLinkIcon,
   InfoIcon,
   PencilIcon,
-  SirenIcon,
-  Trash2Icon
+  SirenIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -23,11 +23,11 @@ import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 type Props = {
   honeyToken: TDashboardHoneyToken;
   onEdit: () => void;
-  onDelete: () => void;
+  onRevoke: () => void;
   onViewCredentials: () => void;
 };
 
-export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials }: Props) => {
+export const HoneyTokenItem = ({ honeyToken, onEdit, onRevoke, onViewCredentials }: Props) => {
   const navigate = useNavigate();
   const { orgId, projectId } = useParams({
     from: ROUTE_PATHS.SecretManager.SecretDashboardPage.id
@@ -37,6 +37,12 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
 
   const honeyTokenInfo = HONEY_TOKEN_MAP[type as HoneyTokenType];
   const mappedSecretKeys = Object.values(secretsMapping || {});
+
+  const statusVariantMap: Record<string, "success" | "danger" | "neutral"> = {
+    [HoneyTokenStatus.Active]: "success",
+    [HoneyTokenStatus.Triggered]: "danger",
+    [HoneyTokenStatus.Revoked]: "neutral"
+  };
 
   return (
     <>
@@ -59,7 +65,9 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
         <div
           className={twMerge(
             "flex w-11 items-center py-2 pl-5",
-            status === HoneyTokenStatus.Triggered ? "text-red" : "text-yellow"
+            status === HoneyTokenStatus.Triggered && "text-red",
+            status === HoneyTokenStatus.Active && "text-yellow",
+            status === HoneyTokenStatus.Revoked && "text-mineshaft-400"
           )}
         >
           <SirenIcon className="size-4" />
@@ -77,8 +85,10 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
                 {honeyTokenInfo.name} Honey Token
               </Badge>
             )}
-            <Badge variant={status === HoneyTokenStatus.Active ? "success" : "danger"}>
-              {status === HoneyTokenStatus.Active ? "Active" : "Triggered"}
+            <Badge variant={statusVariantMap[status] ?? "neutral"}>
+              {status === HoneyTokenStatus.Active && "Active"}
+              {status === HoneyTokenStatus.Triggered && "Triggered"}
+              {status === HoneyTokenStatus.Revoked && "Revoked"}
             </Badge>
           </div>
           <div
@@ -165,28 +175,30 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onDelete, onViewCredentials
                 </IconButton>
               )}
             </ProjectPermissionCan>
-            <ProjectPermissionCan
-              I={ProjectPermissionSecretActions.Delete}
-              a={ProjectPermissionSub.Secrets}
-              renderTooltip
-              allowedLabel="Delete"
-            >
-              {(isAllowed) => (
-                <IconButton
-                  aria-label="Delete honey token"
-                  variant="danger"
-                  size="xs"
-                  className="opacity-0 group-hover:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                  }}
-                  isDisabled={!isAllowed}
-                >
-                  <Trash2Icon className="size-4" />
-                </IconButton>
-              )}
-            </ProjectPermissionCan>
+            {status !== HoneyTokenStatus.Revoked && (
+              <ProjectPermissionCan
+                I={ProjectPermissionSecretActions.Delete}
+                a={ProjectPermissionSub.Secrets}
+                renderTooltip
+                allowedLabel="Revoke"
+              >
+                {(isAllowed) => (
+                  <IconButton
+                    aria-label="Revoke honey token"
+                    variant="danger"
+                    size="xs"
+                    className="opacity-0 group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRevoke();
+                    }}
+                    isDisabled={!isAllowed}
+                  >
+                    <BanIcon className="size-4" />
+                  </IconButton>
+                )}
+              </ProjectPermissionCan>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

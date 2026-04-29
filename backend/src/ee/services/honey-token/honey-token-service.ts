@@ -459,7 +459,7 @@ export const honeyTokenServiceFactory = ({
     };
   };
 
-  const deleteHoneyToken = async (
+  const revokeHoneyToken = async (
     { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
     actor: OrgServiceActor
   ) => {
@@ -467,7 +467,7 @@ export const honeyTokenServiceFactory = ({
 
     if (!plan.honeyTokens) {
       throw new BadRequestError({
-        message: "Failed to delete honey token due to plan restriction. Upgrade plan to use honey tokens."
+        message: "Failed to revoke honey token due to plan restriction. Upgrade plan to use honey tokens."
       });
     }
 
@@ -486,6 +486,10 @@ export const honeyTokenServiceFactory = ({
 
     if (!honeyToken || honeyToken.projectId !== projectId) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
+
+    if (honeyToken.status === HoneyTokenStatus.Revoked) {
+      throw new BadRequestError({ message: "Honey token is already revoked" });
     }
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -536,7 +540,11 @@ export const honeyTokenServiceFactory = ({
       secretVersionDAL
     });
 
-    await honeyTokenDAL.deleteById(honeyTokenId);
+    await honeyTokenDAL.updateById(honeyTokenId, {
+      status: HoneyTokenStatus.Revoked,
+      revokedAt: new Date(),
+      revokedByUserId: actor.id
+    });
 
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(honeyToken.folderId);
@@ -814,7 +822,7 @@ export const honeyTokenServiceFactory = ({
   return {
     create,
     updateHoneyToken,
-    deleteHoneyToken,
+    revokeHoneyToken,
     resetHoneyToken,
     getCredentials,
     getHoneyTokenById,

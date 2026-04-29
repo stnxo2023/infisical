@@ -5,8 +5,8 @@ import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import {
   TCreateHoneyTokenDTO,
-  TDeleteHoneyTokenDTO,
   THoneyToken,
+  TRevokeHoneyTokenDTO,
   TUpdateHoneyTokenDTO
 } from "./types";
 
@@ -64,14 +64,14 @@ export const useResetHoneyToken = () => {
   });
 };
 
-export const useDeleteHoneyToken = () => {
+export const useRevokeHoneyToken = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ honeyTokenId: string }, object, TDeleteHoneyTokenDTO>({
+  return useMutation<{ honeyTokenId: string }, object, TRevokeHoneyTokenDTO>({
     mutationFn: async ({ honeyTokenId, projectId }) => {
-      const { data } = await apiRequest.delete<{ honeyTokenId: string }>(
-        `/api/v1/honey-tokens/${honeyTokenId}`,
-        { data: { projectId } }
+      const { data } = await apiRequest.post<{ honeyTokenId: string }>(
+        `/api/v1/honey-tokens/${honeyTokenId}/revoke`,
+        { projectId }
       );
       return data;
     },

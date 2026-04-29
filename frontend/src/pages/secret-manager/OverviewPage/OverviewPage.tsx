@@ -24,16 +24,16 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { CreateHoneyTokenModal } from "@app/components/honey-tokens";
+import {
+  CreateHoneyTokenModal,
+  EditHoneyTokenModal,
+  RevokeHoneyTokenModal,
+  ViewHoneyTokenCredentialsModal
+} from "@app/components/honey-tokens";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
-import {
-  DeleteHoneyTokenModal,
-  EditHoneyTokenModal,
-  ViewHoneyTokenCredentialsModal
-} from "@app/components/honey-tokens";
 import { DeleteSecretRotationV2Modal } from "@app/components/secret-rotations-v2/DeleteSecretRotationV2Modal";
 import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/EditSecretRotationV2Modal";
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
@@ -146,6 +146,7 @@ import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/ap
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import {
   useGetExternalMigrationConfigs,
   useImportDopplerSecrets,
@@ -163,7 +164,6 @@ import {
   SecretRotation as SecretRotationV2,
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
-import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import {
@@ -783,7 +783,7 @@ const OverviewPageContent = () => {
     "importFromDoppler",
     "confirmDisableBatchMode",
     "editHoneyToken",
-    "deleteHoneyToken",
+    "revokeHoneyToken",
     "viewHoneyTokenCredentials"
   ] as const);
 
@@ -3088,11 +3088,9 @@ const OverviewPageContent = () => {
                               getHoneyTokenByName={getHoneyTokenByName}
                               tableWidth={tableWidth}
                               key={`overview-ht-${honeyTokenName}-${index + 1}`}
-                              onEdit={(honeyToken) =>
-                                handlePopUpOpen("editHoneyToken", honeyToken)
-                              }
-                              onDelete={(honeyToken) =>
-                                handlePopUpOpen("deleteHoneyToken", honeyToken)
+                              onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
+                              onRevoke={(honeyToken) =>
+                                handlePopUpOpen("revokeHoneyToken", honeyToken)
                               }
                               onViewCredentials={(honeyToken) =>
                                 handlePopUpOpen("viewHoneyTokenCredentials", honeyToken)
@@ -3441,10 +3439,10 @@ const OverviewPageContent = () => {
         honeyToken={popUp.editHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("editHoneyToken", isOpen)}
       />
-      <DeleteHoneyTokenModal
-        isOpen={popUp.deleteHoneyToken.isOpen}
-        honeyToken={popUp.deleteHoneyToken.data as TDashboardHoneyToken}
-        onOpenChange={(isOpen) => handlePopUpToggle("deleteHoneyToken", isOpen)}
+      <RevokeHoneyTokenModal
+        isOpen={popUp.revokeHoneyToken.isOpen}
+        honeyToken={popUp.revokeHoneyToken.data as TDashboardHoneyToken}
+        onOpenChange={(isOpen) => handlePopUpToggle("revokeHoneyToken", isOpen)}
       />
       <ViewHoneyTokenCredentialsModal
         isOpen={popUp.viewHoneyTokenCredentials.isOpen}
