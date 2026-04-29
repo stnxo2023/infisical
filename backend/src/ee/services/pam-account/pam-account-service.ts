@@ -65,6 +65,7 @@ import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-
 import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
 import { PamDomainType } from "../pam-domain/pam-domain-enums";
 import { PAM_DOMAIN_FACTORY_MAP } from "../pam-domain/pam-domain-factory";
+import { TPamProjectRecordingConfigServiceFactory } from "../pam-project-recording-config/pam-project-recording-config-service";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamResourceRotationRulesDALFactory } from "../pam-resource/pam-resource-rotation-rules-dal";
@@ -74,6 +75,8 @@ import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-re
 import { TSSHAccountCredentials, TSSHResourceInternalMetadata } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
+import { generateSessionRecordingSecrets } from "../pam-session/pam-session-recording-secrets";
+import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import { PamAccountRotationStatus } from "./pam-account-enums";
@@ -122,6 +125,7 @@ type TPamAccountServiceFactoryDep = {
     "findByAccountId" | "updateById" | "countByAccountIds"
   >;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
+  pamProjectRecordingConfigService: Pick<TPamProjectRecordingConfigServiceFactory, "resolveConfigForProject">;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -148,7 +152,8 @@ export const pamAccountServiceFactory = ({
   pamSessionExpirationService,
   resourceMetadataDAL,
   pamAccountDependenciesDAL,
-  keyStore
+  keyStore,
+  pamProjectRecordingConfigService
 }: TPamAccountServiceFactoryDep) => {
   // Helper to resolve account parent (resource or domain)
   const resolveAccountParent = async ({
@@ -954,6 +959,9 @@ export const pamAccountServiceFactory = ({
     }
 
     // For gateway-based resources (Postgres, MySQL, SSH), create session first
+    //
+    // Recording secrets are generated lazily at credential fetch time so the raw
+    // upload token can be returned exactly once to the gateway without persisting it
     const session = await pamSessionDAL.create({
       accountName: account.name,
       actorEmail,
@@ -1243,13 +1251,40 @@ export const pamAccountServiceFactory = ({
 
     let sessionStarted = false;
 
-    // Mark session as started
+    // Recording secrets are lazily generated on the first /credentials call
+    // Returned exactly once to the gateway; only the encrypted session key and the SHA-256 of the upload token are persisted
+    // After the first call, the gateway is responsible for keeping these in memory (and persisting the upload token to disk for reconciliation)
+    let sessionRecordingSecrets: {
+      sessionKeyBase64: string;
+      uploadTokenBase64: string;
+      storageBackend: PamRecordingStorageBackend;
+    } | null = null;
     if (session.status === PamSessionStatus.Starting) {
+      const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(
+        session.projectId,
+        actor
+      );
+      const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
+
+      const { sessionKey, uploadToken, encryptedSessionKey, uploadTokenHash } = await generateSessionRecordingSecrets({
+        projectId: session.projectId,
+        sessionId,
+        kmsService
+      });
+
       await pamSessionDAL.updateById(sessionId, {
         status: PamSessionStatus.Active,
-        startedAt: new Date()
+        startedAt: new Date(),
+        encryptedSessionKey,
+        gatewayUploadTokenHash: uploadTokenHash
       });
       sessionStarted = true;
+
+      sessionRecordingSecrets = {
+        sessionKeyBase64: sessionKey.toString("base64"),
+        uploadTokenBase64: uploadToken.toString("base64"),
+        storageBackend
+      };
     }
 
     // Handle SSH certificate-based authentication
@@ -1299,7 +1334,8 @@ export const pamAccountServiceFactory = ({
           policyRules,
           projectId: project.id,
           account,
-          sessionStarted
+          sessionStarted,
+          recording: sessionRecordingSecrets
         };
       }
     }
@@ -1312,7 +1348,8 @@ export const pamAccountServiceFactory = ({
       policyRules,
       projectId: project.id,
       account,
-      sessionStarted
+      sessionStarted,
+      recording: sessionRecordingSecrets
     };
   };
 

@@ -36,8 +36,10 @@ import { TPamAccountPolicyServiceFactory } from "@app/ee/services/pam-account-po
 import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { TPamDomainServiceFactory } from "@app/ee/services/pam-domain/pam-domain-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
+import { TPamProjectRecordingConfigServiceFactory } from "@app/ee/services/pam-project-recording-config/pam-project-recording-config-service";
 import { TPamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
+import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session/pam-session-chunk-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -388,6 +390,8 @@ declare module "fastify" {
       pamAccount: TPamAccountServiceFactory;
       pamAccountPolicy: TPamAccountPolicyServiceFactory;
       pamSession: TPamSessionServiceFactory;
+      pamSessionChunk: TPamSessionChunkServiceFactory;
+      pamProjectRecordingConfig: TPamProjectRecordingConfigServiceFactory;
       pamWebAccess: TPamWebAccessServiceFactory;
       pamDiscoverySource: TPamDiscoverySourceServiceFactory;
       mfaSession: TMfaSessionServiceFactory;

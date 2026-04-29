@@ -64,6 +64,16 @@ export const SanitizedSessionSchema = PamSessionsSchema.omit({
   aiInsights: AiInsightsSchema
 });
 
+export const SanitizedSessionListItemSchema = PamSessionsSchema.omit({
+  encryptedLogsBlob: true,
+  encryptedAiInsights: true,
+  encryptedSessionKey: true,
+  gatewayUploadTokenHash: true
+}).extend({
+  gatewayIdentityId: z.string().nullable().optional(),
+  gatewayId: z.string().nullable().optional()
+});
+
 export const SessionLogsPageSchema = z.object({
   logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema])),
   hasMore: z.boolean(),
