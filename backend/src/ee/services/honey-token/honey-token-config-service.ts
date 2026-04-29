@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
+import { CloudFormationClient, DescribeStacksCommand } from "@aws-sdk/client-cloudformation";
 import { ForbiddenError } from "@casl/ability";
-import CloudFormation from "aws-sdk/clients/cloudformation.js";
 
 import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
@@ -49,11 +49,7 @@ type THoneyTokenConfigServiceFactoryDep = {
 
 export type THoneyTokenConfigServiceFactory = ReturnType<typeof honeyTokenConfigServiceFactory>;
 
-const CF_COMPLETE_STATUSES = new Set([
-  "CREATE_COMPLETE",
-  "UPDATE_COMPLETE",
-  "IMPORT_COMPLETE"
-]);
+const CF_COMPLETE_STATUSES = new Set(["CREATE_COMPLETE", "UPDATE_COMPLETE", "IMPORT_COMPLETE"]);
 
 export const honeyTokenConfigServiceFactory = ({
   honeyTokenConfigDAL,
@@ -67,6 +63,58 @@ export const honeyTokenConfigServiceFactory = ({
   projectDAL,
   smtpService
 }: THoneyTokenConfigServiceFactoryDep) => {
+  const verifyStackDeployment = async ({
+    connectionId: connId,
+    stackName
+  }: {
+    connectionId: string;
+    stackName: string;
+  }): Promise<{ deployed: boolean; status: string | null }> => {
+    try {
+      const appConnection = await appConnectionDAL.findById(connId);
+      if (!appConnection) {
+        return { deployed: false, status: null };
+      }
+
+      const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
+      const awsConfig = decryptedConnection as unknown as TAwsConnectionConfig;
+      const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
+
+      const cfn = new CloudFormationClient({ credentials: awsCredentials, region: "us-east-1" });
+      const res = await cfn.send(new DescribeStacksCommand({ StackName: stackName }));
+
+      const stack = res.Stacks?.[0];
+      if (!stack) {
+        return { deployed: false, status: null };
+      }
+
+      return {
+        deployed: CF_COMPLETE_STATUSES.has(stack.StackStatus ?? ""),
+        status: stack.StackStatus ?? null
+      };
+    } catch (err) {
+      const awsCode = (err as { code?: string }).code;
+
+      if (awsCode === "AccessDenied" || awsCode === "ExpiredToken" || awsCode === "InvalidClientTokenId") {
+        throw new BadRequestError({
+          message:
+            "The AWS App Connection does not have permission to describe CloudFormation stacks. " +
+            "Ensure the connection's IAM role or credentials include the cloudformation:DescribeStacks permission."
+        });
+      }
+
+      if (awsCode === "ValidationError") {
+        return { deployed: false, status: null };
+      }
+
+      logger.warn(
+        { err, connectionId: connId, stackName },
+        `Failed to verify CloudFormation stack [stackName=${stackName}]`
+      );
+      return { deployed: false, status: null };
+    }
+  };
+
   const upsertConfig = async ({
     orgPermission,
     type,
@@ -351,58 +399,6 @@ export const honeyTokenConfigServiceFactory = ({
     /* eslint-enable no-await-in-loop, no-continue */
 
     return { acknowledged: true };
-  };
-
-  const verifyStackDeployment = async ({
-    connectionId: connId,
-    stackName
-  }: {
-    connectionId: string;
-    stackName: string;
-  }): Promise<{ deployed: boolean; status: string | null }> => {
-    try {
-      const appConnection = await appConnectionDAL.findById(connId);
-      if (!appConnection) {
-        return { deployed: false, status: null };
-      }
-
-      const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
-      const awsConfig = decryptedConnection as unknown as TAwsConnectionConfig;
-      const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
-
-      const cfn = new CloudFormation({ credentials: awsCredentials, region: "us-east-1" });
-      const res = await cfn.describeStacks({ StackName: stackName }).promise();
-
-      const stack = res.Stacks?.[0];
-      if (!stack) {
-        return { deployed: false, status: null };
-      }
-
-      return {
-        deployed: CF_COMPLETE_STATUSES.has(stack.StackStatus),
-        status: stack.StackStatus
-      };
-    } catch (err) {
-      const awsCode = (err as { code?: string }).code;
-
-      if (awsCode === "AccessDenied" || awsCode === "ExpiredToken" || awsCode === "InvalidClientTokenId") {
-        throw new BadRequestError({
-          message:
-            "The AWS App Connection does not have permission to describe CloudFormation stacks. " +
-            "Ensure the connection's IAM role or credentials include the cloudformation:DescribeStacks permission."
-        });
-      }
-
-      if (awsCode === "ValidationError") {
-        return { deployed: false, status: null };
-      }
-
-      logger.warn(
-        { err, connectionId: connId, stackName },
-        `Failed to verify CloudFormation stack [stackName=${stackName}]`
-      );
-      return { deployed: false, status: null };
-    }
   };
 
   return {

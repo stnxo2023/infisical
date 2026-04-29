@@ -1,7 +1,13 @@
 import crypto from "node:crypto";
 
+import {
+  CreateAccessKeyCommand,
+  CreateUserCommand,
+  DeleteAccessKeyCommand,
+  DeleteUserCommand,
+  IAMClient
+} from "@aws-sdk/client-iam";
 import { ForbiddenError } from "@casl/ability";
-import IAM from "aws-sdk/clients/iam.js";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -195,15 +201,19 @@ export const honeyTokenServiceFactory = ({
     const iamUserName = `${HONEY_TOKEN_IAM_USER_PREFIX}${crypto.randomBytes(8).toString("hex")}`;
 
     const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
-    const iam = new IAM({ credentials: awsCredentials });
+    const iam = new IAMClient({ credentials: awsCredentials });
 
-    await iam.createUser({ UserName: iamUserName }).promise();
+    await iam.send(new CreateUserCommand({ UserName: iamUserName }));
 
-    const { AccessKey } = await iam.createAccessKey({ UserName: iamUserName }).promise();
+    const createKeyRes = await iam.send(new CreateAccessKeyCommand({ UserName: iamUserName }));
+
+    if (!createKeyRes.AccessKey?.AccessKeyId || !createKeyRes.AccessKey?.SecretAccessKey) {
+      throw new BadRequestError({ message: "Failed to create AWS access key for honey token" });
+    }
 
     const honeyTokenCredentials = {
-      accessKeyId: AccessKey.AccessKeyId,
-      secretAccessKey: AccessKey.SecretAccessKey,
+      accessKeyId: createKeyRes.AccessKey.AccessKeyId,
+      secretAccessKey: createKeyRes.AccessKey.SecretAccessKey,
       iamUserName
     };
 
@@ -226,7 +236,7 @@ export const honeyTokenServiceFactory = ({
       connectionId: orgConfig.connectionId,
       encryptedCredentials,
       secretsMapping,
-      tokenIdentifier: AccessKey.AccessKeyId,
+      tokenIdentifier: createKeyRes.AccessKey.AccessKeyId,
       createdByUserId: actor.id
     });
 
@@ -236,8 +246,8 @@ export const honeyTokenServiceFactory = ({
     });
 
     const secretEntries = [
-      { key: secretsMapping.accessKeyId, value: AccessKey.AccessKeyId },
-      { key: secretsMapping.secretAccessKey, value: AccessKey.SecretAccessKey }
+      { key: secretsMapping.accessKeyId, value: createKeyRes.AccessKey.AccessKeyId },
+      { key: secretsMapping.secretAccessKey, value: createKeyRes.AccessKey.SecretAccessKey }
     ];
 
     await fnSecretBulkInsert({
@@ -507,21 +517,21 @@ export const honeyTokenServiceFactory = ({
       const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
       const awsConfig = decryptedConnection as unknown as TAwsConnectionConfig;
       const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
-      const iam = new IAM({ credentials: awsCredentials });
+      const iam = new IAMClient({ credentials: awsCredentials });
 
       try {
-        await iam
-          .deleteAccessKey({
+        await iam.send(
+          new DeleteAccessKeyCommand({
             UserName: decryptedCredentials.iamUserName,
             AccessKeyId: decryptedCredentials.accessKeyId
           })
-          .promise();
+        );
       } catch {
         // Access key may already be deleted
       }
 
       try {
-        await iam.deleteUser({ UserName: decryptedCredentials.iamUserName }).promise();
+        await iam.send(new DeleteUserCommand({ UserName: decryptedCredentials.iamUserName }));
       } catch {
         // IAM user may already be deleted
       }
