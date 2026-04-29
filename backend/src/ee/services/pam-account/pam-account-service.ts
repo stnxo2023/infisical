@@ -1269,10 +1269,7 @@ export const pamAccountServiceFactory = ({
       storageBackend: PamRecordingStorageBackend;
     } | null = null;
     if (session.status === PamSessionStatus.Starting) {
-      const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(
-        session.projectId,
-        actor
-      );
+      const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
       const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
 
       const { sessionKey, uploadToken, encryptedSessionKey, uploadTokenHash } = await generateSessionRecordingSecrets({

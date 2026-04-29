@@ -77,7 +77,7 @@ export const pamSessionChunkServiceFactory = ({
 
     verifyGatewayUploadToken(uploadToken, session.gatewayUploadTokenHash ?? null);
 
-    const config = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId, actor);
+    const config = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
     if (!config || config.backend === PamRecordingStorageBackend.Postgres) {
       throw new BadRequestError({
         message:
@@ -163,7 +163,7 @@ export const pamSessionChunkServiceFactory = ({
       throw new BadRequestError({ message: "iv must be 12 bytes (AES-GCM standard)" });
     }
 
-    const config = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId, actor);
+    const config = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
     const backend = config?.backend ?? PamRecordingStorageBackend.Postgres;
 
     if (backend === PamRecordingStorageBackend.Postgres) {
@@ -248,7 +248,7 @@ export const pamSessionChunkServiceFactory = ({
     const chunks = await pamSessionEventChunkDAL.findAllBySessionId(sessionId);
 
     let presignedGetByObjectKey: Record<string, { url: string }> = {};
-    const config = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId, actor);
+    const config = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
     if (config?.backend === PamRecordingStorageBackend.AwsS3) {
       const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[config.backend]();
       const minted = await Promise.all(

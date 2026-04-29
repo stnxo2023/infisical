@@ -11,7 +11,6 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
@@ -41,24 +40,15 @@ export const pamProjectRecordingConfigServiceFactory = ({
   appConnectionDAL,
   kmsService
 }: TPamProjectRecordingConfigServiceFactoryDep) => {
-  // Gateways: direct DAL lookup (getOrgPermission doesn't support GATEWAY actors).
-  // Users: permission-checked lookup via appConnectionService for playback.
-  const resolveConfigForProject = async (
-    projectId: string,
-    actor: OrgServiceActor
-  ): Promise<TPamRecordingResolvedConfig | null> => {
+  // Callers are responsible for their own authorization
+  const resolveConfigForProject = async (projectId: string): Promise<TPamRecordingResolvedConfig | null> => {
     const row = await pamProjectRecordingConfigDAL.findByProjectId(projectId);
     if (!row) return null;
 
     if (row.storageBackend === PamRecordingStorageBackend.AwsS3) {
-      let appConnection;
-      if (actor.type === ActorType.GATEWAY) {
-        const raw = await appConnectionDAL.findById(row.connectionId);
-        if (!raw) throw new NotFoundError({ message: `AWS app connection ${row.connectionId} not found` });
-        appConnection = await decryptAppConnection(raw, kmsService);
-      } else {
-        appConnection = await appConnectionService.findAppConnectionById(AppConnection.AWS, row.connectionId, actor);
-      }
+      const raw = await appConnectionDAL.findById(row.connectionId);
+      if (!raw) throw new NotFoundError({ message: `AWS app connection ${row.connectionId} not found` });
+      const appConnection = await decryptAppConnection(raw, kmsService);
 
       const awsConfig = await getAwsConnectionConfig(
         appConnection as unknown as TAwsConnectionConfig,

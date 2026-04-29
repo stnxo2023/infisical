@@ -28,7 +28,7 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
   const playback = useDecryptedSessionLogs(session.id, true);
   const isLegacyOrNoChunks = playback.legacy || (!playback.loading && playback.totalChunks === 0);
 
-  const legacy = useGetPamSessionLogs(session.id, isActive && isLegacyOrNoChunks);
+  const legacy = useGetPamSessionLogs(session.id, isActive, isLegacyOrNoChunks);
 
   const logs = isLegacyOrNoChunks ? legacy.logs : (playback.events as typeof legacy.logs);
   const isLoading = isLegacyOrNoChunks ? legacy.isLoading : playback.loading;
