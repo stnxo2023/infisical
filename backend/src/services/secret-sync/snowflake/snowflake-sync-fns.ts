@@ -106,14 +106,15 @@ const upsertSecret = async (
   name: string,
   value: string
 ) => {
-  await executeSql(client, `CREATE OR REPLACE SECRET ? TYPE = GENERIC_STRING SECRET_STRING = ?`, [
-    buildFqn(database, schema, name),
-    value
-  ]);
+  await executeSql(
+    client,
+    `CREATE OR REPLACE SECRET ${buildFqn(database, schema, name)} TYPE = GENERIC_STRING SECRET_STRING = ?`,
+    [value]
+  );
 };
 
 const dropSecret = async (client: snowflake.Connection, database: string, schema: string, name: string) => {
-  await executeSql(client, `DROP SECRET IF EXISTS ?`, [quoteIdent(buildFqn(database, schema, name))]);
+  await executeSql(client, `DROP SECRET IF EXISTS ${buildFqn(database, schema, name)}`);
 };
 
 const wrapSnowflakeError = (err: unknown, credentials: TSnowflakeConnection["credentials"]): SecretSyncError => {
