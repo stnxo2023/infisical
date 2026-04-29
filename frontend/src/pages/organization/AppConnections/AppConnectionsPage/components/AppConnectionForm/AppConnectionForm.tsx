@@ -507,10 +507,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
-<<<<<<< HEAD
       case AppConnection.OVH:
         return <OVHConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
-=======
       case AppConnection.Ona:
         return <OnaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.DigiCert:
@@ -521,7 +519,6 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:
         return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
->>>>>>> main
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }
