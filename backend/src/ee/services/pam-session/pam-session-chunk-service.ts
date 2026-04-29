@@ -148,14 +148,12 @@ export const pamSessionChunkServiceFactory = ({
       });
     }
 
-    let ciphertextSha256: Buffer;
-    let iv: Buffer;
-    try {
-      ciphertextSha256 = Buffer.from(ciphertextSha256Base64, "base64");
-      iv = Buffer.from(ivBase64, "base64");
-    } catch {
+    const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
+    if (!BASE64_RE.test(ciphertextSha256Base64) || !BASE64_RE.test(ivBase64)) {
       throw new BadRequestError({ message: "Invalid base64 in chunk metadata" });
     }
+    const ciphertextSha256 = Buffer.from(ciphertextSha256Base64, "base64");
+    const iv = Buffer.from(ivBase64, "base64");
     if (ciphertextSha256.length !== 32) {
       throw new BadRequestError({ message: "ciphertextSha256 must be 32 bytes (sha256 digest)" });
     }

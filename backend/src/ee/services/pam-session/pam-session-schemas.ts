@@ -54,22 +54,21 @@ export const AiInsightsSchema = z
   .nullable()
   .optional();
 
-export const SanitizedSessionSchema = PamSessionsSchema.omit({
+const SessionInternalFieldsOmit = {
   encryptedLogsBlob: true,
-  encryptedAiInsights: true
-}).extend({
+  encryptedAiInsights: true,
+  encryptedSessionKey: true,
+  gatewayUploadTokenHash: true
+} as const;
+
+export const SanitizedSessionSchema = PamSessionsSchema.omit(SessionInternalFieldsOmit).extend({
   logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema])),
   gatewayIdentityId: z.string().nullable().optional(),
   gatewayId: z.string().nullable().optional(),
   aiInsights: AiInsightsSchema
 });
 
-export const SanitizedSessionListItemSchema = PamSessionsSchema.omit({
-  encryptedLogsBlob: true,
-  encryptedAiInsights: true,
-  encryptedSessionKey: true,
-  gatewayUploadTokenHash: true
-}).extend({
+export const SanitizedSessionListItemSchema = PamSessionsSchema.omit(SessionInternalFieldsOmit).extend({
   gatewayIdentityId: z.string().nullable().optional(),
   gatewayId: z.string().nullable().optional()
 });

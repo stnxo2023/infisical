@@ -82,6 +82,26 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updated;
   };
 
+  const startSession = async (
+    sessionId: string,
+    patch: {
+      encryptedSessionKey: Buffer;
+      gatewayUploadTokenHash: Buffer;
+    },
+    tx?: Knex
+  ) => {
+    const [updated] = await (tx || db)(TableName.PamSession)
+      .where("id", sessionId)
+      .where("status", PamSessionStatus.Starting)
+      .update({
+        status: PamSessionStatus.Active,
+        startedAt: new Date(),
+        ...patch
+      })
+      .returning("*");
+    return updated;
+  };
+
   return {
     ...orm,
     findById,
@@ -89,6 +109,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     expireSessionById,
     countActiveWebSessions,
     endSessionById,
-    terminateSessionById
+    terminateSessionById,
+    startSession
   };
 };

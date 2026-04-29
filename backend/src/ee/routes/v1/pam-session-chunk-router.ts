@@ -129,11 +129,11 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
 
       let ciphertextBuf: Buffer | undefined;
       if (req.body.ciphertext) {
-        try {
-          ciphertextBuf = Buffer.from(req.body.ciphertext, "base64");
-        } catch {
+        const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
+        if (!BASE64_RE.test(req.body.ciphertext)) {
           throw new BadRequestError({ message: "ciphertext must be valid base64" });
         }
+        ciphertextBuf = Buffer.from(req.body.ciphertext, "base64");
       }
 
       const result = await server.services.pamSessionChunk.recordChunk(

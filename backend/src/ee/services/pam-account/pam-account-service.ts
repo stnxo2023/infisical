@@ -1278,19 +1278,19 @@ export const pamAccountServiceFactory = ({
         kmsService
       });
 
-      await pamSessionDAL.updateById(sessionId, {
-        status: PamSessionStatus.Active,
-        startedAt: new Date(),
+      const started = await pamSessionDAL.startSession(sessionId, {
         encryptedSessionKey,
         gatewayUploadTokenHash: uploadTokenHash
       });
-      sessionStarted = true;
 
-      sessionRecordingSecrets = {
-        sessionKeyBase64: sessionKey.toString("base64"),
-        uploadTokenBase64: uploadToken.toString("base64"),
-        storageBackend
-      };
+      if (started) {
+        sessionStarted = true;
+        sessionRecordingSecrets = {
+          sessionKeyBase64: sessionKey.toString("base64"),
+          uploadTokenBase64: uploadToken.toString("base64"),
+          storageBackend
+        };
+      }
     }
 
     // Handle SSH certificate-based authentication
