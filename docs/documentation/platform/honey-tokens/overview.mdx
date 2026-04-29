@@ -4,16 +4,9 @@ sidebarTitle: "Overview"
 description: "Detect unauthorized access to your secrets by planting decoy AWS credentials monitored by Infisical."
 ---
 
-Honey tokens are decoy credentials that act as tripwires. When an attacker gains access to your secrets and attempts to use a honey token, Infisical detects the activity via AWS CloudTrail and immediately alerts your team.
+Honey tokens are decoy credentials that act as tripwires. When an attacker gains access to your secrets and attempts to use a honey token, Infisical detects the activity and immediately alerts your team.
 
-Each honey token consists of a real but unprivileged AWS IAM user and access key pair. The credentials are planted alongside your real secrets so they appear genuine. Any API call made with these credentials triggers an alert.
-
-## How It Works
-
-1. Infisical creates a no-permission IAM user in your AWS account via an [AWS App Connection](/integrations/app-connections/aws).
-2. A CloudFormation stack monitors CloudTrail for any API calls made with that IAM user's access key.
-3. When activity is detected, a signed webhook notifies Infisical.
-4. Infisical marks the honey token as **Triggered** and sends an email alert to organization admins.
+Each honey token is planted alongside your real secrets so it appears genuine. Any attempt to use these credentials triggers an alert and notifies organization admins.
 
 ## Getting Started
 

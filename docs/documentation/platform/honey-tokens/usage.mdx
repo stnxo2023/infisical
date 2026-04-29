@@ -34,10 +34,7 @@ description: "Create, monitor, and manage AWS honey tokens in your projects."
     {/* <!-- Screenshot: The honey token creation form showing all fields filled out --> */}
   </Step>
   <Step title="Review and create">
-    Review the configuration summary, then click **Create**. Infisical will:
-    1. Create a no-permission IAM user in your AWS account.
-    2. Generate an access key pair for that user.
-    3. Store the credentials as secrets in the specified environment and path.
+    Review the configuration summary, then click **Create**. Infisical will provision the decoy credentials in your AWS account and store them as secrets in the specified environment and path.
 
     {/* <!-- Screenshot: The review step of the creation dialog --> */}
   </Step>
@@ -47,12 +44,7 @@ The honey token is now **Active**. The decoy secrets appear alongside your real 
 
 ## Notifications
 
-When someone uses a honey token's credentials to make any AWS API call:
-
-1. AWS CloudTrail logs the API call.
-2. The CloudFormation stack's EventBridge rule forwards the event to Infisical via the signed webhook.
-3. Infisical marks the honey token as **Triggered**.
-4. An email alert is sent to all organization admins with:
+When someone uses a honey token's credentials to make any AWS API call, Infisical detects the activity, marks the honey token as **Triggered**, and sends an email alert to all organization admins with:
    - The name of the triggered honey token and its project
    - The AWS API call that was made (e.g., `GetUser`, `ListBuckets`)
    - The source IP address and AWS region
