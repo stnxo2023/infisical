@@ -181,12 +181,9 @@ export const HttpEventView = ({ events }: Props) => {
               return (
                 <div
                   key={`broken-${event.chunkIndex}`}
-                  className="flex items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning"
+                  className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning"
                 >
-                  <span>
-                    Chunk {event.chunkIndex} is unavailable ({event.reason}). Some events may be
-                    missing here.
-                  </span>
+                  Chunk {event.chunkIndex} unavailable: {event.message}
                 </div>
               );
             }

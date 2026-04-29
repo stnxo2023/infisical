@@ -79,10 +79,21 @@ const fetchCiphertext = async (
   chunk: TPamPlaybackChunk,
   fallbackUrlBuilder: (chunkIndex: number) => string
 ): Promise<Uint8Array> => {
+  const isExternal = Boolean(chunk.presignedGetUrl);
   const url = chunk.presignedGetUrl ?? fallbackUrlBuilder(chunk.chunkIndex);
-  const resp = await fetch(url, { credentials: chunk.presignedGetUrl ? "omit" : "include" });
+  const resp = await fetch(url, { credentials: isExternal ? "omit" : "include" });
   if (!resp.ok) {
-    throw new Error(`fetch failed: ${resp.status}`);
+    if (isExternal && resp.status === 404) {
+      throw new Error("Chunk data was not found in the external storage bucket.");
+    }
+    if (isExternal && resp.status === 403) {
+      throw new Error("Access denied when fetching chunk from external storage bucket.");
+    }
+    throw new Error(
+      isExternal
+        ? `Failed to fetch chunk from external storage bucket (HTTP ${resp.status})`
+        : `Failed to fetch chunk from server (HTTP ${resp.status})`
+    );
   }
   const buf = await resp.arrayBuffer();
   return new Uint8Array(buf);

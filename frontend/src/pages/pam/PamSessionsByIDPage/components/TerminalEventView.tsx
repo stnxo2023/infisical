@@ -55,12 +55,13 @@ export const TerminalEventView = ({ events }: Props) => {
 
       <div className="flex grow flex-col gap-2 overflow-y-auto text-xs">
         {markers.length > 0 && (
-          <div className="flex items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
-            <span>
-              {markers.length} chunk(s) unavailable (
-              {Array.from(new Set(markers.map((m) => m.reason))).join(", ")}). Some terminal output
-              may be missing.
-            </span>
+          <div className="flex flex-col gap-1 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
+            <span>Some terminal output may be missing due to unavailable chunks.</span>
+            {markers.map((m) => (
+              <span key={m.chunkIndex} className="text-warning/70">
+                Chunk {m.chunkIndex}: {m.message}
+              </span>
+            ))}
           </div>
         )}
         {filteredEvents.length > 0 ? (

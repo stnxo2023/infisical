@@ -43,7 +43,7 @@ export type PlaybackDecryptState = {
   loading: boolean;
   error?: string;
   events: unknown[];
-  brokenChunks: { chunkIndex: number; reason: string; message: string }[];
+  brokenChunks: TBrokenChunkMarker[];
   missingChunks: number[];
   totalChunks: number;
 };
@@ -145,7 +145,7 @@ export const useDecryptedSessionLogs = (
             __brokenChunk: true,
             chunkIndex: i,
             reason: "missing",
-            message: "This chunk was not found in the recording"
+            message: `Chunk ${i} was not found in the recording`
           };
           events.push(marker);
           brokenChunks.push(marker);
@@ -163,6 +163,7 @@ export const useDecryptedSessionLogs = (
             events.push(...r.events);
             if (events.length > PAM_PLAYBACK_MAX_TOTAL_EVENTS) {
               brokenChunks.push({
+                __brokenChunk: true,
                 chunkIndex: r.chunkIndex,
                 reason: "limit",
                 message: `Total event count exceeds playback limit of ${PAM_PLAYBACK_MAX_TOTAL_EVENTS}; remaining chunks skipped`
