@@ -76,7 +76,7 @@ import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-re
 import { TSSHAccountCredentials, TSSHResourceInternalMetadata } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
-import { generateSessionRecordingSecrets } from "../pam-session/pam-session-recording-secrets";
+import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session/pam-session-recording-secrets";
 import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPamAccountDALFactory } from "./pam-account-dal";
@@ -1260,9 +1260,9 @@ export const pamAccountServiceFactory = ({
 
     let sessionStarted = false;
 
-    // Recording secrets are lazily generated on the first /credentials call
-    // Returned exactly once to the gateway; only the encrypted session key and the SHA-256 of the upload token are persisted
-    // After the first call, the gateway is responsible for keeping these in memory (and persisting the upload token to disk for reconciliation)
+    // Recording secrets are lazily generated on the first /credentials call (status=Starting)
+    // The upload token is returned exactly once; the gateway persists it to disk
+    // On subsequent calls (status=Active), the session key and storage backend are re-derived so the gateway can resume chunk creation after a restart
     let sessionRecordingSecrets: {
       sessionKeyBase64: string;
       uploadTokenBase64: string;
@@ -1291,6 +1291,20 @@ export const pamAccountServiceFactory = ({
           storageBackend
         };
       }
+    } else if (session.status === PamSessionStatus.Active && session.encryptedSessionKey) {
+      const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
+      const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
+      const sessionKey = await decryptSessionKey({
+        projectId: session.projectId,
+        sessionId,
+        encryptedSessionKey: session.encryptedSessionKey,
+        kmsService
+      });
+      sessionRecordingSecrets = {
+        sessionKeyBase64: sessionKey.toString("base64"),
+        uploadTokenBase64: "",
+        storageBackend
+      };
     }
 
     // Handle SSH certificate-based authentication

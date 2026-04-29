@@ -188,7 +188,7 @@ export const pamSessionChunkServiceFactory = ({
         : null;
 
     try {
-      await pamSessionEventChunkDAL.create({
+      await pamSessionEventChunkDAL.insertIgnoreDuplicate({
         sessionId,
         chunkIndex,
         startElapsedMs,

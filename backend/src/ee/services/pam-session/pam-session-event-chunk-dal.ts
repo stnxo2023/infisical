@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TPamSessionEventChunksInsert } from "@app/db/schemas";
 import { ormify } from "@app/lib/knex";
 
 export type TPamSessionEventChunkDALFactory = ReturnType<typeof pamSessionEventChunkDALFactory>;
@@ -20,5 +20,9 @@ export const pamSessionEventChunkDALFactory = (db: TDbClient) => {
     return (tx || db.replicaNode())(TableName.PamSessionEventChunk).where({ sessionId, chunkIndex }).first();
   };
 
-  return { ...orm, findAllBySessionId, findByChunkIndex };
+  const insertIgnoreDuplicate = async (data: TPamSessionEventChunksInsert, tx?: Knex) => {
+    await (tx || db)(TableName.PamSessionEventChunk).insert(data).onConflict(["sessionId", "chunkIndex"]).ignore();
+  };
+
+  return { ...orm, findAllBySessionId, findByChunkIndex, insertIgnoreDuplicate };
 };
