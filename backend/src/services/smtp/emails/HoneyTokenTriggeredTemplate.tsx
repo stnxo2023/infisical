@@ -1,8 +1,8 @@
 import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
+import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
-import { BaseLink } from "./BaseLink";
 
 interface HoneyTokenTriggeredTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   honeyTokenName: string;
@@ -26,15 +26,22 @@ export const HoneyTokenTriggeredTemplate = ({
 }: HoneyTokenTriggeredTemplateProps) => {
   return (
     <BaseEmailWrapper
-      title="Honey Token Triggered"
-      preview={`Honey token "${honeyTokenName}" was triggered in project "${projectName}".`}
+      title="Security Alert: Honey Token Triggered"
+      preview={`ACTION REQUIRED — Honey token "${honeyTokenName}" was accessed in project "${projectName}". Your secrets may be compromised.`}
       siteUrl={siteUrl}
     >
-      <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        Honey token <strong>{honeyTokenName}</strong> was triggered in project{" "}
+      <Section className="px-[16px] py-[12px] rounded-md bg-red-600 text-center">
+        <Text className="text-white text-[14px] font-bold m-0">ACTION REQUIRED — POTENTIAL SECRET COMPROMISE</Text>
+      </Section>
+      <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0 mt-[24px]">
+        Honey token <strong>{honeyTokenName}</strong> was accessed in project{" "}
         <strong>{projectName}</strong>
       </Heading>
-      <Section className="px-[24px] mt-[36px] pt-[24px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
+      <Text className="text-[14px] text-red-600 text-center font-medium">
+        An unauthorized party may have access to your secrets. Investigate immediately and rotate any secrets that
+        may have been exposed.
+      </Text>
+      <Section className="px-[24px] mt-[24px] pt-[24px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <strong className="text-[14px]">Event</strong>
         <Text className="text-[14px] mt-[4px]">{eventName}</Text>
         <strong className="text-[14px]">Time</strong>
@@ -43,10 +50,9 @@ export const HoneyTokenTriggeredTemplate = ({
         <Text className="text-[14px] mt-[4px]">{sourceIp}</Text>
         <strong className="text-[14px]">AWS Region</strong>
         <Text className="text-[14px] mt-[4px]">{awsRegion}</Text>
-        <Text className="text-[14px]">
-          View the honey token details in{" "}
-          <BaseLink href={projectUrl}>your project</BaseLink>.
-        </Text>
+      </Section>
+      <Section className="text-center mt-[24px]">
+        <BaseButton href={projectUrl}>Investigate Now</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
