@@ -15,7 +15,10 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
 import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "../pam-session-recording-storage/pam-session-recording-storage-factory";
-import { TPamRecordingResolvedConfig } from "../pam-session-recording-storage/pam-session-recording-storage-types";
+import {
+  normalizeKeyPrefix,
+  TPamRecordingResolvedConfig
+} from "../pam-session-recording-storage/pam-session-recording-storage-types";
 import { TPamProjectRecordingConfigDALFactory } from "./pam-project-recording-config-dal";
 import {
   TDeletePamRecordingConfigDTO,
@@ -112,44 +115,57 @@ export const pamProjectRecordingConfigServiceFactory = ({
       input.region as never
     );
 
-    const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[input.storageBackend]();
-    await provider.validateConfig({
-      config: {
-        backend: PamRecordingStorageBackend.AwsS3,
-        bucket: input.bucket,
-        region: input.region,
-        keyPrefix: input.keyPrefix ?? null,
-        awsCredentials: awsConfig.credentials
-      }
-    });
+    const resolvedConfig: TPamRecordingResolvedConfig = {
+      backend: PamRecordingStorageBackend.AwsS3,
+      bucket: input.bucket,
+      region: input.region,
+      keyPrefix: input.keyPrefix ?? null,
+      awsCredentials: awsConfig.credentials
+    };
 
-    return { ok: true as const };
+    const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[input.storageBackend]();
+    await provider.validateConfig({ config: resolvedConfig });
+
+    return { ok: true as const, resolvedConfig };
   };
 
   const upsertConfig = async (input: TUpsertPamRecordingConfigDTO, actor: OrgServiceActor) => {
-    await testConfig(input, actor);
+    const { resolvedConfig } = await testConfig(input, actor);
 
     const existing = await pamProjectRecordingConfigDAL.findByProjectId(input.projectId);
+    let config;
     if (existing) {
-      const updated = await pamProjectRecordingConfigDAL.updateById(existing.id, {
+      config = await pamProjectRecordingConfigDAL.updateById(existing.id, {
         storageBackend: input.storageBackend,
         connectionId: input.connectionId,
         bucket: input.bucket,
         region: input.region,
         keyPrefix: input.keyPrefix ?? null
       });
-      return { config: updated };
+    } else {
+      config = await pamProjectRecordingConfigDAL.create({
+        projectId: input.projectId,
+        storageBackend: input.storageBackend,
+        connectionId: input.connectionId,
+        bucket: input.bucket,
+        region: input.region,
+        keyPrefix: input.keyPrefix ?? null
+      });
     }
 
-    const created = await pamProjectRecordingConfigDAL.create({
-      projectId: input.projectId,
-      storageBackend: input.storageBackend,
-      connectionId: input.connectionId,
-      bucket: input.bucket,
-      region: input.region,
-      keyPrefix: input.keyPrefix ?? null
-    });
-    return { config: created };
+    let corsProbeUrl: string | null = null;
+    if (resolvedConfig) {
+      try {
+        const probeKey = `${normalizeKeyPrefix(resolvedConfig.keyPrefix)}.cors-probe`;
+        const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[input.storageBackend]();
+        const { url } = await provider.mintPresignedGet({ config: resolvedConfig, objectKey: probeKey });
+        corsProbeUrl = url;
+      } catch {
+        // Non-fatal -- the config is already saved
+      }
+    }
+
+    return { config, corsProbeUrl };
   };
 
   const deleteConfig = async ({ projectId }: TDeletePamRecordingConfigDTO, actor: OrgServiceActor) => {

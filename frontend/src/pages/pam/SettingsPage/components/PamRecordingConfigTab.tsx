@@ -95,12 +95,27 @@ export const PamRecordingConfigTab = () => {
   }, [recordingConfig.data, awsConnections, reset]);
 
   const onSave = handleSubmit(async (values) => {
-    await upsertMutation.mutateAsync({
+    const { corsProbeUrl } = await upsertMutation.mutateAsync({
       projectId,
       ...values,
       keyPrefix: values.keyPrefix?.trim() ? values.keyPrefix : null
     });
     createNotification({ type: "success", text: "Session recording configuration saved" });
+
+    if (corsProbeUrl) {
+      try {
+        await fetch(corsProbeUrl, { mode: "cors" });
+      } catch {
+        createNotification(
+          {
+            title: "Bucket CORS not configured",
+            type: "warning",
+            text: "Session playback requires the bucket to allow GET requests from this origin. Add a CORS rule for this domain on your S3 bucket."
+          },
+          { autoClose: 10000 }
+        );
+      }
+    }
   });
 
   const onDelete = async () => {

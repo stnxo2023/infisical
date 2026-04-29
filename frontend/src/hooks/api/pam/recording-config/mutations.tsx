@@ -9,11 +9,11 @@ export const useUpsertPamRecordingConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ projectId, ...body }: TUpsertPamRecordingConfigDTO) => {
-      const { data } = await apiRequest.post<{ config: TPamRecordingConfig }>(
-        `/api/v1/pam/projects/${projectId}/recording-config`,
-        body
-      );
-      return data.config;
+      const { data } = await apiRequest.post<{
+        config: TPamRecordingConfig;
+        corsProbeUrl: string | null;
+      }>(`/api/v1/pam/projects/${projectId}/recording-config`, body);
+      return data;
     },
     onSuccess: async (_data, vars) => {
       await queryClient.invalidateQueries({

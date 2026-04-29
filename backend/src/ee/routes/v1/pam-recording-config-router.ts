@@ -71,14 +71,15 @@ export const registerPamRecordingConfigRouter = async (server: FastifyZodProvide
       params: z.object({ projectId: z.string().uuid() }),
       body: UpsertBodySchema,
       response: {
-        200: z.object({ config: SanitizedConfigSchema })
+        200: z.object({ config: SanitizedConfigSchema, corsProbeUrl: z.string().nullable() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       let config;
+      let corsProbeUrl: string | null = null;
       try {
-        ({ config } = await server.services.pamProjectRecordingConfig.upsertConfig(
+        ({ config, corsProbeUrl } = await server.services.pamProjectRecordingConfig.upsertConfig(
           { projectId: req.params.projectId, ...req.body },
           req.permission
         ));
@@ -116,7 +117,7 @@ export const registerPamRecordingConfigRouter = async (server: FastifyZodProvide
         }
       });
 
-      return { config };
+      return { config, corsProbeUrl };
     }
   });
 
