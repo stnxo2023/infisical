@@ -523,6 +523,14 @@
                       "documentation/platform/dynamic-secrets/vertica"
                     ]
                   },
+                  {
+                    "group": "Honey Tokens",
+                    "pages": [
+                      "documentation/platform/honey-tokens/overview",
+                      "documentation/platform/honey-tokens/setup",
+                      "documentation/platform/honey-tokens/usage"
+                    ]
+                  },
                   "documentation/platform/webhooks",
                   "documentation/platform/secret-validation-rules"
                 ]
