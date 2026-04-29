@@ -333,10 +333,13 @@ const PageContent = () => {
                     <p className="text-xs text-bunker-300">
                       1. Take immediate steps as per your company Incident Response Plan.
                       <br />
-                      2. <strong>Revoke the honeytoken</strong>. This will prevent any new
+                      2. <strong>Rotate any real secrets</strong> that were stored alongside the
+                      honeytoken, as they may also be compromised.
+                      <br />
+                      3. <strong>Revoke the honeytoken</strong>. This will prevent any new
                       connections while we keep the compromised key in our records.
                       <br />
-                      3. Don&apos;t forget to recreate a new honeytoken to replace it in the same
+                      4. Don&apos;t forget to recreate a new honeytoken to replace it in the same
                       location.
                     </p>
                   </div>
