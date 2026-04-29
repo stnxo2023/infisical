@@ -32,7 +32,8 @@ export type THoneyTokenEventMetadata = z.infer<typeof HoneyTokenEventMetadataSch
 // --- Config schemas (typed shape for the encrypted config blob per provider) ---
 
 export const AwsHoneyTokenConfigSchema = z.object({
-  webhookSigningKey: z.string().min(1)
+  webhookSigningKey: z.string().min(1),
+  stackName: z.string().min(1).max(128).default("infisical-honey-tokens")
 });
 
 export type TAwsHoneyTokenConfig = z.infer<typeof AwsHoneyTokenConfigSchema>;

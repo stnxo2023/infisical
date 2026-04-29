@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import { ForbiddenError } from "@casl/ability";
+import CloudFormation from "aws-sdk/clients/cloudformation.js";
 
 import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
@@ -8,6 +9,10 @@ import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/erro
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
+import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
+import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -36,12 +41,19 @@ type THoneyTokenConfigServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type THoneyTokenConfigServiceFactory = ReturnType<typeof honeyTokenConfigServiceFactory>;
+
+const CF_COMPLETE_STATUSES = new Set([
+  "CREATE_COMPLETE",
+  "UPDATE_COMPLETE",
+  "IMPORT_COMPLETE"
+]);
 
 export const honeyTokenConfigServiceFactory = ({
   honeyTokenConfigDAL,
@@ -50,6 +62,7 @@ export const honeyTokenConfigServiceFactory = ({
   permissionService,
   kmsService,
   licenseService,
+  appConnectionDAL,
   orgDAL,
   projectDAL,
   smtpService
@@ -63,7 +76,7 @@ export const honeyTokenConfigServiceFactory = ({
     orgPermission: OrgServiceActor;
     type: HoneyTokenType;
     connectionId: string;
-    config: { webhookSigningKey: string };
+    config: { webhookSigningKey: string; stackName?: string };
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -85,6 +98,19 @@ export const honeyTokenConfigServiceFactory = ({
 
     const validatedConfig = AwsHoneyTokenConfigSchema.parse(config);
 
+    const stackDeployment = await verifyStackDeployment({
+      connectionId,
+      stackName: validatedConfig.stackName
+    });
+
+    if (!stackDeployment.deployed) {
+      throw new BadRequestError({
+        message: stackDeployment.status
+          ? `CloudFormation stack "${validatedConfig.stackName}" is not ready (status: ${stackDeployment.status}). Wait for it to complete or fix the issue before saving.`
+          : `CloudFormation stack "${validatedConfig.stackName}" was not found. Deploy the stack before saving.`
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
@@ -100,21 +126,18 @@ export const honeyTokenConfigServiceFactory = ({
     });
 
     if (existing) {
-      const updated = await honeyTokenConfigDAL.updateById(existing.id, {
+      return honeyTokenConfigDAL.updateById(existing.id, {
         connectionId,
         encryptedConfig
       });
-      return updated;
     }
 
-    const created = await honeyTokenConfigDAL.create({
+    return honeyTokenConfigDAL.create({
       orgId: orgPermission.orgId,
       type,
       connectionId,
       encryptedConfig
     });
-
-    return created;
   };
 
   const getConfig = async ({ orgPermission, type }: { orgPermission: OrgServiceActor; type: HoneyTokenType }) => {
@@ -143,7 +166,7 @@ export const honeyTokenConfigServiceFactory = ({
         connectionId: null,
         createdAt: null,
         updatedAt: null,
-        decryptedConfig: { webhookSigningKey: generatedKey }
+        decryptedConfig: { webhookSigningKey: generatedKey, stackName: "infisical-honey-tokens" }
       };
     }
 
@@ -152,7 +175,7 @@ export const honeyTokenConfigServiceFactory = ({
       orgId: orgPermission.orgId
     });
 
-    let decryptedConfig: { webhookSigningKey: string } | null = null;
+    let decryptedConfig: { webhookSigningKey: string; stackName: string } | null = null;
     if (config.encryptedConfig) {
       const decrypted = decryptor({
         cipherTextBlob: config.encryptedConfig
@@ -328,6 +351,58 @@ export const honeyTokenConfigServiceFactory = ({
     /* eslint-enable no-await-in-loop, no-continue */
 
     return { acknowledged: true };
+  };
+
+  const verifyStackDeployment = async ({
+    connectionId: connId,
+    stackName
+  }: {
+    connectionId: string;
+    stackName: string;
+  }): Promise<{ deployed: boolean; status: string | null }> => {
+    try {
+      const appConnection = await appConnectionDAL.findById(connId);
+      if (!appConnection) {
+        return { deployed: false, status: null };
+      }
+
+      const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
+      const awsConfig = decryptedConnection as unknown as TAwsConnectionConfig;
+      const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
+
+      const cfn = new CloudFormation({ credentials: awsCredentials, region: "us-east-1" });
+      const res = await cfn.describeStacks({ StackName: stackName }).promise();
+
+      const stack = res.Stacks?.[0];
+      if (!stack) {
+        return { deployed: false, status: null };
+      }
+
+      return {
+        deployed: CF_COMPLETE_STATUSES.has(stack.StackStatus),
+        status: stack.StackStatus
+      };
+    } catch (err) {
+      const awsCode = (err as { code?: string }).code;
+
+      if (awsCode === "AccessDenied" || awsCode === "ExpiredToken" || awsCode === "InvalidClientTokenId") {
+        throw new BadRequestError({
+          message:
+            "The AWS App Connection does not have permission to describe CloudFormation stacks. " +
+            "Ensure the connection's IAM role or credentials include the cloudformation:DescribeStacks permission."
+        });
+      }
+
+      if (awsCode === "ValidationError") {
+        return { deployed: false, status: null };
+      }
+
+      logger.warn(
+        { err, connectionId: connId, stackName },
+        `Failed to verify CloudFormation stack [stackName=${stackName}]`
+      );
+      return { deployed: false, status: null };
+    }
   };
 
   return {

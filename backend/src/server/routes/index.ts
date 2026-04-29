@@ -965,6 +965,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     licenseService,
+    appConnectionDAL,
     orgDAL,
     projectDAL,
     smtpService

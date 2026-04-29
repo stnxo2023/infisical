@@ -11,6 +11,7 @@ export type THoneyTokenConfig = {
   updatedAt: string | null;
   decryptedConfig: {
     webhookSigningKey: string;
+    stackName: string;
   } | null;
 };
 
@@ -19,5 +20,6 @@ export type TUpsertHoneyTokenConfigDTO = {
   connectionId: string;
   config: {
     webhookSigningKey: string;
+    stackName?: string;
   };
 };

@@ -8,13 +8,18 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Button,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
   FilterableSelect,
-  IconButton
+  IconButton,
+  Input
 } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useTimedReset, useToggle } from "@app/hooks";
@@ -29,9 +34,12 @@ import {
 const CF_TEMPLATE_URL =
   "https://s3.amazonaws.com/infisical-honeytokens/cfn/aws-honey-token-v1.yaml";
 
+const DEFAULT_STACK_NAME = "infisical-honey-tokens";
+
 const schema = z.object({
   connectionId: z.string().min(1, "AWS Connection is required"),
-  webhookSigningKey: z.string().min(1, "Webhook Signing Key is required")
+  webhookSigningKey: z.string().min(1, "Webhook Signing Key is required"),
+  stackName: z.string().trim().min(1, "Stack name is required").max(128)
 });
 
 type FormData = z.infer<typeof schema>;
@@ -62,7 +70,8 @@ export const HoneyTokenSection = () => {
     resolver: zodResolver(schema),
     defaultValues: {
       connectionId: "",
-      webhookSigningKey: ""
+      webhookSigningKey: "",
+      stackName: DEFAULT_STACK_NAME
     }
   });
 
@@ -71,25 +80,27 @@ export const HoneyTokenSection = () => {
 
     reset({
       connectionId: existingConfig.connectionId ?? "",
-      webhookSigningKey: existingConfig.decryptedConfig.webhookSigningKey
+      webhookSigningKey: existingConfig.decryptedConfig.webhookSigningKey,
+      stackName: existingConfig.decryptedConfig.stackName ?? DEFAULT_STACK_NAME
     });
   }, [existingConfig, reset]);
 
   const webhookSigningKey = watch("webhookSigningKey");
+  const stackName = watch("stackName");
 
   const cfCommand = useMemo(
     () =>
       [
         "aws cloudformation create-stack \\",
         "  --region us-east-1 \\",
-        "  --stack-name infisical-honey-tokens \\",
+        `  --stack-name ${stackName || DEFAULT_STACK_NAME} \\`,
         `  --template-url ${CF_TEMPLATE_URL} \\`,
         "  --capabilities CAPABILITY_NAMED_IAM \\",
         "  --parameters \\",
         `    ParameterKey=WebhookUrl,ParameterValue=${webhookUrl} \\`,
         `    ParameterKey=WebhookSigningKey,ParameterValue=${webhookSigningKey}`
       ].join("\n"),
-    [webhookSigningKey, webhookUrl]
+    [stackName, webhookSigningKey, webhookUrl]
   );
 
   const onSubmit = async (data: FormData) => {
@@ -98,7 +109,8 @@ export const HoneyTokenSection = () => {
         type: HoneyTokenType.AWS,
         connectionId: data.connectionId,
         config: {
-          webhookSigningKey: data.webhookSigningKey
+          webhookSigningKey: data.webhookSigningKey,
+          stackName: data.stackName
         }
       });
       createNotification({
@@ -191,6 +203,36 @@ export const HoneyTokenSection = () => {
             </Field>
           </div>
         </div>
+
+        <Accordion type="single" collapsible variant="ghost" className="mb-4">
+          <AccordionItem value="advanced">
+            <AccordionTrigger>Advanced Options</AccordionTrigger>
+            <AccordionContent>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <Controller
+                    control={control}
+                    name="stackName"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel>CloudFormation Stack Name</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            {...field}
+                            placeholder={DEFAULT_STACK_NAME}
+                            isError={Boolean(error)}
+                          />
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                </div>
+                <div className="flex-1" />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         <div className="mb-4 rounded-md border border-mineshaft-600 bg-bunker-800 p-4">
           <div className="mb-3 flex items-center gap-2 text-sm text-mineshaft-300">
