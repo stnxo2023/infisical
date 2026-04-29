@@ -13,5 +13,6 @@ export type {
   THoneyTokenEvent,
   THoneyTokenOption,
   THoneyTokenOptionMap,
+  TRevokeHoneyTokenDTO,
   TUpdateHoneyTokenDTO
 } from "./types/index";

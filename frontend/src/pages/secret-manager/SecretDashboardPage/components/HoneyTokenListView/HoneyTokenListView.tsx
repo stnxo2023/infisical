@@ -5,7 +5,7 @@ import {
   RevokeHoneyTokenModal,
   ViewHoneyTokenCredentialsModal
 } from "@app/components/honey-tokens";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 import { HoneyTokenItem } from "./HoneyTokenItem";
@@ -15,8 +15,7 @@ type Props = {
 };
 
 export const HoneyTokenListView = ({ honeyTokens }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { projectId } = useProject();
 
   const [revokeTarget, setRevokeTarget] = useState<TDashboardHoneyToken>();
   const [editTarget, setEditTarget] = useState<TDashboardHoneyToken>();

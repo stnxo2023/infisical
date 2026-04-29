@@ -17,7 +17,7 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
-import { useDeleteHoneyToken } from "@app/hooks/api/honeyTokens";
+import { useRevokeHoneyToken } from "@app/hooks/api/honeyTokens";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 type Props = {
@@ -27,7 +27,7 @@ type Props = {
 };
 
 export const DeleteHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props) => {
-  const deleteHoneyToken = useDeleteHoneyToken();
+  const revokeHoneyToken = useRevokeHoneyToken();
   const [inputData, setInputData] = useState("");
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export const DeleteHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Prop
   if (!honeyToken) return null;
 
   const handleDelete = async () => {
-    await deleteHoneyToken.mutateAsync({
+    await revokeHoneyToken.mutateAsync({
       honeyTokenId: honeyToken.id,
       projectId: honeyToken.projectId
     });

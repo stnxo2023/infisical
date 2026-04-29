@@ -47,7 +47,7 @@ export const AwsHoneyTokenMappingFields = () => {
       <table className="w-full table-auto">
         <thead>
           <tr className="text-left">
-            <th className="whitespace-nowrap pb-3">
+            <th className="pb-3 whitespace-nowrap">
               <Label className="text-xs">Decoy Credential</Label>
             </th>
             <th className="pb-3" />
