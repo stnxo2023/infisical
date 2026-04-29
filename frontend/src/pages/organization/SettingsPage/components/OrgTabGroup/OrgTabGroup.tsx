@@ -70,7 +70,7 @@ export const OrgTabGroup = () => {
     },
     {
       name: "Product Settings",
-      key: "product-enforcements",
+      key: "product-settings",
       component: OrgProductSettingsTab
     },
     {
