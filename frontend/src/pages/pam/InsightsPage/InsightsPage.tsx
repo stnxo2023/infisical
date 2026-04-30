@@ -33,9 +33,7 @@ export const InsightsPage = withProjectPermission(
           </div>
           <div className="flex flex-col gap-6">
             <PamSessionActivityChart />
-            <div className="flex-1">
-              <PamTopActors />
-            </div>
+            <PamTopActors />
           </div>
         </div>
       </>

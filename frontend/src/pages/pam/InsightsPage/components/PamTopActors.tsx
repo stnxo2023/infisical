@@ -45,7 +45,7 @@ export const PamTopActors = () => {
       );
     }
     return (
-      <Table containerClassName="max-h-72">
+      <Table>
         <TableHeader className="sticky top-0 z-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
           <TableRow>
             <TableHead className="w-8" />
@@ -100,14 +100,14 @@ export const PamTopActors = () => {
   };
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader>
         <CardTitle>Top Actors</CardTitle>
         <CardDescription>
           Users &amp; identities initiating the most PAM sessions over the past 30 days
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col justify-between gap-4">
+      <CardContent className="flex flex-col gap-4">
         {renderBody()}
         {!isPending && uniqueActors > 0 && (
           <span className="text-xs text-muted">

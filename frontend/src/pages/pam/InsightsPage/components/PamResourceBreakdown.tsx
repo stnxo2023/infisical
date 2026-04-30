@@ -49,8 +49,7 @@ export const PamResourceBreakdown = () => {
         : null;
       return {
         ...entry,
-        displayName: meta?.name ?? entry.resourceType,
-        image: meta?.image ?? null
+        displayName: meta?.name ?? entry.resourceType
       };
     });
   }, [data]);
@@ -135,7 +134,7 @@ export const PamResourceBreakdown = () => {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="grid flex-1 grid-cols-[auto_auto_1fr_auto_auto_auto] items-center gap-x-3 gap-y-2">
+            <div className="grid flex-1 grid-cols-[auto_1fr_auto_auto_auto] items-center gap-x-3 gap-y-2">
               {rows.map((entry, index) => {
                 const pct =
                   totalResources > 0 ? Math.round((entry.resourceCount / totalResources) * 100) : 0;
@@ -145,15 +144,6 @@ export const PamResourceBreakdown = () => {
                       className="size-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: COLORS[index % COLORS.length] }}
                     />
-                    {entry.image ? (
-                      <img
-                        src={`/images/integrations/${entry.image}`}
-                        alt={entry.displayName}
-                        className="size-4 shrink-0 object-contain"
-                      />
-                    ) : (
-                      <span className="size-4 shrink-0 rounded-sm bg-border" />
-                    )}
                     <span className="truncate text-sm" title={entry.displayName}>
                       {entry.displayName}
                     </span>
@@ -167,8 +157,7 @@ export const PamResourceBreakdown = () => {
                   </Fragment>
                 );
               })}
-              <div className="col-span-6 mt-1 border-t border-border" />
-              <span />
+              <div className="col-span-5 mt-1 border-t border-border" />
               <span />
               <span className="text-sm font-medium">Total</span>
               <span />
