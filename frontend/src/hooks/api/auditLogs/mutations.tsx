@@ -8,7 +8,7 @@ export const useTrackAuditLogView = () =>
   useMutation({
     mutationFn: async ({ auditLogId }: TrackAuditLogViewInput) => {
       const { data } = await apiRequest.post<{ tracked: boolean }>(
-        `/api/v1/organization/audit-logs/${auditLogId}/track-view`
+        `/api/v1/organization/audit-logs/${auditLogId}/track-log-details-view`
       );
       return data;
     }

@@ -240,18 +240,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.query.offset === 0) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          projectId: req.query.projectId,
-          event: {
-            type: EventType.VIEW_AUDIT_LOGS,
-            metadata: {}
-          }
-        });
-      }
-
       const auditLogs = await server.services.auditLog.listAuditLogs({
         filter: {
           ...req.query,
@@ -267,6 +255,18 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
+
+      if (req.query.offset === 0) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.query.projectId,
+          event: {
+            type: EventType.VIEW_AUDIT_LOGS,
+            metadata: {}
+          }
+        });
+      }
 
       return { auditLogs };
     }
@@ -305,7 +305,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/audit-logs/:auditLogId/track-view",
+    url: "/audit-logs/:auditLogId/track-log-details-view",
     config: {
       rateLimit: writeLimit
     },

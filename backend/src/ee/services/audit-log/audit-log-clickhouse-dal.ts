@@ -208,5 +208,38 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     }
   };
 
-  return { find };
+  const findById = async (
+    id: string,
+    orgId: string
+  ): Promise<{ id: string; orgId: string; projectId: string | null } | null> => {
+    const query = `
+      SELECT id, orgId, projectId
+      FROM ${tableName}
+      WHERE id = {id:UUID} AND orgId = {orgId:UUID}
+      LIMIT 1
+    `;
+
+    try {
+      const result = await clickhouseClient.query({
+        query,
+        query_params: { id, orgId },
+        format: "JSONEachRow"
+      });
+
+      const rows = await result.json<{ id: string; orgId: string; projectId: string }>();
+      if (rows.length === 0) return null;
+
+      const row = rows[0];
+      return {
+        id: row.id,
+        orgId: row.orgId,
+        projectId: row.projectId || null
+      };
+    } catch (error) {
+      logger.error(error, "Failed to find audit log by id from ClickHouse");
+      throw new DatabaseError({ error });
+    }
+  };
+
+  return { find, findById };
 };

@@ -209,7 +209,13 @@ export const auditLogServiceFactory = ({
     auditLogId,
     auditLogInfo
   }) => {
-    const row = await auditLogDAL.findById(auditLogId);
+    const appCfg = getConfig();
+    const useClickHouse = appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL;
+
+    const row = useClickHouse
+      ? await clickhouseAuditLogDAL.findById(auditLogId, actorOrgId)
+      : await auditLogDAL.findById(auditLogId);
+
     if (!row || row.orgId !== actorOrgId) {
       throw new NotFoundError({ message: "Audit log not found" });
     }
