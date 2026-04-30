@@ -15,7 +15,7 @@ export type TAttachKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost: string | null;
   caCert: string;
-  enableSsl?: boolean;
+  verifyTlsCertificate?: boolean;
   tokenReviewerJwt?: string;
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
@@ -34,7 +34,7 @@ export type TUpdateKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost?: string | null;
   caCert?: string;
-  enableSsl?: boolean;
+  verifyTlsCertificate?: boolean;
   tokenReviewerJwt?: string | null;
   tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces?: string;

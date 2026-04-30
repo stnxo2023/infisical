@@ -32,7 +32,7 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   allowedAudience: true,
   gatewayId: true,
   gatewayPoolId: true,
-  enableSsl: true
+  verifyTlsCertificate: true
 }).extend({
   caCert: z.string(),
   tokenReviewerJwt: z.string().optional().nullable()
@@ -189,7 +189,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               }
             ),
           caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
-          enableSsl: z.boolean().optional().describe(KUBERNETES_AUTH.ATTACH.enableSsl),
+          verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.ATTACH.verifyTlsCertificate),
           tokenReviewerJwt: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
           tokenReviewMode: z
             .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
@@ -264,7 +264,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             });
           }
           if (
-            data.enableSsl &&
+            data.verifyTlsCertificate &&
             data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
             !data.caCert?.length
           ) {
@@ -272,7 +272,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               path: ["caCert"],
               code: z.ZodIssueCode.custom,
               message:
-                "A CA certificate is required when SSL verification is enabled. Either paste the Kubernetes API server's CA certificate or disable SSL verification."
+                "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
             });
           }
         }),
@@ -378,7 +378,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               }
             ),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
-          enableSsl: z.boolean().optional().describe(KUBERNETES_AUTH.UPDATE.enableSsl),
+          verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.UPDATE.verifyTlsCertificate),
           tokenReviewerJwt: z.string().trim().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
           tokenReviewMode: z
             .nativeEnum(IdentityKubernetesAuthTokenReviewMode)

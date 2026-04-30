@@ -3,21 +3,21 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasColumn(TableName.IdentityKubernetesAuth, "enableSsl"))) {
+  if (!(await knex.schema.hasColumn(TableName.IdentityKubernetesAuth, "verifyTlsCertificate"))) {
     await knex.schema.alterTable(TableName.IdentityKubernetesAuth, (t) => {
-      t.boolean("enableSsl").defaultTo(false).notNullable();
+      t.boolean("verifyTlsCertificate").defaultTo(false).notNullable();
     });
 
     await knex(TableName.IdentityKubernetesAuth)
       .whereNotNull("encryptedKubernetesCaCertificate")
-      .update({ enableSsl: true });
+      .update({ verifyTlsCertificate: true });
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasColumn(TableName.IdentityKubernetesAuth, "enableSsl")) {
+  if (await knex.schema.hasColumn(TableName.IdentityKubernetesAuth, "verifyTlsCertificate")) {
     await knex.schema.alterTable(TableName.IdentityKubernetesAuth, (t) => {
-      t.dropColumn("enableSsl");
+      t.dropColumn("verifyTlsCertificate");
     });
   }
 }
