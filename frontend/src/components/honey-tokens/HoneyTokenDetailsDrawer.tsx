@@ -14,6 +14,10 @@ import {
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -49,8 +53,8 @@ import {
   useGetHoneyTokenCredentials
 } from "@app/hooks/api/honeyTokens/queries";
 
-import { HoneyTokenEventsSection } from "./HoneyTokenEventsSection";
 import { CredentialField } from "./ViewHoneyTokenCredentials/CredentialField";
+import { HoneyTokenEventsSection } from "./HoneyTokenEventsSection";
 
 type Props = {
   projectId: string;
@@ -153,21 +157,20 @@ const DrawerContent = ({
               </p>
             </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {isTriggered && (
-            <Button variant="outline" size="xs" onClick={() => setIsResetOpen(true)}>
-              <RotateCcw size={14} />
-              Reset
-            </Button>
-          )}
-          {!isRevoked && (
-            <Button variant="danger" size="xs" onClick={() => setIsRevokeOpen(true)}>
-              <BanIcon size={14} />
-              Revoke
-            </Button>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {isTriggered && (
+              <Button variant="outline" size="xs" onClick={() => setIsResetOpen(true)}>
+                <RotateCcw size={14} />
+                Reset
+              </Button>
+            )}
+            {!isRevoked && (
+              <Button variant="danger" size="xs" onClick={() => setIsRevokeOpen(true)}>
+                <BanIcon size={14} />
+                Revoke
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted">
@@ -260,43 +263,43 @@ const DrawerContent = ({
         )}
 
         {isTriggered && (
-          <div className="rounded-md border border-yellow-800/50 bg-yellow-900/20 p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <AlertTriangle size={16} className="text-yellow-500" />
-              <p className="text-sm font-medium text-yellow-500">
-                Respond to a triggered honey token
-              </p>
-            </div>
-            <p className="mb-3 text-xs text-muted">
-              Investigate. The events below give you information about when, where, and how the key
-              was used.
-            </p>
-            <div className="flex flex-col gap-4">
-              <div>
-                <p className="text-xs font-medium">1. False alarm confirmed?</p>
-                <p className="text-xs text-muted">
-                  You might want to <strong>reset the honey token</strong>. This will revert its
-                  status to active and hide the past events, so that the honey token can be
-                  triggered again.
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium">2. Malicious activity confirmed?</p>
-                <p className="text-xs text-muted">
-                  1. Take immediate steps as per your company Incident Response Plan.
-                  <br />
-                  2. <strong>Rotate any real secrets</strong> that were stored alongside the honey
-                  token, as they may also be compromised.
-                  <br />
-                  3. <strong>Revoke the honey token</strong>. This will prevent any new connections
-                  while we keep the compromised key in our records.
-                  <br />
-                  4. Don&apos;t forget to recreate a new honey token to replace it in the same
-                  location.
-                </p>
-              </div>
-            </div>
-          </div>
+          <Accordion
+            type="single"
+            collapsible
+            variant="ghost"
+            className="rounded-md border border-yellow-800/50 bg-yellow-900/20 px-4"
+          >
+            <AccordionItem value="response-guidance" className="border-yellow-700/40">
+              <AccordionTrigger className="text-sm font-medium text-white hover:text-white/90">
+                How should I respond?
+              </AccordionTrigger>
+              <AccordionContent className="flex flex-col gap-4">
+                <div>
+                  <p className="text-xs font-medium">1. False alarm confirmed?</p>
+                  <p className="text-xs text-muted">
+                    You might want to <strong>reset the honey token</strong>. This will revert its
+                    status to active and hide the past events, so that the honey token can be
+                    triggered again.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium">2. Malicious activity confirmed?</p>
+                  <p className="text-xs text-muted">
+                    1. Take immediate steps as per your company Incident Response Plan.
+                    <br />
+                    2. <strong>Rotate any real secrets</strong> that were stored alongside the honey
+                    token, as they may also be compromised.
+                    <br />
+                    3. <strong>Revoke the honey token</strong>. This will prevent any new
+                    connections while we keep the compromised key in our records.
+                    <br />
+                    4. Don&apos;t forget to recreate a new honey token to replace it in the same
+                    location.
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         )}
 
         <HoneyTokenEventsSection honeyTokenId={honeyTokenId} projectId={projectId} />
