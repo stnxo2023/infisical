@@ -9,6 +9,9 @@ import { TSnowflakeConnection, TSnowflakeConnectionConfig } from "./snowflake-co
 
 const noop = () => {};
 
+const SNOWFLAKE_EXCLUDED_DATABASES = new Set(["SNOWFLAKE", "SNOWFLAKE_SAMPLE_DATA"]);
+const SNOWFLAKE_EXCLUDED_SCHEMAS = new Set(["INFORMATION_SCHEMA"]);
+
 export const quoteSnowflakeIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
 
 export const getSnowflakeConnectionListItem = () => {
@@ -110,7 +113,11 @@ export const listSnowflakeDatabases = async (credentials: TSnowflakeConnection["
   try {
     return await withSnowflakeClient(credentials, async (client) => {
       const rows = await executeSnowflakeSql<{ name?: string }>(client, "SHOW DATABASES");
-      return rows.flatMap((row) => (row.name ? [{ name: row.name }] : []));
+      return rows.flatMap((row) => {
+        if (!row.name) return [];
+        if (SNOWFLAKE_EXCLUDED_DATABASES.has(row.name.toUpperCase())) return [];
+        return [{ name: row.name }];
+      });
     });
   } catch (err) {
     throw sanitizeSnowflakeError(err, credentials, "Unable to list Snowflake databases");
@@ -124,7 +131,11 @@ export const listSnowflakeSchemas = async (credentials: TSnowflakeConnection["cr
         client,
         `SHOW SCHEMAS IN DATABASE ${quoteSnowflakeIdent(database)}`
       );
-      return rows.flatMap((row) => (row.name ? [{ name: row.name }] : []));
+      return rows.flatMap((row) => {
+        if (!row.name) return [];
+        if (SNOWFLAKE_EXCLUDED_SCHEMAS.has(row.name.toUpperCase())) return [];
+        return [{ name: row.name }];
+      });
     });
   } catch (err) {
     throw sanitizeSnowflakeError(err, credentials, "Unable to list Snowflake schemas");
