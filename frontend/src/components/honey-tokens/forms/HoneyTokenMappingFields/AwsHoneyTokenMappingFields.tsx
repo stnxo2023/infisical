@@ -68,18 +68,18 @@ export const AwsHoneyTokenMappingFields = () => {
         <tbody>
           {items.map(({ name, icon, fieldName, placeholder }) => (
             <tr key={name}>
-              <td className="align-top whitespace-nowrap pb-4">
+              <td className="pb-4 align-top whitespace-nowrap">
                 <Badge variant="neutral" className="h-9 w-full justify-center text-xs">
                   {icon}
                   {name}
                 </Badge>
               </td>
-              <td className="align-top px-5 pb-4">
+              <td className="px-5 pb-4 align-top">
                 <div className="flex h-9 items-center">
                   <ArrowRightIcon className="size-5 text-accent" />
                 </div>
               </td>
-              <td className="w-full align-top pb-4">
+              <td className="w-full pb-4 align-top">
                 <Controller
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <div>

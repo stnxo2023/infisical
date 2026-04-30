@@ -36,7 +36,10 @@ const CredentialField = ({ label, value }: { label: string; value?: string }) =>
       <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         <div className="flex w-full min-w-0 items-center gap-1">
-          <span className="min-w-0 flex-1 truncate font-mono text-sm" title={showCredential ? value : undefined}>
+          <span
+            className="min-w-0 flex-1 truncate font-mono text-sm"
+            title={showCredential ? value : undefined}
+          >
             {showCredential ? value : "****************************"}
           </span>
           <Tooltip>
@@ -66,7 +69,9 @@ const CredentialField = ({ label, value }: { label: string; value?: string }) =>
                 <EyeOff className="size-3.5" />
               </IconButton>
             </TooltipTrigger>
-            <TooltipContent>{showCredential ? "Hide" : "Show"} {label}</TooltipContent>
+            <TooltipContent>
+              {showCredential ? "Hide" : "Show"} {label}
+            </TooltipContent>
           </Tooltip>
         </div>
       </FieldContent>
