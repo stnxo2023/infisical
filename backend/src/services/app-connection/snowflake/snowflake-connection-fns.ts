@@ -12,6 +12,12 @@ const noop = () => {};
 const SNOWFLAKE_EXCLUDED_DATABASES = new Set(["SNOWFLAKE", "SNOWFLAKE_SAMPLE_DATA"]);
 const SNOWFLAKE_EXCLUDED_SCHEMAS = new Set(["INFORMATION_SCHEMA"]);
 
+export const SNOWFLAKE_SHOW_PAGE_SIZE = 1000;
+
+const escapeSnowflakeStringLiteral = (value: string) => value.replace(/'/g, "''");
+
+export const quoteSnowflakeIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
+
 const withTimeout = async <T>(promise: Promise<T>, ms: number, onTimeout: () => Error): Promise<T> => {
   let timeoutHandle: NodeJS.Timeout | undefined;
   try {
@@ -25,8 +31,6 @@ const withTimeout = async <T>(promise: Promise<T>, ms: number, onTimeout: () => 
     if (timeoutHandle) clearTimeout(timeoutHandle);
   }
 };
-
-export const quoteSnowflakeIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
 
 export const getSnowflakeConnectionListItem = () => {
   return {
@@ -83,6 +87,32 @@ export const executeSnowflakeSql = <TRow = Record<string, unknown>>(
     });
   });
 
+export async function* paginateSnowflakeShow<TRow extends { name?: string | null }>(
+  client: snowflake.Connection,
+  baseQuery: string,
+  pageSize: number = SNOWFLAKE_SHOW_PAGE_SIZE
+): AsyncGenerator<TRow[]> {
+  let cursor: string | undefined;
+
+  while (true) {
+    const sqlText = cursor
+      ? `${baseQuery} LIMIT ${pageSize} FROM '${escapeSnowflakeStringLiteral(cursor)}'`
+      : `${baseQuery} LIMIT ${pageSize}`;
+
+    // eslint-disable-next-line no-await-in-loop
+    const rows = await executeSnowflakeSql<TRow>(client, sqlText);
+    if (rows.length === 0) return;
+
+    yield rows;
+
+    if (rows.length < pageSize) return;
+
+    const lastName = rows[rows.length - 1]?.name;
+    if (!lastName) return;
+    cursor = lastName;
+  }
+}
+
 export const withSnowflakeClient = async <T>(
   credentials: TSnowflakeConnection["credentials"],
   fn: (client: snowflake.Connection) => Promise<T>
@@ -122,12 +152,17 @@ export const validateSnowflakeConnectionCredentials = async (config: TSnowflakeC
 export const listSnowflakeDatabases = async (credentials: TSnowflakeConnection["credentials"]) => {
   try {
     return await withSnowflakeClient(credentials, async (client) => {
-      const rows = await executeSnowflakeSql<{ name?: string }>(client, "SHOW DATABASES");
-      return rows.flatMap((row) => {
-        if (!row.name) return [];
-        if (SNOWFLAKE_EXCLUDED_DATABASES.has(row.name.toUpperCase())) return [];
-        return [{ name: row.name }];
-      });
+      const databases: { name: string }[] = [];
+      for await (const page of paginateSnowflakeShow<{ name?: string }>(client, "SHOW DATABASES")) {
+        for (const row of page) {
+          // eslint-disable-next-line no-continue
+          if (!row.name) continue;
+          // eslint-disable-next-line no-continue
+          if (SNOWFLAKE_EXCLUDED_DATABASES.has(row.name.toUpperCase())) continue;
+          databases.push({ name: row.name });
+        }
+      }
+      return databases;
     });
   } catch (err) {
     throw sanitizeSnowflakeError(err, credentials, "Unable to list Snowflake databases");
@@ -137,15 +172,20 @@ export const listSnowflakeDatabases = async (credentials: TSnowflakeConnection["
 export const listSnowflakeSchemas = async (credentials: TSnowflakeConnection["credentials"], database: string) => {
   try {
     return await withSnowflakeClient(credentials, async (client) => {
-      const rows = await executeSnowflakeSql<{ name?: string }>(
+      const schemas: { name: string }[] = [];
+      for await (const page of paginateSnowflakeShow<{ name?: string }>(
         client,
         `SHOW SCHEMAS IN DATABASE ${quoteSnowflakeIdent(database)}`
-      );
-      return rows.flatMap((row) => {
-        if (!row.name) return [];
-        if (SNOWFLAKE_EXCLUDED_SCHEMAS.has(row.name.toUpperCase())) return [];
-        return [{ name: row.name }];
-      });
+      )) {
+        for (const row of page) {
+          // eslint-disable-next-line no-continue
+          if (!row.name) continue;
+          // eslint-disable-next-line no-continue
+          if (SNOWFLAKE_EXCLUDED_SCHEMAS.has(row.name.toUpperCase())) continue;
+          schemas.push({ name: row.name });
+        }
+      }
+      return schemas;
     });
   } catch (err) {
     throw sanitizeSnowflakeError(err, credentials, "Unable to list Snowflake schemas");
