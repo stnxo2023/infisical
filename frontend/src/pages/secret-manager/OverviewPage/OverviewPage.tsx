@@ -28,6 +28,7 @@ import {
   CreateHoneyTokenModal,
   EditHoneyTokenModal,
   HoneyTokenDetailsDrawer,
+  type HoneyTokenDetailsDrawerHandle,
   RevokeHoneyTokenModal,
   ViewHoneyTokenCredentialsModal
 } from "@app/components/honey-tokens";
@@ -785,9 +786,10 @@ const OverviewPageContent = () => {
     "confirmDisableBatchMode",
     "editHoneyToken",
     "revokeHoneyToken",
-    "viewHoneyTokenCredentials",
-    "viewHoneyTokenDetails"
+    "viewHoneyTokenCredentials"
   ] as const);
+
+  const honeyTokenDetailsRef = useRef<HoneyTokenDetailsDrawerHandle>(null);
 
   // Auto-open dynamic secret leases modal when linked via notification/email
   useEffect(() => {
@@ -3104,7 +3106,7 @@ const OverviewPageContent = () => {
                                 handlePopUpOpen("viewHoneyTokenCredentials", honeyToken)
                               }
                               onViewDetails={(honeyToken) =>
-                                handlePopUpOpen("viewHoneyTokenDetails", honeyToken)
+                                honeyTokenDetailsRef.current?.open(honeyToken.id)
                               }
                             />
                           ))}
@@ -3461,12 +3463,7 @@ const OverviewPageContent = () => {
         projectId={projectId}
         onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
       />
-      <HoneyTokenDetailsDrawer
-        isOpen={popUp.viewHoneyTokenDetails.isOpen}
-        honeyTokenId={(popUp.viewHoneyTokenDetails.data as TDashboardHoneyToken)?.id ?? ""}
-        projectId={projectId}
-        onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenDetails", isOpen)}
-      />
+      <HoneyTokenDetailsDrawer ref={honeyTokenDetailsRef} projectId={projectId} />
       <ImportSecretsModal
         isOpen={popUp.importSecrets.isOpen}
         onOpenChange={(isOpen) => {
