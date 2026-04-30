@@ -153,7 +153,7 @@ const DrawerContent = ({
                   {statusLabel}
                 </Badge>
               </div>
-              <p className="text-xs text-muted">
+              <p className="text-xs text-foreground/85">
                 {honeyToken.description || `${tokenInfo?.name ?? "Honey"} Token`}
               </p>
             </div>
@@ -256,7 +256,7 @@ const DrawerContent = ({
               <BanIcon size={16} className="text-muted" />
               <p className="text-sm font-medium text-muted">Honey token revoked</p>
             </div>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-foreground/85">
               The AWS IAM credentials have been revoked and the decoy secrets removed. The honey
               token record and its events are preserved for audit purposes.
             </p>
@@ -278,7 +278,7 @@ const DrawerContent = ({
                 <Alert variant="info" className="flex flex-col gap-4">
                   <div>
                     <p className="text-xs font-medium text-white">1. False alarm confirmed?</p>
-                    <p className="text-xs text-muted/80">
+                    <p className="text-xs text-accent">
                       You might want to <strong>reset the honey token</strong>. This will revert its
                       status to active and hide the past events, so that the honey token can be
                       triggered again.
@@ -288,7 +288,7 @@ const DrawerContent = ({
                     <p className="text-xs font-medium text-white">
                       2. Malicious activity confirmed?
                     </p>
-                    <p className="text-xs text-muted/80">
+                    <p className="text-xs text-accent">
                       1. Take immediate steps as per your company Incident Response Plan.
                       <br />
                       2. <strong>Rotate any real secrets</strong> that were stored alongside the
