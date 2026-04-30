@@ -58,8 +58,15 @@ description: "One-time organization setup for AWS honey tokens."
 
     ![Select AWS App Connection](/images/platform/honey-tokens/1.png)
   </Step>
+  <Step title="Configure and save">
+    A webhook signing key is automatically generated for you. Optionally, customize the CloudFormation stack name under **Advanced Options** (defaults to `infisical-honey-tokens`, must be 1–128 characters).
+
+    ![Advanced Options](/images/platform/honey-tokens/3.png)
+
+    Click **Save** to store the configuration.
+  </Step>
   <Step title="Deploy the CloudFormation stack">
-    The settings page displays a pre-filled AWS CLI command with your webhook URL, signing key, and stack name already populated. Copy the command from the UI and run it in your terminal.
+    After saving, the settings page displays a pre-filled AWS CLI command with your webhook URL, signing key, and stack name already populated. Copy the command from the UI and run it in your terminal.
 
     ![Deploy CloudFormation Stack](/images/platform/honey-tokens/2.png)
 
@@ -75,17 +82,6 @@ description: "One-time organization setup for AWS honey tokens."
       --stack-name infisical-honey-tokens \
       --query "Stacks[0].StackStatus"
     ```
-  </Step>
-  <Step title="Advanced Options (optional)">
-    **CloudFormation Stack Name** — defaults to `infisical-honey-tokens`. You can customize this if
-    you have naming conventions or need multiple stacks. The name must be 1–128 characters.
-
-    ![Advanced Options](/images/platform/honey-tokens/3.png)
-  </Step>
-  <Step title="Save the configuration">
-    Click **Save**. Infisical verifies that the CloudFormation stack is deployed before saving.
-
-    ![Save configuration](/images/platform/honey-tokens/4.png)
   </Step>
 </Steps>
 
