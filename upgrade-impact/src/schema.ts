@@ -41,7 +41,7 @@ export const ImpactEntrySchema = z.object({
 
 export const ReleaseImpactSchema = z.object({
   version: StableVersionSchema,
-  releasedAt: z.string().datetime(),
+  releasedAt: z.string().datetime({ offset: true }),
   sourceTag: StableVersionSchema,
   previousTag: StableVersionSchema.nullable(),
   impactLevel: ImpactLevelSchema,
@@ -56,7 +56,7 @@ export const ReleaseImpactSchema = z.object({
     generator: z.string().min(1),
     generatorVersion: z.string().min(1),
     model: z.string().min(1),
-    generatedAt: z.string().datetime(),
+    generatedAt: z.string().datetime({ offset: true }),
     sourceRange: z.object({
       from: StableVersionSchema.nullable(),
       to: StableVersionSchema
@@ -66,13 +66,13 @@ export const ReleaseImpactSchema = z.object({
 
 export const ReleaseIndexEntrySchema = z.object({
   version: StableVersionSchema,
-  releasedAt: z.string().datetime(),
+  releasedAt: z.string().datetime({ offset: true }),
   file: z.string().regex(/^releases\/v\d+\.\d+\.\d+\.yaml$/)
 });
 
 export const ReleaseIndexSchema = z.object({
   schemaVersion: z.literal(1),
-  generatedAt: z.string().datetime(),
+  generatedAt: z.string().datetime({ offset: true }),
   versions: z.array(ReleaseIndexEntrySchema)
 });
 
