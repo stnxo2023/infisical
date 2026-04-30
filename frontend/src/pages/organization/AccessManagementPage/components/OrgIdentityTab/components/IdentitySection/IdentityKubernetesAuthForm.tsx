@@ -217,7 +217,7 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces: data.allowedNamespaces,
         allowedAudience: data.allowedAudience,
         caCert: data.caCert,
-        verifyTlsCertificate: data.verifyTlsCertificate ?? true,
+        verifyTlsCertificate: data.verifyTlsCertificate ?? false,
         gatewayId: data.gatewayPoolId ? null : data.gatewayId || null,
         gatewayPoolId: data.gatewayPoolId || null,
         accessTokenTTL: String(data.accessTokenTTL),

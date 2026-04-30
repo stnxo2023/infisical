@@ -272,6 +272,11 @@ export const identityKubernetesAuthServiceFactory = ({
     };
   };
 
+  const $resolveEffectiveVerifyTlsCertificate = (caCert: string, storedVerify: boolean | null | undefined): boolean => {
+    if (!caCert.length) return false;
+    return storedVerify ?? false;
+  };
+
   const login = async ({ identityId, jwt: serviceAccountJwt, organizationSlug }: TLoginKubernetesAuthDTO) => {
     const appCfg = getConfig();
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
@@ -360,7 +365,10 @@ export const identityKubernetesAuthServiceFactory = ({
               timeout: 10000,
               httpsAgent: new https.Agent({
                 ca: caCert || undefined,
-                rejectUnauthorized: identityKubernetesAuth.verifyTlsCertificate ?? false,
+                rejectUnauthorized: $resolveEffectiveVerifyTlsCertificate(
+                  caCert,
+                  identityKubernetesAuth.verifyTlsCertificate
+                ),
                 servername
               })
             }
@@ -479,7 +487,10 @@ export const identityKubernetesAuthServiceFactory = ({
               : ((identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string),
             gatewayPoolId: identityKubernetesAuth.gatewayPoolId ?? undefined,
             caCert: caCert || undefined,
-            verifyTlsCertificate: identityKubernetesAuth.verifyTlsCertificate,
+            verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(
+              caCert,
+              identityKubernetesAuth.verifyTlsCertificate
+            ),
             reviewTokenThroughGateway: true
           },
           tokenReviewCallbackThroughGateway
@@ -513,7 +524,10 @@ export const identityKubernetesAuthServiceFactory = ({
                 targetHost: k8sHost,
                 targetPort: k8sPort ? Number(k8sPort) : 443,
                 caCert: caCert || undefined,
-                verifyTlsCertificate: identityKubernetesAuth.verifyTlsCertificate,
+                verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(
+                  caCert,
+                  identityKubernetesAuth.verifyTlsCertificate
+                ),
                 reviewTokenThroughGateway: false
               },
               tokenReviewCallbackRaw
@@ -999,7 +1013,7 @@ export const identityKubernetesAuthServiceFactory = ({
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
             ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
             : null,
-          encryptedKubernetesCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
+          encryptedKubernetesCaCertificate: caCert ? encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob : null
         },
         tx
       );
@@ -1214,14 +1228,16 @@ export const identityKubernetesAuthServiceFactory = ({
 
     // Auto-promote verifyTlsCertificate when the caller is supplying a non-empty
     // CA in this update without explicitly setting the toggle. Required for
-    // backwards compatibility
+    // backwards compatibility.
     let resolvedVerifyTlsCertificate: boolean | undefined;
     if (verifyTlsCertificate !== undefined) {
       resolvedVerifyTlsCertificate = verifyTlsCertificate;
     } else if (caCert !== undefined && caCert.length > 0) {
       resolvedVerifyTlsCertificate = true;
     }
-    const effectiveVerifyTlsCertificate = resolvedVerifyTlsCertificate ?? identityKubernetesAuth.verifyTlsCertificate;
+    const effectiveVerifyTlsCertificate =
+      resolvedVerifyTlsCertificate ??
+      $resolveEffectiveVerifyTlsCertificate(effectiveCaCert ?? "", identityKubernetesAuth.verifyTlsCertificate);
 
     if (
       effectiveVerifyTlsCertificate &&
@@ -1325,7 +1341,9 @@ export const identityKubernetesAuthServiceFactory = ({
     };
 
     if (caCert !== undefined) {
-      updateQuery.encryptedKubernetesCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
+      updateQuery.encryptedKubernetesCaCertificate = caCert
+        ? encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
+        : null;
     }
 
     if (tokenReviewerJwt) {
@@ -1434,6 +1452,7 @@ export const identityKubernetesAuthServiceFactory = ({
       ...identityKubernetesAuth,
       caCert,
       tokenReviewerJwt,
+      verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(caCert, identityKubernetesAuth.verifyTlsCertificate),
       orgId: identityMembershipOrg.scopeOrgId,
       gatewayId: identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id
     };
