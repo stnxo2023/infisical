@@ -72,13 +72,9 @@ export const SnowflakeConnectionForm = ({ appConnection, onSubmit }: Props) => {
               errorText={error?.message}
               isError={Boolean(error?.message)}
               label="Account"
-              tooltipText="Your Snowflake account identifier (e.g., xy12345.us-east-1)."
+              tooltipText="Your Snowflake account identifier."
             >
-              <Input
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder="xy12345.us-east-1"
-              />
+              <Input value={value} onChange={(e) => onChange(e.target.value)} />
             </FormControl>
           )}
         />

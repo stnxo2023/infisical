@@ -13,18 +13,22 @@ description: "Learn how to configure a Snowflake Sync for Infisical."
 
 <Info>
   Snowflake Sync writes Infisical secrets as native Snowflake secrets of type
-  `GENERIC_STRING` (created via `CREATE OR REPLACE SECRET`). This sync is
-  **push-only** — Infisical does not import existing Snowflake secrets back
-  into your project.
+  `GENERIC_STRING` (created via `CREATE OR REPLACE SECRET`). 
 </Info>
 
 <Tabs>
   <Tab title="Infisical UI">
     1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+    ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
 
     2. Select the **Snowflake** option.
 
+      ![Select Snowflake](/images/secret-syncs/snowflake/select-option.png)
+
     3. Configure the **Source** from where secrets should be retrieved, then click **Next**.
+
+      ![Configure Source](/images/secret-syncs/snowflake/sync-source.png)
+
 
         - **Environment**: The project environment to retrieve secrets from.
         - **Secret Path**: The folder path to retrieve secrets from.
@@ -35,6 +39,8 @@ description: "Learn how to configure a Snowflake Sync for Infisical."
 
     4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
 
+      ![Configure Destination](/images/secret-syncs/snowflake/sync-destination.png)
+
         - **Snowflake Connection**: The Snowflake Connection to authenticate with.
         - **Database**: The name of the Snowflake database to write secrets to. The database must already exist.
         - **Schema**: The name of the Snowflake schema (within the selected database) where secrets will be created. The schema must already exist.
@@ -44,6 +50,7 @@ description: "Learn how to configure a Snowflake Sync for Infisical."
         </Note>
 
     5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+        ![Configure Options](/images/secret-syncs/snowflake/sync-options.png)
 
         - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
             - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
@@ -59,12 +66,18 @@ description: "Learn how to configure a Snowflake Sync for Infisical."
 
     6. Configure the **Details** of your Snowflake Sync, then click **Next**.
 
+      ![Configure Details](/images/secret-syncs/snowflake/sync-details.png)
+
         - **Name**: The name of your sync. Must be slug-friendly.
         - **Description**: An optional description for your sync.
 
     7. Review your Snowflake Sync configuration, then click **Create Sync**.
 
+        ![Review Configuration](/images/secret-syncs/snowflake/sync-review.png)
+
     8. If enabled, your Snowflake Sync will begin syncing your secrets to the destination schema.
+      ![Sync Created](/images/secret-syncs/snowflake/sync-created.png)
+
   </Tab>
   <Tab title="API">
     To create a **Snowflake Sync**, make an API request to the [Create Snowflake Sync](/api-reference/endpoints/secret-syncs/snowflake/create) API endpoint.

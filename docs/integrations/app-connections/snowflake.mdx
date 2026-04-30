@@ -14,19 +14,55 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
 
 <Steps>
     <Step title="Open Snowsight User Settings">
-        In [Snowsight](https://app.snowflake.com/), open the user menu in the bottom-left corner and select **My profile**.
+        In [Snowsight](https://app.snowflake.com/), open the side bar menu and select **User & Roles** under **Governance & Security**.
 
         ![Snowflake User Profile](/images/app-connections/snowflake/step-1.png)
+    </Step>
+
+    <Step title="Create a new User">
+        Click **Create user** in the top-right corner.
+
+        ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-2.png)
+    </Step>
+
+    <Step title="Configure user details and role">
+        Provide a **Username** and assign a role. The role must have permission to create and manage secrets in the target database. The snippet below grants the minimum required privileges (alternatively, assign the **ACCOUNTADMIN** role).
+
+        ```SQL
+        -- Grant INFISICAL user access to SECRET_SYNC_TEST
+        CREATE ROLE IF NOT EXISTS INFISICAL_ROLE;
+        GRANT ROLE INFISICAL_ROLE TO USER INFISICAL;
+
+        GRANT ALL PRIVILEGES ON DATABASE SECRET_SYNC_TEST TO ROLE INFISICAL_ROLE;
+        GRANT ALL PRIVILEGES ON SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
+        GRANT ALL PRIVILEGES ON ALL SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
+        GRANT ALL PRIVILEGES ON FUTURE SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
+        ```
+
+        ![Configure User](/images/app-connections/snowflake/step-3.png)
+    </Step>
+
+    <Step title="Create a network policy">
+        Programmatic Access Tokens require an attached network policy that defines the IPs allowed to authenticate as this user.
+
+        ```SQL
+        CREATE NETWORK POLICY INFISICAL_SYNC_POLICY
+            ALLOWED_IP_LIST = ('0.0.0.0/0')
+            COMMENT = 'Allow access from any IP';
+        ```
+
+        ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
+        ![Create network policy](/images/app-connections/snowflake/step-4.png)
     </Step>
     <Step title="Generate a Programmatic Access Token">
         Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name (e.g. `infisical`) and configure its expiration and role restrictions according to your security policy.
 
-        ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-2.png)
+        ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-5.png)
     </Step>
     <Step title="Copy the Token">
         Copy the generated token. Snowflake only displays it once — store it somewhere secure for the next step.
 
-        ![Copy Programmatic Access Token](/images/app-connections/snowflake/step-3.png)
+        ![Copy Programmatic Access Token](/images/app-connections/snowflake/step-6.png)
     </Step>
 </Steps>
 
