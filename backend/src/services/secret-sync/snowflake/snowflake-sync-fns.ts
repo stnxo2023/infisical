@@ -24,10 +24,9 @@ const databaseExists = async (client: snowflake.Connection, database: string) =>
 
 const schemaExists = async (client: snowflake.Connection, database: string, schema: string) => {
   try {
-    const rows = await executeSnowflakeSql(
-      client,
-      `SHOW SCHEMAS LIKE '${sanitizeSqlLikeString(schema)}' IN DATABASE ${quoteSnowflakeIdent(database)}`
-    );
+    const rows = await executeSnowflakeSql(client, `SHOW SCHEMAS LIKE ? IN DATABASE ${quoteSnowflakeIdent(database)}`, [
+      sanitizeSqlLikeString(schema)
+    ]);
     return rows.length > 0;
   } catch (err) {
     const message = (err as Error)?.message ?? "";
