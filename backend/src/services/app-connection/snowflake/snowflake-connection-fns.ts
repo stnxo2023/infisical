@@ -5,9 +5,11 @@ import { sanitizeString } from "@app/lib/fn";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { SnowflakeConnectionMethod } from "./snowflake-connection-enums";
-import { TSnowflakeConnectionConfig } from "./snowflake-connection-types";
+import { TSnowflakeConnection, TSnowflakeConnectionConfig } from "./snowflake-connection-types";
 
 const noop = () => {};
+
+export const quoteSnowflakeIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
 
 export const getSnowflakeConnectionListItem = () => {
   return {
@@ -17,52 +19,114 @@ export const getSnowflakeConnectionListItem = () => {
   };
 };
 
-export const validateSnowflakeConnectionCredentials = async (config: TSnowflakeConnectionConfig) => {
-  const { account, username, password } = config.credentials;
+export const getSnowflakeClient = async (credentials: TSnowflakeConnection["credentials"]) => {
+  const client = snowflake.createConnection({
+    account: credentials.account,
+    username: credentials.username,
+    password: credentials.password,
+    application: "Infisical"
+  });
 
+  await new Promise<void>((resolve, reject) => {
+    client.connectAsync((err) => (err ? reject(err) : resolve())).catch(reject);
+  });
+
+  let timeoutHandle: NodeJS.Timeout | undefined;
+  const isValid = await Promise.race<boolean>([
+    client.isValidAsync(),
+    new Promise<boolean>((_, reject) => {
+      timeoutHandle = setTimeout(
+        () => reject(new BadRequestError({ message: "Snowflake connection validation timed out" })),
+        10000
+      );
+    })
+  ]).finally(() => {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  });
+
+  if (!isValid) {
+    throw new BadRequestError({
+      message:
+        "Snowflake connection is not valid - heartbeat failed; verify credentials, network access, and that the account is not locked"
+    });
+  }
+
+  return client;
+};
+
+export const executeSnowflakeSql = <TRow = Record<string, unknown>>(
+  client: snowflake.Connection,
+  sqlText: string,
+  binds?: snowflake.Binds
+): Promise<TRow[]> =>
+  new Promise((resolve, reject) => {
+    client.execute({
+      sqlText,
+      binds,
+      complete: (err, _stmt, rows) => {
+        if (err) return reject(err);
+        return resolve((rows ?? []) as TRow[]);
+      }
+    });
+  });
+
+export const withSnowflakeClient = async <T>(
+  credentials: TSnowflakeConnection["credentials"],
+  fn: (client: snowflake.Connection) => Promise<T>
+): Promise<T> => {
   let client: snowflake.Connection | undefined;
   try {
-    client = snowflake.createConnection({
-      account,
-      username,
-      password,
-      application: "Infisical"
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      client.connectAsync((err) => (err ? reject(err) : resolve())).catch(reject);
-    });
-
-    let timeoutHandle: NodeJS.Timeout | undefined;
-    const isValid = await Promise.race<boolean>([
-      client.isValidAsync(),
-      new Promise<boolean>((_, reject) => {
-        timeoutHandle = setTimeout(
-          () => reject(new BadRequestError({ message: "Snowflake connection validation timed out" })),
-          10000
-        );
-      })
-    ]).finally(() => {
-      if (timeoutHandle) clearTimeout(timeoutHandle);
-    });
-
-    if (!isValid) {
-      throw new BadRequestError({
-        message:
-          "Snowflake connection is not valid - heartbeat failed; verify credentials, network access, and that the account is not locked"
-      });
-    }
-
-    return config.credentials;
-  } catch (err) {
-    const sanitizedErrorMessage = sanitizeString({
-      unsanitizedString: (err as Error)?.message,
-      tokens: [password, username, account]
-    });
-    throw new BadRequestError({
-      message: `Unable to validate connection: ${sanitizedErrorMessage || "verify credentials"}`
-    });
+    client = await getSnowflakeClient(credentials);
+    return await fn(client);
   } finally {
     if (client) client.destroy(noop);
+  }
+};
+
+const sanitizeSnowflakeError = (
+  err: unknown,
+  credentials: TSnowflakeConnection["credentials"],
+  errorPrefix: string
+) => {
+  const sanitizedErrorMessage = sanitizeString({
+    unsanitizedString: (err as Error)?.message ?? "",
+    tokens: [credentials.password, credentials.username, credentials.account]
+  });
+  return new BadRequestError({
+    message: `${errorPrefix}: ${sanitizedErrorMessage || "verify credentials and permissions"}`
+  });
+};
+
+export const validateSnowflakeConnectionCredentials = async (config: TSnowflakeConnectionConfig) => {
+  try {
+    await withSnowflakeClient(config.credentials, async () => undefined);
+    return config.credentials;
+  } catch (err) {
+    throw sanitizeSnowflakeError(err, config.credentials, "Unable to validate connection");
+  }
+};
+
+export const listSnowflakeDatabases = async (credentials: TSnowflakeConnection["credentials"]) => {
+  try {
+    return await withSnowflakeClient(credentials, async (client) => {
+      const rows = await executeSnowflakeSql<{ name?: string }>(client, "SHOW DATABASES");
+      return rows.flatMap((row) => (row.name ? [{ name: row.name }] : []));
+    });
+  } catch (err) {
+    throw sanitizeSnowflakeError(err, credentials, "Unable to list Snowflake databases");
+  }
+};
+
+export const listSnowflakeSchemas = async (credentials: TSnowflakeConnection["credentials"], database: string) => {
+  try {
+    return await withSnowflakeClient(credentials, async (client) => {
+      const rows = await executeSnowflakeSql<{ name?: string }>(
+        client,
+        `SHOW SCHEMAS IN DATABASE ${quoteSnowflakeIdent(database)}`
+      );
+      return rows.flatMap((row) => (row.name ? [{ name: row.name }] : []));
+    });
+  } catch (err) {
+    throw sanitizeSnowflakeError(err, credentials, "Unable to list Snowflake schemas");
   }
 };

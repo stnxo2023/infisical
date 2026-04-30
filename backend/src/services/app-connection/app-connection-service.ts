@@ -138,6 +138,7 @@ import { ValidateRenderConnectionCredentialsSchema } from "./render/render-conne
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSnowflakeConnectionCredentialsSchema } from "./snowflake";
+import { snowflakeConnectionService } from "./snowflake/snowflake-connection-service";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";
@@ -1117,6 +1118,7 @@ export const appConnectionServiceFactory = ({
     azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
-    travisCI: travisCIConnectionService(connectAppConnectionById)
+    travisCI: travisCIConnectionService(connectAppConnectionById),
+    snowflake: snowflakeConnectionService(connectAppConnectionById)
   };
 };

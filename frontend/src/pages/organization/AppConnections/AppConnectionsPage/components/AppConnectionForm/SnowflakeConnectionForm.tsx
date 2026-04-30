@@ -2,16 +2,7 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import {
-  Button,
-  FormControl,
-  Input,
-  ModalClose,
-  SecretInput,
-  Select,
-  SelectItem
-} from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   SnowflakeConnectionMethod,
@@ -88,36 +79,6 @@ export const SnowflakeConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 onChange={(e) => onChange(e.target.value)}
                 placeholder="xy12345.us-east-1"
               />
-            </FormControl>
-          )}
-        />
-
-        <Controller
-          name="method"
-          control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.Snowflake].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(SnowflakeConnectionMethod).map((method) => (
-                  <SelectItem value={method} key={method}>
-                    {getAppConnectionMethodDetails(method).name}
-                  </SelectItem>
-                ))}
-              </Select>
             </FormControl>
           )}
         />
