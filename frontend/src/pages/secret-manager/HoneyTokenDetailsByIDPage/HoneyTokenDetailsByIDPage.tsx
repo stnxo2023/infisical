@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
@@ -6,8 +6,11 @@ import {
   AlertTriangle,
   BanIcon,
   CalendarIcon,
+  Check,
   ChevronLeftIcon,
+  ClipboardCopy,
   ClockIcon,
+  EyeOff,
   KeyIcon,
   MapPinIcon,
   RotateCcw,
@@ -17,7 +20,6 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { CredentialDisplay } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/shared/CredentialDisplay";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +38,7 @@ import {
   Field,
   FieldContent,
   FieldLabel,
+  IconButton,
   Input,
   PageLoader,
   Skeleton,
@@ -47,6 +50,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_CREDENTIAL_FIELDS, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
+import { useTimedReset } from "@app/hooks";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { useResetHoneyToken, useRevokeHoneyToken } from "@app/hooks/api/honeyTokens/mutations";
 import {
@@ -55,6 +59,64 @@ import {
 } from "@app/hooks/api/honeyTokens/queries";
 
 import { HoneyTokenEventsSection } from "./components";
+
+const CredentialField = ({ label, value }: { label: string; value?: string }) => {
+  const [showCredential, toggleShowCredential] = useReducer((prev) => !prev, false);
+  const [, isCopied, setCopied] = useTimedReset<string>({ initialState: "" });
+
+  if (!value) return null;
+
+  return (
+    <Field>
+      <FieldLabel>{label}</FieldLabel>
+      <FieldContent>
+        <div className="flex w-full min-w-0 items-center gap-1">
+          <span
+            className="min-w-0 flex-1 truncate font-mono text-sm"
+            title={showCredential ? value : undefined}
+          >
+            {showCredential ? value : "****************************"}
+          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                onClick={() => {
+                  setCopied(value);
+                  navigator.clipboard.writeText(value);
+                }}
+                aria-label={`Copy ${label}`}
+              >
+                {isCopied ? (
+                  <Check className="size-3.5" />
+                ) : (
+                  <ClipboardCopy className="size-3.5" />
+                )}
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>Copy {label}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                onClick={toggleShowCredential}
+                aria-label={`${showCredential ? "Hide" : "Show"} ${label}`}
+              >
+                <EyeOff className="size-3.5" />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>
+              {showCredential ? "Hide" : "Show"} {label}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </FieldContent>
+    </Field>
+  );
+};
 
 const PageContent = () => {
   const navigate = useNavigate();
@@ -268,18 +330,14 @@ const PageContent = () => {
                         </div>
                       )}
                       {!isCredentialsPending && credentials && (
-                        <div className="flex flex-col gap-x-8 gap-y-2 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-2">
+                        <div className="flex flex-col gap-4">
                           {(
                             HONEY_TOKEN_CREDENTIAL_FIELDS[honeyToken.type as HoneyTokenType] ?? []
                           ).map(({ key, label }) => {
                             const mapping = honeyToken.secretsMapping as Record<string, string>;
                             const secretName = mapping[key];
                             const value = secretName ? credentials[secretName] : undefined;
-                            return (
-                              <CredentialDisplay key={key} label={label} isSensitive>
-                                {value}
-                              </CredentialDisplay>
-                            );
+                            return <CredentialField key={key} label={label} value={value} />;
                           })}
                         </div>
                       )}

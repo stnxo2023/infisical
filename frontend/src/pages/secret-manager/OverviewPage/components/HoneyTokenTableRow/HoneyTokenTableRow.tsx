@@ -185,7 +185,7 @@ export const HoneyTokenTableRow = ({
     );
   };
 
-  const renderHoneyTokenDetails = (honeyToken: TDashboardHoneyToken) => {
+  const renderHoneyTokenInlineDetails = (honeyToken: TDashboardHoneyToken) => {
     const tokenInfo = HONEY_TOKEN_MAP[honeyToken.type as HoneyTokenType];
     const mappedKeys = Object.values(honeyToken.secretsMapping || {});
 
@@ -201,11 +201,6 @@ export const HoneyTokenTableRow = ({
             {tokenInfo.name} Honey Token
           </Badge>
         )}
-        <Badge variant={STATUS_BADGE_VARIANT[honeyToken.status] ?? "neutral"} className="mx-1">
-          {honeyToken.status === HoneyTokenStatus.Active && "Active"}
-          {honeyToken.status === HoneyTokenStatus.Triggered && "Triggered"}
-          {honeyToken.status === HoneyTokenStatus.Revoked && "Revoked"}
-        </Badge>
         {mappedKeys.length > 0 && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -217,6 +212,14 @@ export const HoneyTokenTableRow = ({
       </>
     );
   };
+
+  const renderStatusBadge = (honeyToken: TDashboardHoneyToken) => (
+    <Badge variant={STATUS_BADGE_VARIANT[honeyToken.status] ?? "neutral"}>
+      {honeyToken.status === HoneyTokenStatus.Active && "Active"}
+      {honeyToken.status === HoneyTokenStatus.Triggered && "Triggered"}
+      {honeyToken.status === HoneyTokenStatus.Revoked && "Revoked"}
+    </Badge>
+  );
 
   return (
     <>
@@ -255,13 +258,15 @@ export const HoneyTokenTableRow = ({
           {isSingleEnvView && singleEnvToken ? (
             <div className="relative flex w-full items-center">
               <span className="truncate">{honeyTokenName}</span>
-              {renderHoneyTokenDetails(singleEnvToken)}
+              {renderHoneyTokenInlineDetails(singleEnvToken)}
               <div
                 className={twMerge(
                   "ml-auto flex items-center transition-[margin] duration-300",
-                  "group-hover:mr-20"
+                  "group-hover:mr-32"
                 )}
-              />
+              >
+                {renderStatusBadge(singleEnvToken)}
+              </div>
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
                 {renderActionButtons(singleEnvToken)}
               </div>
@@ -310,15 +315,17 @@ export const HoneyTokenTableRow = ({
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
                           <TableCell colSpan={2}>
-                            <div className="relative flex w-full flex-wrap items-center">
+                            <div className="relative flex w-full items-center">
                               <span>{envName}</span>
-                              {renderHoneyTokenDetails(honeyToken)}
+                              {renderHoneyTokenInlineDetails(honeyToken)}
                               <div
                                 className={twMerge(
                                   "ml-auto flex items-center transition-[margin] duration-300",
-                                  "group-hover:mr-20"
+                                  "group-hover:mr-32"
                                 )}
-                              />
+                              >
+                                {renderStatusBadge(honeyToken)}
+                              </div>
                               <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">
                                 {renderActionButtons(honeyToken)}
                               </div>
