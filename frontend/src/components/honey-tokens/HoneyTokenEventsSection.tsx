@@ -85,7 +85,7 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
       {isPending && <PageLoader />}
 
       {!isPending && (!events || events.length === 0) && (
-        <Empty>
+        <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No events recorded yet</EmptyTitle>
           </EmptyHeader>

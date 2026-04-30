@@ -266,7 +266,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
           </div>
 
           {isConfigured && (
-            <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
+            <div className="mb-4 rounded-md border border-border bg-container p-4">
               <div className="mb-3 flex items-center gap-2 text-sm text-mineshaft-300">
                 <FontAwesomeIcon icon={faTerminal} className="text-mineshaft-400" />
                 <span className="font-medium tracking-wide uppercase">
@@ -278,7 +278,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                 user and wires CloudTrail alerts back to Infisical.
               </p>
               <div className="relative">
-                <pre className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 pr-12 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-mineshaft-300">
+                <pre className="rounded-md border border-border bg-card p-4 pr-12 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-mineshaft-300">
                   <span className="text-mineshaft-400 select-none">$ </span>
                   {cfCommand}
                 </pre>

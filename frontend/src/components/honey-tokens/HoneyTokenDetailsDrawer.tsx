@@ -1,13 +1,10 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   AlertTriangle,
   BanIcon,
   CalendarIcon,
-  Check,
-  ClipboardCopy,
   ClockIcon,
-  EyeOff,
   HexagonIcon,
   KeyIcon,
   MapPinIcon,
@@ -31,7 +28,6 @@ import {
   Field,
   FieldContent,
   FieldLabel,
-  IconButton,
   Input,
   PageLoader,
   Sheet,
@@ -46,7 +42,6 @@ import {
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_CREDENTIAL_FIELDS, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
-import { useTimedReset } from "@app/hooks";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { useResetHoneyToken, useRevokeHoneyToken } from "@app/hooks/api/honeyTokens/mutations";
 import {
@@ -55,65 +50,12 @@ import {
 } from "@app/hooks/api/honeyTokens/queries";
 
 import { HoneyTokenEventsSection } from "./HoneyTokenEventsSection";
+import { CredentialField } from "./ViewHoneyTokenCredentials/CredentialField";
 
 type Props = {
   projectId: string;
   honeyTokenId: string | null;
   onClose: () => void;
-};
-
-const CredentialField = ({ label, value }: { label: string; value?: string }) => {
-  const [showCredential, toggleShowCredential] = useReducer((prev) => !prev, false);
-  const [, isCopied, setCopied] = useTimedReset<string>({ initialState: "" });
-
-  if (!value) return null;
-
-  return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <FieldContent>
-        <div className="flex w-full min-w-0 items-center gap-1">
-          <span
-            className="min-w-0 flex-1 truncate font-mono text-sm"
-            title={showCredential ? value : undefined}
-          >
-            {showCredential ? value : "****************************"}
-          </span>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <IconButton
-                variant="ghost"
-                size="xs"
-                onClick={() => {
-                  setCopied(value);
-                  navigator.clipboard.writeText(value);
-                }}
-                aria-label={`Copy ${label}`}
-              >
-                {isCopied ? <Check className="size-3.5" /> : <ClipboardCopy className="size-3.5" />}
-              </IconButton>
-            </TooltipTrigger>
-            <TooltipContent>Copy {label}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <IconButton
-                variant="ghost"
-                size="xs"
-                onClick={toggleShowCredential}
-                aria-label={`${showCredential ? "Hide" : "Show"} ${label}`}
-              >
-                <EyeOff className="size-3.5" />
-              </IconButton>
-            </TooltipTrigger>
-            <TooltipContent>
-              {showCredential ? "Hide" : "Show"} {label}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </FieldContent>
-    </Field>
-  );
 };
 
 const DrawerContent = ({
