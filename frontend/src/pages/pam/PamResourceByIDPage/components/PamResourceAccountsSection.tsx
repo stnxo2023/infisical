@@ -277,7 +277,12 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
     } else if (account.domainId) {
       handlePopUpOpen("accessAccount", {
         account,
-        resource: { id: resource.id, name: resource.name, resourceType: resource.resourceType, projectId: resource.projectId }
+        resource: {
+          id: resource.id,
+          name: resource.name,
+          resourceType: resource.resourceType,
+          projectId: resource.projectId
+        }
       });
     } else {
       handlePopUpOpen("accessAccount", { account });

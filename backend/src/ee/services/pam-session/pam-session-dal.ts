@@ -11,18 +11,15 @@ export const pamSessionDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamSession);
 
   // COALESCE(session.selectedResourceId, account.resourceId) for domain + local sessions.
-  const sessionResourceJoin = db.raw(
-    `LEFT JOIN ?? ON COALESCE(??.??, ??.??) = ??.??`,
-    [
-      TableName.PamResource,
-      TableName.PamSession,
-      "selectedResourceId",
-      TableName.PamAccount,
-      "resourceId",
-      TableName.PamResource,
-      "id"
-    ]
-  );
+  const sessionResourceJoin = db.raw(`LEFT JOIN ?? ON COALESCE(??.??, ??.??) = ??.??`, [
+    TableName.PamResource,
+    TableName.PamSession,
+    "selectedResourceId",
+    TableName.PamAccount,
+    "resourceId",
+    TableName.PamResource,
+    "id"
+  ]);
 
   const findById = async (id: string, tx?: Knex) => {
     const session = await (tx || db.replicaNode())(TableName.PamSession)
