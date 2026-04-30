@@ -254,11 +254,11 @@ const StatCard = ({
           ) : (
             viewLabel &&
             to &&
-            params && (
+            params &&
+            count > 0 && (
               <Button
                 variant="outline"
                 size="xs"
-                disabled={count === 0}
                 onClick={() => navigate({ to, params })}
               >
                 {viewLabel}
