@@ -66,6 +66,17 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number((result as unknown as { count: number }).count || 0);
   };
 
+  const findOneByTokenIdentifierAndOrgId = async (tokenIdentifier: string, orgId: string, tx?: Knex) => {
+    const row = await (tx || db.replicaNode())(TableName.HoneyToken)
+      .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.HoneyToken}.tokenIdentifier`, tokenIdentifier)
+      .andWhere(`${TableName.Project}.orgId`, orgId)
+      .select(`${TableName.HoneyToken}.*`)
+      .first();
+
+    return row ?? null;
+  };
+
   const tryMarkTriggered = async (tokenIdentifier: string, cooldownMs: number, tx?: Knex) => {
     const COOLDOWN_INTERVAL_MS = cooldownMs;
     const now = new Date();
@@ -73,6 +84,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
 
     const rows = await (tx || db)(TableName.HoneyToken)
       .where({ tokenIdentifier })
+      .andWhere("status", "!=", "revoked")
       .andWhere((qb) => {
         void qb.whereNull("lastTriggeredAt").orWhere("lastTriggeredAt", "<=", cooldownThreshold);
       })
@@ -85,5 +97,5 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return rows.length > 0 ? rows[0] : null;
   };
 
-  return { ...orm, findByFolderIds, countByFolderIds, tryMarkTriggered };
+  return { ...orm, findByFolderIds, countByFolderIds, findOneByTokenIdentifierAndOrgId, tryMarkTriggered };
 };

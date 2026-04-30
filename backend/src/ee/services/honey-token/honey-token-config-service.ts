@@ -24,7 +24,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-p
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenEventType, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
 import {
   AwsHoneyTokenConfigSchema,
@@ -36,7 +36,10 @@ const TRIGGER_NOTIFICATION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
-  honeyTokenDAL: Pick<THoneyTokenDALFactory, "findOne" | "updateById" | "tryMarkTriggered">;
+  honeyTokenDAL: Pick<
+    THoneyTokenDALFactory,
+    "findOne" | "updateById" | "tryMarkTriggered" | "findOneByTokenIdentifierAndOrgId"
+  >;
   honeyTokenEventDAL: Pick<THoneyTokenEventDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -391,11 +394,19 @@ export const honeyTokenConfigServiceFactory = ({
         continue;
       }
 
-      const honeyToken = await honeyTokenDAL.findOne({ tokenIdentifier: parsed.data.accessKeyId });
+      const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(parsed.data.accessKeyId, orgId);
       if (!honeyToken) {
         logger.warn(
           { orgId, accessKeyId: parsed.data.accessKeyId },
-          `No honey token found for accessKeyId [orgId=${orgId}] [accessKeyId=${parsed.data.accessKeyId}]`
+          `No honey token found for accessKeyId in organization [orgId=${orgId}] [accessKeyId=${parsed.data.accessKeyId}]`
+        );
+        continue;
+      }
+
+      if (honeyToken.status === HoneyTokenStatus.Revoked) {
+        logger.info(
+          { orgId, honeyTokenId: honeyToken.id, accessKeyId: parsed.data.accessKeyId },
+          `Ignoring trigger event for revoked honey token [orgId=${orgId}] [honeyTokenId=${honeyToken.id}]`
         );
         continue;
       }

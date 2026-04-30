@@ -37,7 +37,7 @@ export const HoneyTokenTriggeredTemplate = ({
         Honey token <strong>{honeyTokenName}</strong> was accessed in project{" "}
         <strong>{projectName}</strong>
       </Heading>
-      <Text className="text-[14px] text-gray-600 text-center font-medium">
+      <Text className="text-center">
         An unauthorized party may have access to your secrets. Investigate immediately and rotate any secrets that
         may have been exposed.
       </Text>
