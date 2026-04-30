@@ -34,27 +34,32 @@ export const getSnowflakeClient = async (credentials: TSnowflakeConnection["cred
     client.connectAsync((err) => (err ? reject(err) : resolve())).catch(reject);
   });
 
-  let timeoutHandle: NodeJS.Timeout | undefined;
-  const isValid = await Promise.race<boolean>([
-    client.isValidAsync(),
-    new Promise<boolean>((_, reject) => {
-      timeoutHandle = setTimeout(
-        () => reject(new BadRequestError({ message: "Snowflake connection validation timed out" })),
-        10000
-      );
-    })
-  ]).finally(() => {
-    if (timeoutHandle) clearTimeout(timeoutHandle);
-  });
-
-  if (!isValid) {
-    throw new BadRequestError({
-      message:
-        "Snowflake connection is not valid - heartbeat failed; verify credentials, network access, and that the account is not locked"
+  try {
+    let timeoutHandle: NodeJS.Timeout | undefined;
+    const isValid = await Promise.race<boolean>([
+      client.isValidAsync(),
+      new Promise<boolean>((_, reject) => {
+        timeoutHandle = setTimeout(
+          () => reject(new BadRequestError({ message: "Snowflake connection validation timed out" })),
+          10000
+        );
+      })
+    ]).finally(() => {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
     });
-  }
 
-  return client;
+    if (!isValid) {
+      throw new BadRequestError({
+        message:
+          "Snowflake connection is not valid - heartbeat failed; verify credentials, network access, and that the account is not locked"
+      });
+    }
+
+    return client;
+  } catch (err) {
+    client.destroy(noop);
+    throw err;
+  }
 };
 
 export const executeSnowflakeSql = <TRow = Record<string, unknown>>(
