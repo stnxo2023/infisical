@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { faCaretDown, faCaretRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { InfoIcon } from "lucide-react";
@@ -6,6 +7,7 @@ import { Td, Tooltip, Tr } from "@app/components/v2";
 import { formatDateTime, Timezone } from "@app/helpers/datetime";
 import { useToggle } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { useTrackAuditLogView } from "@app/hooks/api/auditLogs/mutations";
 import { AuditLog } from "@app/hooks/api/auditLogs/types";
 
 type Props = {
@@ -40,6 +42,15 @@ const Tag = ({ label, value }: TagProps) => {
 
 export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
   const [isOpen, setIsOpen] = useToggle();
+  const { mutate: trackView } = useTrackAuditLogView();
+  const hasTrackedRef = useRef(false);
+
+  useEffect(() => {
+    if (isOpen && !hasTrackedRef.current) {
+      hasTrackedRef.current = true;
+      trackView({ auditLogId: auditLog.id });
+    }
+  }, [isOpen, auditLog.id, trackView]);
 
   return (
     <>

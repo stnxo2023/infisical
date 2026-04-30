@@ -30,7 +30,7 @@ import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template
 import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { TOrgPermission, TProjectPermission } from "@app/lib/types";
+import { TGenericPermission, TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -96,8 +96,23 @@ export type TCreateAuditLogDTO = {
   projectId?: string;
 } & BaseAuthData;
 
+export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
+
+export type TRecordViewAuditLogDetailsDTO = TGenericPermission & {
+  projectId?: string;
+  auditLogId: string;
+  auditLogInfo: AuditLogInfo;
+};
+
+export type TTrackAuditLogDetailsViewForOrgDTO = TGenericPermission & {
+  auditLogId: string;
+  auditLogInfo: AuditLogInfo;
+};
+
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
+  recordViewAuditLogDetails: (arg: TRecordViewAuditLogDetailsDTO) => Promise<void>;
+  trackAuditLogDetailsViewForOrg: (arg: TTrackAuditLogDetailsViewForOrgDTO) => Promise<void>;
   listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
     {
       event: {
@@ -128,8 +143,6 @@ export type TAuditLogServiceFactory = {
   }>;
   checkPostgresAuditLogVolumeMigrationAlert: () => Promise<void>;
 };
-
-export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
 interface BaseAuthData {
   ipAddress?: string;
@@ -681,6 +694,8 @@ export enum EventType {
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
+  VIEW_AUDIT_LOGS = "view-audit-logs",
+  VIEW_AUDIT_LOG_DETAILS = "view-audit-log-details",
 
   // PKI ACME
   CREATE_ACME_ACCOUNT = "create-acme-account",
@@ -4797,6 +4812,18 @@ interface ViewSecretManagementInsightsSummaryEvent {
   };
 }
 
+interface ViewAuditLogsEvent {
+  type: EventType.VIEW_AUDIT_LOGS;
+  metadata?: Record<string, unknown>;
+}
+
+interface ViewAuditLogDetailsEvent {
+  type: EventType.VIEW_AUDIT_LOG_DETAILS;
+  metadata: {
+    auditLogId: string;
+  };
+}
+
 interface ProjectRoleCreateEvent {
   type: EventType.CREATE_PROJECT_ROLE;
   metadata: {
@@ -6611,6 +6638,8 @@ export type Event =
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
+  | ViewAuditLogsEvent
+  | ViewAuditLogDetailsEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent

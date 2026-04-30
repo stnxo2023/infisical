@@ -240,6 +240,18 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      if (req.query.offset === 0) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.query.projectId,
+          event: {
+            type: EventType.VIEW_AUDIT_LOGS,
+            metadata: {}
+          }
+        });
+      }
+
       const auditLogs = await server.services.auditLog.listAuditLogs({
         filter: {
           ...req.query,
@@ -288,6 +300,41 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         orgId: req.permission.orgId
       });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/audit-logs/:auditLogId/track-view",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "trackOrganizationAuditLogView",
+      tags: [ApiDocsTags.AuditLogs],
+      description:
+        "Record that the current actor expanded a specific audit log entry. Emits a VIEW_AUDIT_LOG_DETAILS audit event. The frontend dedupes per-log within a session so this should be called at most once per (actor, log) per session.",
+      params: z.object({
+        auditLogId: z.string().trim().uuid()
+      }),
+      response: {
+        200: z.object({
+          tracked: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      await server.services.auditLog.trackAuditLogDetailsViewForOrg({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        auditLogId: req.params.auditLogId,
+        auditLogInfo: req.auditLogInfo
+      });
+
+      return { tracked: true };
     }
   });
 
