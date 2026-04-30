@@ -4,6 +4,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import OpenAI from "openai";
+import { parse, stringify } from "yaml";
 import { z } from "zod";
 
 import { collectEvidence, ReleaseEvidenceBundle } from "../src/evidence.js";
@@ -17,7 +18,7 @@ const DEFAULT_MODEL = "gpt-5.4-mini";
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = path.join(packageRoot, "data");
 const releasesDir = path.join(dataDir, "releases");
-const indexPath = path.join(dataDir, "index.json");
+const indexPath = path.join(dataDir, "index.yaml");
 
 const GeneratedDraftSchema = z.object({
   impactLevel: z.enum(["none", "low", "medium", "high"]),
@@ -213,7 +214,7 @@ const assembleReleaseImpact = (bundle: ReleaseEvidenceBundle, draft: GeneratedDr
 
 const readIndex = async (): Promise<ReleaseIndex> => {
   try {
-    return ReleaseIndexSchema.parse(JSON.parse(await fs.readFile(indexPath, "utf8")));
+    return ReleaseIndexSchema.parse(parse(await fs.readFile(indexPath, "utf8")));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { schemaVersion: 1, generatedAt: new Date().toISOString(), versions: [] };
@@ -225,7 +226,7 @@ const readIndex = async (): Promise<ReleaseIndex> => {
 
 const writeReleaseImpact = async (releaseImpact: ReleaseImpact) => {
   await fs.mkdir(releasesDir, { recursive: true });
-  await fs.writeFile(path.join(releasesDir, `${releaseImpact.version}.json`), `${JSON.stringify(releaseImpact, null, 2)}\n`);
+  await fs.writeFile(path.join(releasesDir, `${releaseImpact.version}.yaml`), stringify(releaseImpact));
 
   const index = await readIndex();
   const nextVersions = [
@@ -233,21 +234,19 @@ const writeReleaseImpact = async (releaseImpact: ReleaseImpact) => {
     {
       version: releaseImpact.version,
       releasedAt: releaseImpact.releasedAt,
-      file: `releases/${releaseImpact.version}.json`
+      file: `releases/${releaseImpact.version}.yaml`
     }
   ].sort((a, b) => compareVersions(a.version, b.version));
 
   await fs.writeFile(
     indexPath,
-    `${JSON.stringify(
+    stringify(
       ReleaseIndexSchema.parse({
         schemaVersion: 1,
         generatedAt: new Date().toISOString(),
         versions: nextVersions
-      }),
-      null,
-      2
-    )}\n`
+      })
+    )
   );
 };
 

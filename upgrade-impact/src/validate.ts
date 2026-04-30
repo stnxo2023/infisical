@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { parse } from "yaml";
+
 import { compareVersions, getAddedFiles, hasGitRef } from "./git.js";
 import { ReleaseImpact, ReleaseImpactSchema, ReleaseIndex, ReleaseIndexSchema } from "./schema.js";
 
@@ -13,18 +15,18 @@ export type ValidateUpgradeImpactDataResult = {
   errors: string[];
 };
 
-const readJson = async (file: string, errors: string[]) => {
+const readYaml = async (file: string, errors: string[]) => {
   try {
-    return JSON.parse(await fs.readFile(file, "utf8")) as unknown;
+    return parse(await fs.readFile(file, "utf8")) as unknown;
   } catch (error) {
-    errors.push(`${path.basename(file)} contains invalid JSON: ${(error as Error).message}`);
+    errors.push(`${path.basename(file)} contains invalid YAML: ${(error as Error).message}`);
     return null;
   }
 };
 
 const listReleaseFiles = async (releasesDir: string) => {
   try {
-    return (await fs.readdir(releasesDir)).filter((file) => file.endsWith(".json")).sort();
+    return (await fs.readdir(releasesDir)).filter((file) => file.endsWith(".yaml")).sort();
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return [];
@@ -37,7 +39,7 @@ const listReleaseFiles = async (releasesDir: string) => {
 const validateIndexOrder = (versions: { version: string }[], errors: string[]) => {
   for (let i = 1; i < versions.length; i += 1) {
     if (compareVersions(versions[i - 1].version, versions[i].version) >= 0) {
-      errors.push(`index.json versions must be strictly ascending: ${versions[i - 1].version}, ${versions[i].version}`);
+      errors.push(`index.yaml versions must be strictly ascending: ${versions[i - 1].version}, ${versions[i].version}`);
     }
   }
 };
@@ -70,13 +72,13 @@ const validateReleaseFile = async (
   skipGitChecks: boolean
 ): Promise<ReleaseImpact | null> => {
   const fullPath = path.join(releasesDir, file);
-  const json = await readJson(fullPath, errors);
+  const yaml = await readYaml(fullPath, errors);
 
-  if (!json) {
+  if (!yaml) {
     return null;
   }
 
-  const parsed = ReleaseImpactSchema.safeParse(json);
+  const parsed = ReleaseImpactSchema.safeParse(yaml);
 
   if (!parsed.success) {
     errors.push(`${file} failed schema validation: ${parsed.error.message}`);
@@ -84,7 +86,7 @@ const validateReleaseFile = async (
   }
 
   const release = parsed.data;
-  const expectedFile = `${release.version}.json`;
+  const expectedFile = `${release.version}.yaml`;
 
   if (file !== expectedFile) {
     errors.push(`${file} filename does not match version ${release.version}`);
@@ -123,13 +125,13 @@ export const validateUpgradeImpactData = async ({
   skipGitChecks = false
 }: ValidateUpgradeImpactDataOptions): Promise<ValidateUpgradeImpactDataResult> => {
   const errors: string[] = [];
-  const indexPath = path.join(dataDir, "index.json");
+  const indexPath = path.join(dataDir, "index.yaml");
   const releasesDir = path.join(dataDir, "releases");
-  const indexJson = await readJson(indexPath, errors);
-  const parsedIndex = ReleaseIndexSchema.safeParse(indexJson ?? {});
+  const indexYaml = await readYaml(indexPath, errors);
+  const parsedIndex = ReleaseIndexSchema.safeParse(indexYaml ?? {});
 
   if (!parsedIndex.success) {
-    errors.push(`index.json failed schema validation: ${parsedIndex.error.message}`);
+    errors.push(`index.yaml failed schema validation: ${parsedIndex.error.message}`);
   }
 
   let index: ReleaseIndex = {
@@ -149,11 +151,11 @@ export const validateUpgradeImpactData = async ({
   validateIndexOrder(index.versions, errors);
 
   if (indexedVersions.size !== index.versions.length) {
-    errors.push("index.json contains duplicate versions");
+    errors.push("index.yaml contains duplicate versions");
   }
 
   for (const entry of index.versions) {
-    const expectedFile = `releases/${entry.version}.json`;
+    const expectedFile = `releases/${entry.version}.yaml`;
 
     if (entry.file !== expectedFile) {
       errors.push(`index entry ${entry.version} must point to ${expectedFile}`);
@@ -174,11 +176,11 @@ export const validateUpgradeImpactData = async ({
     }
 
     if (!indexedVersions.has(release.version)) {
-      errors.push(`${file} is not listed in index.json`);
+      errors.push(`${file} is not listed in index.yaml`);
     }
 
     if (!indexedFiles.has(`releases/${file}`)) {
-      errors.push(`${file} is not referenced by index.json`);
+      errors.push(`${file} is not referenced by index.yaml`);
     }
   }
 

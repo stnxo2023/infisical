@@ -67,7 +67,7 @@ export const ReleaseImpactSchema = z.object({
 export const ReleaseIndexEntrySchema = z.object({
   version: StableVersionSchema,
   releasedAt: z.string().datetime(),
-  file: z.string().regex(/^releases\/v\d+\.\d+\.\d+\.json$/)
+  file: z.string().regex(/^releases\/v\d+\.\d+\.\d+\.yaml$/)
 });
 
 export const ReleaseIndexSchema = z.object({

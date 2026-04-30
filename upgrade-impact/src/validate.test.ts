@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
+import { stringify } from "yaml";
 
 import { ReleaseImpact, ReleaseIndex } from "./schema.js";
 import { validateUpgradeImpactData } from "./validate.js";
@@ -71,10 +72,10 @@ const writeFixture = async ({
   const releasesDir = path.join(dataDir, "releases");
 
   await fs.mkdir(releasesDir, { recursive: true });
-  await fs.writeFile(path.join(dataDir, "index.json"), `${JSON.stringify(index, null, 2)}\n`);
+  await fs.writeFile(path.join(dataDir, "index.yaml"), stringify(index));
 
   for (const { fileName, release } of releases) {
-    await fs.writeFile(path.join(releasesDir, fileName), `${JSON.stringify(release, null, 2)}\n`);
+    await fs.writeFile(path.join(releasesDir, fileName), stringify(release));
   }
 
   for (const { relativePath, content } of invalidJsonFiles) {
@@ -101,19 +102,19 @@ const validationCases: ValidationCase[] = [
       {
         version: validRelease.version,
         releasedAt: validRelease.releasedAt,
-        file: `releases/${validRelease.version}.json`
+        file: `releases/${validRelease.version}.yaml`
       }
     ]),
-    releases: [{ fileName: `${validRelease.version}.json`, release: validRelease }],
+    releases: [{ fileName: `${validRelease.version}.yaml`, release: validRelease }],
     expectedErrors: []
   },
   {
     name: "rejects a release file missing from the index",
     index: makeIndex([]),
-    releases: [{ fileName: `${validRelease.version}.json`, release: validRelease }],
+    releases: [{ fileName: `${validRelease.version}.yaml`, release: validRelease }],
     expectedErrors: [
-      `${validRelease.version}.json is not listed in index.json`,
-      `${validRelease.version}.json is not referenced by index.json`
+      `${validRelease.version}.yaml is not listed in index.yaml`,
+      `${validRelease.version}.yaml is not referenced by index.yaml`
     ]
   },
   {
@@ -122,12 +123,12 @@ const validationCases: ValidationCase[] = [
       {
         version: validRelease.version,
         releasedAt: validRelease.releasedAt,
-        file: `releases/${validRelease.version}.json`
+        file: `releases/${validRelease.version}.yaml`
       }
     ]),
     releases: [
       {
-        fileName: `${validRelease.version}.json`,
+        fileName: `${validRelease.version}.yaml`,
         release: makeRelease({
           dbSchemaChanges: [
             {
@@ -141,25 +142,25 @@ const validationCases: ValidationCase[] = [
         })
       }
     ],
-    expectedErrors: [`${validRelease.version}.json failed schema validation`]
+    expectedErrors: [`${validRelease.version}.yaml failed schema validation`]
   },
   {
-    name: "reports invalid release JSON without aborting validation",
+    name: "reports invalid release YAML without aborting validation",
     index: makeIndex([
       {
         version: validRelease.version,
         releasedAt: validRelease.releasedAt,
-        file: `releases/${validRelease.version}.json`
+        file: `releases/${validRelease.version}.yaml`
       }
     ]),
     releases: [],
     invalidJsonFiles: [
       {
-        relativePath: `releases/${validRelease.version}.json`,
-        content: "{"
+        relativePath: `releases/${validRelease.version}.yaml`,
+        content: "a: ["
       }
     ],
-    expectedErrors: [`${validRelease.version}.json contains invalid JSON`]
+    expectedErrors: [`${validRelease.version}.yaml contains invalid YAML`]
   }
 ];
 

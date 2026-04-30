@@ -95,4 +95,4 @@ jobs:
             --title "$PR_TITLE" \
             --body "Generated self-hosted upgrade impact data for \`${TAG_NAME}\`.
 
-          Review the generated JSON for self-hosted upgrade accuracy before merging."
+          Review the generated YAML for self-hosted upgrade accuracy before merging."
