@@ -334,8 +334,8 @@ const DrawerContent = ({
                 <p className="text-xs font-medium">1. False alarm confirmed?</p>
                 <p className="text-xs text-muted">
                   You might want to <strong>reset the honey token</strong>. This will revert its
-                  status to active and hide the past events, so that the honey token can be triggered
-                  again.
+                  status to active and hide the past events, so that the honey token can be
+                  triggered again.
                 </p>
               </div>
               <div>
@@ -343,8 +343,8 @@ const DrawerContent = ({
                 <p className="text-xs text-muted">
                   1. Take immediate steps as per your company Incident Response Plan.
                   <br />
-                  2. <strong>Rotate any real secrets</strong> that were stored alongside the
-                  honey token, as they may also be compromised.
+                  2. <strong>Rotate any real secrets</strong> that were stored alongside the honey
+                  token, as they may also be compromised.
                   <br />
                   3. <strong>Revoke the honey token</strong>. This will prevent any new connections
                   while we keep the compromised key in our records.
