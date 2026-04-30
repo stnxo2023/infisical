@@ -75,7 +75,6 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
         </DialogHeader>
         <Content
           onComplete={() => {
-            handleReset();
             onOpenChange(false);
           }}
           onCancel={handleReset}
