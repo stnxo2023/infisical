@@ -117,5 +117,12 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return parsedRows.length > 0 ? parsedRows[0] : null;
   };
 
-  return { ...orm, findByFolderIds, countByFolderIds, findOneByTokenIdentifierAndOrgId, countByOrgId, tryMarkTriggered };
+  return {
+    ...orm,
+    findByFolderIds,
+    countByFolderIds,
+    findOneByTokenIdentifierAndOrgId,
+    countByOrgId,
+    tryMarkTriggered
+  };
 };
