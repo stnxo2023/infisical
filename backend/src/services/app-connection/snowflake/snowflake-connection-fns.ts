@@ -12,6 +12,20 @@ const noop = () => {};
 const SNOWFLAKE_EXCLUDED_DATABASES = new Set(["SNOWFLAKE", "SNOWFLAKE_SAMPLE_DATA"]);
 const SNOWFLAKE_EXCLUDED_SCHEMAS = new Set(["INFORMATION_SCHEMA"]);
 
+const withTimeout = async <T>(promise: Promise<T>, ms: number, onTimeout: () => Error): Promise<T> => {
+  let timeoutHandle: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(onTimeout()), ms);
+      })
+    ]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
+};
+
 export const quoteSnowflakeIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
 
 export const getSnowflakeConnectionListItem = () => {
@@ -30,23 +44,14 @@ export const getSnowflakeClient = async (credentials: TSnowflakeConnection["cred
     application: "Infisical"
   });
 
-  await new Promise<void>((resolve, reject) => {
-    client.connectAsync((err) => (err ? reject(err) : resolve())).catch(reject);
-  });
-
   try {
-    let timeoutHandle: NodeJS.Timeout | undefined;
-    const isValid = await Promise.race<boolean>([
+    await client.connectAsync();
+
+    const isValid = await withTimeout(
       client.isValidAsync(),
-      new Promise<boolean>((_, reject) => {
-        timeoutHandle = setTimeout(
-          () => reject(new BadRequestError({ message: "Snowflake connection validation timed out" })),
-          10000
-        );
-      })
-    ]).finally(() => {
-      if (timeoutHandle) clearTimeout(timeoutHandle);
-    });
+      10_000,
+      () => new BadRequestError({ message: "Snowflake connection validation timed out" })
+    );
 
     if (!isValid) {
       throw new BadRequestError({

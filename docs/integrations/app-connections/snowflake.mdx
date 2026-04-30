@@ -8,7 +8,7 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
 ## Prerequisites
 
 - A [Snowflake account](https://app.snowflake.com/) with permission to create Programmatic Access Tokens.
-- The **account identifier** for your Snowflake instance (e.g. `xy12345.us-east-1`). You can find it in the Snowflake URL you sign in to (`https://<account-identifier>.snowflakecomputing.com`) or under **Admin → Accounts** in Snowsight.
+- The **account identifier** for your Snowflake instance, which combines your organization name and account name. You can find it in your Snowflake login URL (`https://app.snowflake.com/orgName/accountName/#/account/users`) or under **Account Details** in Snowsight.
 
 ## Create a Snowflake Programmatic Access Token
 
@@ -28,31 +28,45 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
     <Step title="Configure user details and role">
         Provide a **Username** and assign a role. The role must have permission to create and manage secrets in the target database. The snippet below grants the minimum required privileges (alternatively, assign the **ACCOUNTADMIN** role).
 
+        ![Configure User](/images/app-connections/snowflake/step-3.png)
+
+        If you decide to go with a custom role, you just need to run the following snippet:
+
         ```SQL
         -- Grant INFISICAL user access to SECRET_SYNC_TEST
         CREATE ROLE IF NOT EXISTS INFISICAL_ROLE;
-        GRANT ROLE INFISICAL_ROLE TO USER INFISICAL;
+        GRANT ROLE INFISICAL_ROLE TO USER INFISICAL; -- Change INFISICAL to be your user
 
         GRANT ALL PRIVILEGES ON DATABASE SECRET_SYNC_TEST TO ROLE INFISICAL_ROLE;
         GRANT ALL PRIVILEGES ON SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
-        GRANT ALL PRIVILEGES ON ALL SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
-        GRANT ALL PRIVILEGES ON FUTURE SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
+        GRANT OWNERSHIP ON ALL SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS;
+        GRANT OWNERSHIP ON FUTURE SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS;
         ```
 
-        ![Configure User](/images/app-connections/snowflake/step-3.png)
+        <Note>
+            **Transfers ownership—you cannot rely on grants alone.** Grants on the database and schema cover access, but **each existing secret in the sync target schema stays owned by whoever created it** unless you intentionally move ownership. Infisical’s Snowflake user must run with a role that **owns every secret Infisical will manage** (`GRANT OWNERSHIP ON ALL SECRETS IN SCHEMA ...` plus `OWNERSHIP ON FUTURE SECRETS IN SCHEMA ...` as shown above). If anything in that schema is still owned elsewhere, syncing can fail when Infisical runs `CREATE OR REPLACE SECRET` or `DROP SECRET`.
+        </Note>
     </Step>
 
     <Step title="Create a network policy">
         Programmatic Access Tokens require an attached network policy that defines the IPs allowed to authenticate as this user.
 
+
+        ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
+        ![Create network policy](/images/app-connections/snowflake/step-4.png)
+
+
         ```SQL
         CREATE NETWORK POLICY INFISICAL_SYNC_POLICY
             ALLOWED_IP_LIST = ('0.0.0.0/0')
             COMMENT = 'Allow access from any IP';
+        
+        ALTER USER INFISICAL set NETWORK_POLICY = 'INFISICAL_SYNC_POLICY';
         ```
 
-        ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
-        ![Create network policy](/images/app-connections/snowflake/step-4.png)
+        <Note>
+            Be careful with the IPs you allow in your network policy. Using `0.0.0.0/0` allows access from **any IP address**, which can be dangerous in production. Prefer restricting the list to only the IP ranges that should be allowed to authenticate (for example, your corporate NAT(s) and/or Infisical's outbound IPs if you have them).
+        </Note>
     </Step>
     <Step title="Generate a Programmatic Access Token">
         Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name (e.g. `infisical`) and configure its expiration and role restrictions according to your security policy.
@@ -89,8 +103,8 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
                 Complete the form with:
                 - A **name** for the connection (e.g. `snowflake-prod`)
                 - An optional **description**
-                - The Snowflake **Account** identifier (e.g. `xy12345.us-east-1`)
-                - The Snowflake **Username** (login name)
+                - The Snowflake **Account** identifier (e.g. `orgName-accountName`)
+                - The Snowflake **Username** (The name of the user that was created)
                 - The **Programmatic Access Token** generated in the previous section
 
                 ![Snowflake Connection Form](/images/app-connections/snowflake/snowflake-app-connection-form.png)
