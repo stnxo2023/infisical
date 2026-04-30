@@ -375,8 +375,6 @@ export const honeyTokenConfigServiceFactory = ({
       throw new UnauthorizedError({ message: "Invalid webhook signature" });
     }
 
-    logger.info({ orgId, payload }, `Honey token trigger received [orgId=${orgId}]`);
-
     const rawEvents = Array.isArray(payload) ? (payload as unknown[]) : [payload];
 
     /* eslint-disable no-await-in-loop, no-continue */
