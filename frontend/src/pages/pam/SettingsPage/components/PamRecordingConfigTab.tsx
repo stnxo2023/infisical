@@ -47,7 +47,7 @@ const formSchema = z.object({
   connectionId: z.string().uuid({ message: "Select an AWS connection" }),
   bucket: z.string().trim().min(1, "Bucket is required").max(255),
   region: z.string().trim().min(1, "Region is required").max(64),
-  keyPrefix: z.string().trim().max(512).optional()
+  keyPrefix: z.string().trim().max(255).optional()
 });
 
 type FormData = z.infer<typeof formSchema>;

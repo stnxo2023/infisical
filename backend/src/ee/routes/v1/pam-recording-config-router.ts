@@ -32,7 +32,7 @@ const UpsertBodySchema = z.object({
   keyPrefix: z
     .string()
     .trim()
-    .max(512)
+    .max(255)
     .regex(
       new RE2(/^[a-zA-Z0-9\-_/]+$/),
       "Key prefix may only contain letters, numbers, hyphens, underscores, and slashes"
