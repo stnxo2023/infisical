@@ -837,6 +837,20 @@ export const identityKubernetesAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (
+      caCert &&
+      caCert.length > 0 &&
+      verifyTlsCertificate === false &&
+      tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+    ) {
+      throw new BadRequestError({
+        message:
+          "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+      });
+    }
+
+    const resolvedVerifyTlsCertificate = verifyTlsCertificate ?? Boolean(caCert);
+
     let isGatewayV1 = true;
     if (gatewayId) {
       if (!plan.gateway) {
@@ -881,7 +895,7 @@ export const identityKubernetesAuthServiceFactory = ({
         const gatewayExecutor = $createGatewayValidationRequest(gatewayId, {
           kubernetesHost,
           caCert: caCert || undefined,
-          verifyTlsCertificate
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
         logger.info({ gatewayId, kubernetesHost }, "Validating Kubernetes connectivity through gateway");
         await validateKubernetesHostConnectivity({ gatewayExecutor });
@@ -924,7 +938,7 @@ export const identityKubernetesAuthServiceFactory = ({
         const gatewayExecutor = $createGatewayValidationRequest(validationGateway.id, {
           kubernetesHost,
           caCert: caCert || undefined,
-          verifyTlsCertificate
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
         await validateKubernetesHostConnectivity({ gatewayExecutor });
         if (tokenReviewerJwt) {
@@ -936,7 +950,7 @@ export const identityKubernetesAuthServiceFactory = ({
       await validateKubernetesHostConnectivity({
         kubernetesHost,
         caCert: caCert || undefined,
-        verifyTlsCertificate
+        verifyTlsCertificate: resolvedVerifyTlsCertificate
       });
 
       if (tokenReviewerJwt) {
@@ -945,7 +959,7 @@ export const identityKubernetesAuthServiceFactory = ({
           kubernetesHost,
           tokenReviewerJwt,
           caCert: caCert || undefined,
-          verifyTlsCertificate
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
       }
     }
@@ -980,7 +994,7 @@ export const identityKubernetesAuthServiceFactory = ({
           gatewayId: resolvedGatewayId,
           gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: gatewayPoolId ?? null,
-          verifyTlsCertificate: verifyTlsCertificate ?? Boolean(caCert),
+          verifyTlsCertificate: resolvedVerifyTlsCertificate,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
             ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
@@ -1198,8 +1212,9 @@ export const identityKubernetesAuthServiceFactory = ({
       effectiveCaCert = undefined;
     }
 
-    // Auto-promote enableSsl when the caller is supplying a non-empty CA in this
-    // update without explicitly setting the toggle. Required for backwards compatibility
+    // Auto-promote verifyTlsCertificate when the caller is supplying a non-empty
+    // CA in this update without explicitly setting the toggle. Required for
+    // backwards compatibility
     let resolvedVerifyTlsCertificate: boolean | undefined;
     if (verifyTlsCertificate !== undefined) {
       resolvedVerifyTlsCertificate = verifyTlsCertificate;
@@ -1216,6 +1231,18 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new BadRequestError({
         message:
           "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
+      });
+    }
+
+    if (
+      effectiveVerifyTlsCertificate === false &&
+      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      effectiveCaCert &&
+      effectiveCaCert.length > 0
+    ) {
+      throw new BadRequestError({
+        message:
+          "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
       });
     }
 

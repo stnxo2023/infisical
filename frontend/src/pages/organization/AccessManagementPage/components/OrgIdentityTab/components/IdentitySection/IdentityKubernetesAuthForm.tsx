@@ -114,6 +114,19 @@ const schema = z
         message: "A CA certificate is required when TLS certificate verification is enabled."
       });
     }
+
+    if (
+      data.verifyTlsCertificate === false &&
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      data.caCert?.length
+    ) {
+      ctx.addIssue({
+        path: ["verifyTlsCertificate"],
+        code: z.ZodIssueCode.custom,
+        message:
+          "TLS certificate verification cannot be disabled while a CA certificate is provided. Either remove the CA certificate or enable verification."
+      });
+    }
   });
 
 export type FormData = z.infer<typeof schema>;
@@ -404,13 +417,6 @@ export const IdentityKubernetesAuthForm = ({
   };
 
   const tokenReviewMode = watch("tokenReviewMode");
-  const watchedCaCert = watch("caCert");
-
-  useEffect(() => {
-    if (watchedCaCert && watchedCaCert.length > 0) {
-      setValue("verifyTlsCertificate", true, { shouldDirty: true });
-    }
-  }, [watchedCaCert, setValue]);
 
   return (
     <form
@@ -723,45 +729,59 @@ export const IdentityKubernetesAuthForm = ({
               <Controller
                 control={control}
                 name="verifyTlsCertificate"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
-                    <Switch
-                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                      id="k8s-verify-tls-certificate"
-                      thumbClassName="bg-mineshaft-800"
-                      isChecked={value}
-                      onCheckedChange={onChange}
-                    >
-                      <p className="w-44 text-sm font-normal text-mineshaft-400">
-                        Verify TLS Certificate
-                        <Tooltip
-                          className="max-w-md"
-                          content={
-                            <div className="flex flex-col gap-2">
-                              <p>
-                                When enabled, Infisical validates the Kubernetes API server&apos;s
-                                TLS certificate against the CA certificate provided below.
-                              </p>
-                              <p>
-                                Leaving this disabled means any host that responds at the configured
-                                Kubernetes URL will be trusted, regardless of its certificate. The
-                                connection is still over HTTPS, but the API server&apos;s identity
-                                is not verified. Only do this for testing or if you cannot supply a
-                                CA certificate.
-                              </p>
-                            </div>
-                          }
-                        >
-                          <FontAwesomeIcon
-                            icon={faQuestionCircle}
-                            size="sm"
-                            className="ml-1 text-mineshaft-400"
-                          />
-                        </Tooltip>
-                      </p>
-                    </Switch>
-                  </FormControl>
-                )}
+                render={({ field: { value, onChange }, fieldState: { error } }) => {
+                  const hasCaCert = Boolean(watch("caCert")?.length);
+                  return (
+                    <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                      <Switch
+                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                        id="k8s-verify-tls-certificate"
+                        thumbClassName="bg-mineshaft-800"
+                        isChecked={hasCaCert ? true : value}
+                        onCheckedChange={onChange}
+                        isDisabled={hasCaCert}
+                      >
+                        <p className="w-44 text-sm font-normal text-mineshaft-400">
+                          Verify TLS Certificate
+                          <Tooltip
+                            className="max-w-md"
+                            content={
+                              <div className="flex flex-col gap-2">
+                                {hasCaCert ? (
+                                  <p>
+                                    Verification is always on while a CA certificate is provided. To
+                                    disable verification, clear the CA certificate field below.
+                                  </p>
+                                ) : (
+                                  <>
+                                    <p>
+                                      When enabled, Infisical validates the Kubernetes API
+                                      server&apos;s TLS certificate against the CA certificate
+                                      provided below.
+                                    </p>
+                                    <p>
+                                      Leaving this disabled means any host that responds at the
+                                      configured Kubernetes URL will be trusted, regardless of its
+                                      certificate. The connection is still over HTTPS, but the API
+                                      server&apos;s identity is not verified. Only do this for
+                                      testing or if you cannot supply a CA certificate.
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            }
+                          >
+                            <FontAwesomeIcon
+                              icon={faQuestionCircle}
+                              size="sm"
+                              className="ml-1 text-mineshaft-400"
+                            />
+                          </Tooltip>
+                        </p>
+                      </Switch>
+                    </FormControl>
+                  );
+                }}
               />
               <Controller
                 control={control}
@@ -780,12 +800,25 @@ export const IdentityKubernetesAuthForm = ({
                           <p>
                             The PEM-encoded CA certificate that issued the Kubernetes API
                             server&apos;s TLS certificate. Required when TLS certificate
-                            verification is enabled.
+                            verification is enabled. Providing a CA certificate forces TLS
+                            verification on.
                           </p>
                         </div>
                       }
                     >
-                      <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
+                      <TextArea
+                        {...field}
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if (e.target.value.length > 0 && !verifyTlsCertificate) {
+                            setValue("verifyTlsCertificate", true, {
+                              shouldDirty: true,
+                              shouldValidate: true
+                            });
+                          }
+                        }}
+                      />
                     </FormControl>
                   );
                 }}

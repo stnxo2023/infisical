@@ -55,7 +55,7 @@ export const validateKubernetesHostConnectivity = async ({
 
       const httpsAgent = new https.Agent({
         ca: caCert || undefined,
-        rejectUnauthorized: verifyTlsCertificate ?? true
+        rejectUnauthorized: verifyTlsCertificate ?? false
       });
 
       await blockLocalAndPrivateIpAddresses(kubernetesHost);

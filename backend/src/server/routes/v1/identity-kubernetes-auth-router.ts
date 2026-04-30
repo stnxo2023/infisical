@@ -275,6 +275,18 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
                 "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
             });
           }
+          if (
+            data.verifyTlsCertificate === false &&
+            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+            data.caCert?.length
+          ) {
+            ctx.addIssue({
+              path: ["verifyTlsCertificate"],
+              code: z.ZodIssueCode.custom,
+              message:
+                "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+            });
+          }
         }),
       response: {
         200: z.object({
