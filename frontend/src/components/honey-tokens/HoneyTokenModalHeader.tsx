@@ -11,11 +11,11 @@ export const HoneyTokenModalHeader = ({ type, isEdit }: Props) => {
   const details = HONEY_TOKEN_MAP[type];
 
   return (
-    <div className="flex w-full items-start gap-2">
+    <div className="flex w-full items-center gap-3">
       <img
         alt={`${details.name} logo`}
         src={`/images/integrations/${details.image}`}
-        className="h-12 w-12 rounded-md bg-bunker-500 p-2"
+        className="h-10 w-10"
       />
       <div>
         <div className="flex items-center gap-x-2 text-mineshaft-300">

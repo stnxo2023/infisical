@@ -14,7 +14,6 @@ import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 
 import { HoneyTokenMappingFields } from "./HoneyTokenMappingFields/HoneyTokenMappingFields";
-import { HoneyTokenReviewFields } from "./HoneyTokenReviewFields/HoneyTokenReviewFields";
 import { HoneyTokenConfigurationFields } from "./HoneyTokenConfigurationFields";
 import { HoneyTokenDetailsFields } from "./HoneyTokenDetailsFields";
 import { HoneyTokenFormSchema, THoneyTokenForm } from "./schemas";
@@ -36,8 +35,7 @@ const FORM_TABS: { name: string; key: string; fields: (keyof THoneyTokenForm)[] 
     fields: ["environment"]
   },
   { name: "Mapping", key: "mapping", fields: ["secretsMapping"] },
-  { name: "Details", key: "details", fields: ["name", "description"] },
-  { name: "Review", key: "review", fields: [] }
+  { name: "Details", key: "details", fields: ["name", "description"] }
 ];
 
 export const HoneyTokenForm = ({
@@ -236,9 +234,6 @@ export const HoneyTokenForm = ({
               <Tab.Panel>
                 <HoneyTokenDetailsFields />
               </Tab.Panel>
-              <Tab.Panel>
-                <HoneyTokenReviewFields />
-              </Tab.Panel>
             </Tab.Panels>
           </Tab.Group>
         </FormProvider>
@@ -248,7 +243,7 @@ export const HoneyTokenForm = ({
           onClick={handleNext}
           isPending={isSubmitting || isValidating}
           isDisabled={isSubmitting || isValidating}
-          variant="outline"
+          variant={isFinalStep ? "org" : "outline"}
         >
           {isFinalStep ? `${honeyToken ? "Update" : "Create"} Honey Token` : "Next"}
         </Button>

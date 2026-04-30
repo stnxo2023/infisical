@@ -6,7 +6,7 @@ import {
   EditIcon,
   ExternalLinkIcon,
   InfoIcon,
-  SirenIcon
+  HexagonIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -234,7 +234,7 @@ export const HoneyTokenTableRow = ({
           {!isSingleEnvView && isExpanded ? (
             <ChevronDownIcon />
           ) : (
-            <SirenIcon
+            <HexagonIcon
               className={twMerge(
                 isTriggered && "text-red",
                 !isTriggered && !isAllRevoked && "text-yellow",

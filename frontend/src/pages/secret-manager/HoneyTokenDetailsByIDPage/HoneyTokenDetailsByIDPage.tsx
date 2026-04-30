@@ -11,7 +11,7 @@ import {
   KeyIcon,
   MapPinIcon,
   RotateCcw,
-  SirenIcon
+  HexagonIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -163,7 +163,7 @@ const PageContent = () => {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-mineshaft-600 bg-mineshaft-800">
-                  <SirenIcon
+                  <HexagonIcon
                     className={twMerge(
                       isTriggered && "text-red-500",
                       isRevoked && "text-mineshaft-400",
@@ -238,7 +238,7 @@ const PageContent = () => {
                 </div>
               )}
               <div className="flex items-center gap-1.5">
-                <SirenIcon size={13} />
+                <HexagonIcon size={13} />
                 <span>
                   {honeyToken.openEvents} open event{honeyToken.openEvents !== 1 && "s"}
                 </span>

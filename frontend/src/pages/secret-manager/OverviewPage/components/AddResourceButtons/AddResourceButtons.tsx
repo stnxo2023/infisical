@@ -6,7 +6,7 @@ import {
   ImportIcon,
   PlusIcon,
   RefreshCwIcon,
-  SirenIcon,
+  HexagonIcon,
   UploadIcon
 } from "lucide-react";
 
@@ -144,7 +144,7 @@ export function AddResourceButtons({
           <Tooltip open={!isHoneyTokenAvailable ? undefined : false}>
             <TooltipTrigger className="block w-full">
               <DropdownMenuItem onClick={onAddHoneyToken} isDisabled={!isHoneyTokenAvailable}>
-                <SirenIcon className="text-yellow" />
+                <HexagonIcon className="text-yellow" />
                 Add Honey Token
               </DropdownMenuItem>
             </TooltipTrigger>

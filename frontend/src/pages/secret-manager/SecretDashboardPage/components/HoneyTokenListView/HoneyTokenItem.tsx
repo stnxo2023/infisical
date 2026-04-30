@@ -7,7 +7,7 @@ import {
   ExternalLinkIcon,
   InfoIcon,
   PencilIcon,
-  SirenIcon
+  HexagonIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -70,7 +70,7 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onRevoke, onViewCredentials
             status === HoneyTokenStatus.Revoked && "text-mineshaft-400"
           )}
         >
-          <SirenIcon className="size-4" />
+          <HexagonIcon className="size-4" />
         </div>
         <div className="flex grow items-center py-2 pr-2 pl-4">
           <div className="flex w-full flex-wrap items-center">

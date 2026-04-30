@@ -1,7 +1,5 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { faArrowRight, faKey, faLock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { InfoIcon } from "lucide-react";
+import { ArrowRightIcon, InfoIcon, KeyIcon, LockIcon } from "lucide-react";
 
 import {
   Badge,
@@ -30,13 +28,13 @@ export const AwsHoneyTokenMappingFields = () => {
   const items = [
     {
       name: "Access Key ID",
-      icon: faKey,
+      icon: <KeyIcon />,
       fieldName: "secretsMapping.accessKeyId" as const,
       placeholder: defaults.accessKeyId
     },
     {
       name: "Secret Access Key",
-      icon: faLock,
+      icon: <LockIcon />,
       fieldName: "secretsMapping.secretAccessKey" as const,
       placeholder: defaults.secretAccessKey
     }
@@ -73,14 +71,14 @@ export const AwsHoneyTokenMappingFields = () => {
               <td className="whitespace-nowrap">
                 <div className="mb-4 flex h-full items-start justify-center">
                   <Badge variant="neutral" className="h-[36px] w-full justify-center text-xs">
-                    <FontAwesomeIcon icon={icon} />
+                    {icon}
                     {name}
                   </Badge>
                 </div>
               </td>
               <td className="pr-5 pl-5 whitespace-nowrap">
                 <div className="mb-4 flex items-center justify-center">
-                  <FontAwesomeIcon className="text-mineshaft-400" icon={faArrowRight} />
+                  <ArrowRightIcon className="size-5 text-accent" />
                 </div>
               </td>
               <td className="w-full">
@@ -116,7 +114,8 @@ export const AwsHoneyTokenMappingFields = () => {
           {mappingError}
         </div>
       )}
-      <div className="mt-2 rounded-sm border border-yellow/40 bg-yellow/10 p-3 text-xs text-mineshaft-200">
+      <div className="mt-2 flex items-start gap-2 rounded-sm border border-info/40 bg-info/10 p-3 text-xs text-mineshaft-200">
+        <InfoIcon className="mt-0.5 size-3.5 shrink-0 text-info" />
         These keys will appear as normal secrets in your project but are tied to a sandboxed IAM
         user with zero permissions. Any API call made with these credentials triggers an alert.
       </div>

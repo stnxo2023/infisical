@@ -1,3 +1,4 @@
+import { Item, ItemContent, ItemMedia, ItemTitle } from "@app/components/v3";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
@@ -15,22 +16,27 @@ export const HoneyTokenSelect = ({ onSelect }: Props) => {
           const { image, name, size } = HONEY_TOKEN_MAP[type];
 
           return (
-            <button
-              type="button"
+            <Item
               key={type}
+              variant="outline"
+              className="cursor-pointer flex-col items-center justify-center py-4 hover:bg-foreground/5"
+              role="button"
+              tabIndex={0}
               onClick={() => onSelect(type)}
-              className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(type);
+                }
+              }}
             >
-              <img
-                src={`/images/integrations/${image}`}
-                width={size}
-                className="mt-auto"
-                alt={`${name} logo`}
-              />
-              <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-                {name}
-              </div>
-            </button>
+              <ItemMedia variant="image" className="size-12">
+                <img src={`/images/integrations/${image}`} width={size} alt={`${name} logo`} />
+              </ItemMedia>
+              <ItemContent className="items-center">
+                <ItemTitle>{name}</ItemTitle>
+              </ItemContent>
+            </Item>
           );
         })}
       </div>
