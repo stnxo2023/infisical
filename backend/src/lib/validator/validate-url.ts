@@ -1,5 +1,10 @@
+import { LookupAddress } from "node:dns";
 import dns from "node:dns/promises";
+import http from "node:http";
+import https from "node:https";
+import { LookupFunction } from "node:net";
 
+import { AxiosRequestConfig } from "axios";
 import { isIP } from "net";
 import RE2 from "re2";
 
@@ -10,10 +15,18 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
 
-export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = false) => {
+export type TValidatedHost = {
+  hostname: string;
+  entries: LookupAddress[];
+};
+
+export const blockLocalAndPrivateIpAddresses = async (
+  url: string,
+  isGateway = false
+): Promise<TValidatedHost | undefined> => {
   const appCfg = getConfig();
 
-  if (appCfg.isDevelopmentMode || isGateway) return;
+  if (appCfg.isDevelopmentMode || isGateway) return undefined;
 
   const validUrl = new URL(url);
 
@@ -21,24 +34,25 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
     throw new BadRequestError({ message: "URLs with user credentials (e.g., user:pass@) are not allowed" });
   }
 
-  const inputHostIps: string[] = [];
+  let entries: LookupAddress[];
   if (isIP(validUrl.hostname)) {
-    inputHostIps.push(validUrl.hostname);
+    entries = [{ address: validUrl.hostname, family: isIP(validUrl.hostname) }];
   } else {
     if (validUrl.hostname === "localhost" || validUrl.hostname === "host.docker.internal") {
       throw new BadRequestError({ message: "Local IPs not allowed as URL" });
     }
-    const entries = await dns.lookup(validUrl.hostname, { all: true });
+    const lookups = await dns.lookup(validUrl.hostname, { all: true });
 
-    if (!entries || entries.length === 0) {
+    if (!lookups || lookups.length === 0) {
       throw new BadRequestError({ message: "Could not resolve hostname to any IP address" });
     }
-
-    inputHostIps.push(...entries.map(({ address }) => address));
+    entries = lookups;
   }
-  const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
+  const isInternalIp = entries.some((e) => isPrivateIp(e.address));
   if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)
     throw new BadRequestError({ message: "Local IPs not allowed as URL" });
+
+  return { hostname: validUrl.hostname, entries };
 };
 
 type FQDNOptions = {
@@ -152,33 +166,99 @@ type SsrfSafeRequestOptions = {
 };
 
 /**
+ * Builds a `dns.lookup`-shaped function that always returns the pre-validated
+ * IPs from `entries`. Installed onto an http(s).Agent so the connect-time DNS
+ * call cannot re-resolve and land on a different IP than the one validation
+ * approved (DNS rebinding TOCTOU defense).
+ */
+type TLookupOneCallback = (err: NodeJS.ErrnoException | null, address: string, family: number) => void;
+type TLookupAllCallback = (err: NodeJS.ErrnoException | null, addresses: LookupAddress[]) => void;
+
+const makePinnedLookup = (entries: LookupAddress[]): LookupFunction =>
+  ((_hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
+    // Node may invoke `lookup(hostname, callback)` (2-arg) or `lookup(hostname, options, callback)` (3-arg).
+    const first: LookupAddress = entries[0];
+    if (typeof optionsOrCb === "function") {
+      (optionsOrCb as TLookupOneCallback)(null, first.address, first.family);
+      return;
+    }
+    const opts = (optionsOrCb ?? {}) as { all?: boolean };
+    if (opts.all) {
+      (maybeCb as TLookupAllCallback)(null, entries);
+    } else {
+      (maybeCb as TLookupOneCallback)(null, first.address, first.family);
+    }
+  }) as LookupFunction;
+
+const buildPinnedAgent = (
+  validated: TValidatedHost | undefined,
+  protocol: string
+): http.Agent | https.Agent | undefined => {
+  if (!validated) return undefined;
+  const lookup = makePinnedLookup(validated.entries);
+  return protocol === "https:"
+    ? new https.Agent({ lookup, keepAlive: false })
+    : new http.Agent({ lookup, keepAlive: false });
+};
+
+/**
  * Validates a URL for SSRF protection.
  * Blocks:
  * - Local/private IPs (loopback, link-local, RFC 1918 addresses)
  * - Infisical's own infrastructure (DB, Redis, etc.)
+ *
+ * Returns the resolved IPs so the caller can pin the subsequent connection
+ * to those IPs, preventing DNS rebinding between validation and connect.
  */
 export const validateSsrfUrl = async (
   url: string,
   options?: Pick<SsrfSafeRequestOptions, "allowPrivateIps">
-): Promise<void> => {
+): Promise<TValidatedHost | undefined> => {
   if (options?.allowPrivateIps) {
-    return;
+    return undefined;
   }
 
   const parsedUrl = new URL(url);
 
-  // Block local/private IPs
-  await blockLocalAndPrivateIpAddresses(url, false);
+  // Block local/private IPs and capture the resolved IPs for pinning
+  const validated = await blockLocalAndPrivateIpAddresses(url, false);
 
   // Also block Infisical's own infrastructure (DB, Redis, etc.)
   await verifyHostInputValidity({ host: parsedUrl.hostname, isGateway: false, isDynamicSecret: false });
+
+  return validated;
+};
+
+type TSafeRequestConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent" | "maxRedirects" | "url" | "method">;
+
+const dispatch = async <T>(
+  method: "GET" | "POST",
+  url: string,
+  data: unknown,
+  options: TSafeRequestConfig & Pick<SsrfSafeRequestOptions, "allowPrivateIps"> = {}
+) => {
+  const { allowPrivateIps, ...axiosOpts } = options;
+  const validated = await validateSsrfUrl(url, { allowPrivateIps });
+  const { protocol } = new URL(url);
+  const agent = buildPinnedAgent(validated, protocol);
+
+  return request.request<T>({
+    ...axiosOpts,
+    method,
+    url,
+    data,
+    maxRedirects: 0,
+    httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
+    httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
+  });
 };
 
 /**
  * Makes an HTTP GET request with SSRF-safe redirect handling.
  * Disables automatic redirects and manually follows them while validating each hop.
  * This prevents redirect-based SSRF bypasses where the initial URL is valid but
- * redirects to an internal/private IP address.
+ * redirects to an internal/private IP address. Each hop also pins its connection
+ * to the validated IP, blocking DNS rebinding between validation and connect.
  */
 export const ssrfSafeGet = async <T>(
   url: string,
@@ -188,13 +268,9 @@ export const ssrfSafeGet = async <T>(
   let redirectCount = 0;
 
   while (redirectCount <= MAX_SAFE_REDIRECTS) {
-    // Validate URL before each request (including redirects)
     // eslint-disable-next-line no-await-in-loop
-    await validateSsrfUrl(currentUrl, options);
-
-    // eslint-disable-next-line no-await-in-loop
-    const response = await request.get<T>(currentUrl, {
-      maxRedirects: 0,
+    const response = await dispatch<T>("GET", currentUrl, undefined, {
+      allowPrivateIps: options?.allowPrivateIps,
       validateStatus: options?.validateStatus ?? ((status) => status >= 200 && status < 400)
     });
 
@@ -229,17 +305,41 @@ export const ssrfSafeGet = async <T>(
 
 /**
  * Makes an HTTP POST request with SSRF protection.
- * Validates the URL before making the request and disables redirects.
+ * Validates the URL, pins the connection to the validated IP (DNS rebinding
+ * defense), and disables redirects.
  */
 export const ssrfSafePost = async <T>(
   url: string,
   data: unknown,
   options?: Pick<SsrfSafeRequestOptions, "allowPrivateIps"> & { headers?: Record<string, string> }
 ): Promise<{ data: T }> => {
-  await validateSsrfUrl(url, options);
-
-  return request.post<T>(url, data, {
-    headers: options?.headers,
-    maxRedirects: 0
+  return dispatch<T>("POST", url, data, {
+    allowPrivateIps: options?.allowPrivateIps,
+    headers: options?.headers
   });
+};
+
+/**
+ * Drop-in replacement for `request.post` / `request.get` that validates the URL
+ * and pins the connection to the validated IP. Use this anywhere the URL is
+ * user-supplied and the caller currently does:
+ *
+ *   await blockLocalAndPrivateIpAddresses(url);
+ *   await request.post(url, ...);
+ *
+ * Replace with:
+ *
+ *   await safeRequest.post(url, ...);
+ *
+ * which collapses the two DNS resolutions into one, eliminating the rebinding
+ * window.
+ */
+export const safeRequest = {
+  get: <T>(url: string, options?: TSafeRequestConfig & Pick<SsrfSafeRequestOptions, "allowPrivateIps">) =>
+    dispatch<T>("GET", url, undefined, options),
+  post: <T>(
+    url: string,
+    data: unknown,
+    options?: TSafeRequestConfig & Pick<SsrfSafeRequestOptions, "allowPrivateIps">
+  ) => dispatch<T>("POST", url, data, options)
 };

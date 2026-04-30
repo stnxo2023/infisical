@@ -209,6 +209,38 @@ logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]
 logger.error({ sessionId, err }, "Failed to get connection details");
 ```
 
+### Outbound HTTP & SSRF Protection
+
+Anywhere the backend issues an HTTP request to a URL derived from user input (webhooks, integrations, app connections, OIDC/JWKS, audit log streams, ACME, etc.), use the `safeRequest` helper from `@app/lib/validator` instead of the raw `request` (Axios) client.
+
+```ts
+import { safeRequest } from "@app/lib/validator";
+
+// Replace:
+//   await blockLocalAndPrivateIpAddresses(url);
+//   await request.post(url, body, { headers, timeout });
+// With:
+const res = await safeRequest.post<TResponse>(url, body, { headers, timeout });
+```
+
+`safeRequest.{get,post}` (in `src/lib/validator/validate-url.ts`) does three things in one call:
+1. **Validates** the URL — rejects local/private IPs, Infisical's own DB/Redis hosts, URLs with embedded credentials.
+2. **Pins** the connection — resolves the hostname once, then installs a custom `lookup` on a per-request `http(s).Agent` so the connect-time DNS call returns the validated IP. This closes the DNS-rebinding TOCTOU between the validation lookup and Axios's connect lookup.
+3. **Disables redirects** (`maxRedirects: 0`). For redirect-following GETs that need to validate each hop, use `ssrfSafeGet` instead — it loops on top of the same pinned-agent dispatcher.
+
+**When to use what:**
+- `safeRequest.post` / `safeRequest.get` — most outbound HTTP. URL comes from user/admin config or stored data.
+- `ssrfSafeGet` — when redirects must be followed (e.g. fetching JWKS or OIDC discovery docs that may 302).
+- `ssrfSafePost` — POSTs that need to opt into `allowPrivateIps` (rare, used by AI MCP server).
+- `blockLocalAndPrivateIpAddresses` directly — only for non-Axios clients (LDAP, SSH, SMB, ssh2, ldapjs, kubernetes client, etc.) where you can't install a `lookup` on the agent. The TOCTOU still exists in those paths; they're each a per-library follow-up.
+
+**Opt-outs that skip pinning:**
+- `NODE_ENV=development` — validation is bypassed entirely (returns `undefined`).
+- `isGateway = true` argument — gateway-routed traffic doesn't go through Axios DNS, so pinning would do nothing.
+- `allowPrivateIps: true` option — caller explicitly opts into private-IP destinations.
+
+In all three opt-out cases, `safeRequest` falls back to Axios's default agent behavior. **Don't add `allowPrivateIps: true` without thinking** — it disables both the IP check and the rebinding pin.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:

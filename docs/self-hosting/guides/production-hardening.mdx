@@ -90,6 +90,24 @@ ALLOW_INTERNAL_IP_CONNECTIONS=false
 - **Principle**: Default deny incoming, allow only required traffic
 - **Implementation**: See your deployment-specific section below for exact configuration
 
+#### Reverse Proxy Configuration
+
+If Infisical is deployed behind a reverse proxy (Nginx, AWS ALB, Cloudflare, GCP Load Balancer, etc.), configure the trusted proxy CIDR list so that client IP detection cannot be spoofed by attackers forging `X-Forwarded-For` headers:
+
+```bash
+# Comma-separated list of reverse-proxy CIDR ranges whose forwarded-IP headers Infisical will trust.
+# Accepts IPv4/IPv6 CIDR notation or the named aliases `loopback`, `linklocal`, `uniquelocal`.
+TRUSTED_PROXY_CIDRS="10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+```
+
+When set, only requests arriving from a socket address inside the listed CIDRs will have their forwarded-IP headers respected. Requests from any other source fall back to the raw socket IP.
+
+When unset, Infisical trusts all forwarded-IP headers (legacy behavior, preserved for backwards compatibility). On a deployment reachable directly from the internet, this lets a client supply any value in `X-Forwarded-For` — bypassing per-IP rate limits (including login/MFA throttles) and any IP allowlists.
+
+<Warning>
+  Set `TRUSTED_PROXY_CIDRS` on any deployment that is reachable from the internet through a reverse proxy. Leaving it unset is only safe when Infisical is not directly internet-facing.
+</Warning>
+
 ### Application Security
 
 #### Site Configuration
