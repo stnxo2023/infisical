@@ -275,9 +275,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
     if (account.resource?.resourceType === PamResourceType.AwsIam) {
       handlePopUpOpen("awsIamReason", { account });
     } else if (account.domainId) {
-      // Domain account being accessed from a resource page — the resource is
-      // implicitly the one we're viewing. Pass it through so the access modal
-      // can build the CLI command without going through PamSelectResourceModal.
       handlePopUpOpen("accessAccount", {
         account,
         resource: { id: resource.id, name: resource.name, resourceType: resource.resourceType, projectId: resource.projectId }

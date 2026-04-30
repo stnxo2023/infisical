@@ -136,7 +136,6 @@ export const WindowsSessionCredentialsSchema = z
     winrmRejectUnauthorized: z.boolean(),
     winrmCaCert: z.string().optional(),
     winrmTlsServerName: z.string().optional(),
-    // Set on AD-account sessions; gateway/bridge use this for NTLM domain-qualified auth.
     domain: z.string().optional()
   })
   .and(WindowsAccountCredentialsSchema);

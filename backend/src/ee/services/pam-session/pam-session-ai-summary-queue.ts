@@ -49,8 +49,6 @@ export const pamSessionAiSummaryServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) return;
 
-    // Domain-account sessions store the user-selected target on
-    // selectedResourceId; local-account sessions on resourceId.
     const resourceId = session.selectedResourceId ?? session.resourceId;
     if (!resourceId) return;
 
@@ -114,8 +112,6 @@ export const pamSessionAiSummaryServiceFactory = ({
           return;
         }
 
-        // 2. Skip if no resourceId (resource was deleted). Domain-account
-        // sessions store the user-selected target on selectedResourceId.
         const resourceId = session.selectedResourceId ?? session.resourceId;
         if (!resourceId) {
           logger.info(

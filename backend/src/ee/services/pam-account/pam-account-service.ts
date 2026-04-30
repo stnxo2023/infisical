@@ -733,17 +733,13 @@ export const pamAccountServiceFactory = ({
       throw new NotFoundError({ message: `Resource with name '${inputResourceName}' not found` });
     }
 
-    // Find account by name within the resource (local-account path).
     let account = await pamAccountDAL.findOne({
       projectId,
       resourceId: resource.id,
       name: inputAccountName
     });
 
-    // Fallback: when the resource is joined to a domain (e.g. Active Directory),
-    // accept a domain account from the linked domain. Domain accounts have
-    // domainId set instead of resourceId. The session is recorded against the
-    // user-selected resource via selectedResourceId.
+    // Fall back to a domain account when the resource is joined to a domain.
     let isDomainAccount = false;
     if (!account && resource.domainId) {
       account = await pamAccountDAL.findOne({
@@ -760,10 +756,6 @@ export const pamAccountServiceFactory = ({
       });
     }
 
-    // Domain accounts are only valid against resource types that support a
-    // domain join. Today that's Windows-only; reject any other combination
-    // defensively so a misconfigured resource (with domainId) on a different
-    // type doesn't open an unintended access path.
     if (isDomainAccount && resource.resourceType !== PamResource.Windows) {
       throw new BadRequestError({
         message: `Domain account access is only supported for Windows resources`
@@ -973,9 +965,6 @@ export const pamAccountServiceFactory = ({
       };
     }
 
-    // For gateway-based resources (Postgres, MySQL, SSH), create session first.
-    // Domain accounts: resourceId stays null (account isn't parented to a resource);
-    // selectedResourceId records the user's pick at session-start time.
     const session = await pamSessionDAL.create({
       accountName: account.name,
       actorEmail,
@@ -1225,9 +1214,6 @@ export const pamAccountServiceFactory = ({
     const account = await pamAccountDAL.findById(session.accountId);
     if (!account) throw new NotFoundError({ message: `Account with ID '${session.accountId}' not found` });
 
-    // Resolve the target resource. For local-account sessions this is account.resourceId;
-    // for domain-account sessions (e.g. AD) the account isn't attached to a resource and
-    // the user-selected target lives on session.selectedResourceId.
     const resourceId = session.selectedResourceId ?? account.resourceId;
     if (!resourceId) {
       throw new NotFoundError({ message: `Session '${sessionId}' has no associated resource` });
@@ -1343,10 +1329,7 @@ export const pamAccountServiceFactory = ({
         [key: string]: unknown;
       };
 
-      // AD-account sessions: pull the AD domain name from the linked domain
-      // and ship it as the `domain` field. The gateway forwards it to the RDP
-      // bridge so NTLM CredSSP authenticates against the domain rather than
-      // the local SAM database.
+      // The bridge forwards `domain` to IronRDP for NTLM CredSSP against AD.
       let domainName: string | undefined;
       if (account.domainId) {
         const domain = await pamDomainDAL.findById(account.domainId);

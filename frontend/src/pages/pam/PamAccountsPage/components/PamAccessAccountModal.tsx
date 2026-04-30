@@ -16,8 +16,7 @@ import { PamAwsIamAccessSection } from "./PamAwsIamAccessSection";
 
 type Props = {
   account?: TPamAccount;
-  // For domain accounts (e.g. Active Directory) the user picks a target resource at access
-  // time via PamSelectResourceModal. Local accounts ignore this and fall back to account.resource.
+  // Required for domain accounts; local accounts fall back to account.resource.
   resource?: TPamDomainRelatedResource;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -81,8 +80,6 @@ export const PamAccessAccountModal = ({
     return duration;
   }, [duration]);
 
-  // Domain accounts (e.g. AD) carry their target on the explicit `resource` prop;
-  // local accounts read it off account.resource.
   const targetResource = selectedResource ?? account?.resource;
 
   const command = useMemo(() => {

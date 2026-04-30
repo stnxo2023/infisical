@@ -10,10 +10,7 @@ export type TPamSessionDALFactory = ReturnType<typeof pamSessionDALFactory>;
 export const pamSessionDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamSession);
 
-  // Resolve a session's target resource via COALESCE(selectedResourceId, account.resourceId).
-  // Domain-account sessions (e.g. Active Directory) carry their target on
-  // PamSession.selectedResourceId because the account has no owning resource;
-  // local-account sessions carry it transitively via PamAccount.resourceId.
+  // COALESCE(session.selectedResourceId, account.resourceId) for domain + local sessions.
   const sessionResourceJoin = db.raw(
     `LEFT JOIN ?? ON COALESCE(??.??, ??.??) = ??.??`,
     [
