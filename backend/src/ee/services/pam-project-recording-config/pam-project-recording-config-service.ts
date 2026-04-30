@@ -132,8 +132,12 @@ export const pamProjectRecordingConfigServiceFactory = ({
     return { ok: true as const, resolvedConfig };
   };
 
-  const upsertConfig = async (input: TUpsertPamRecordingConfigDTO, actor: OrgServiceActor) => {
-    const { resolvedConfig } = await testConfig(input, actor);
+  const upsertConfig = async (
+    input: TUpsertPamRecordingConfigDTO,
+    actor: OrgServiceActor,
+    preValidatedConfig?: TPamRecordingResolvedConfig
+  ) => {
+    const resolvedConfig = preValidatedConfig ?? (await testConfig(input, actor)).resolvedConfig;
 
     const existing = await pamProjectRecordingConfigDAL.findByProjectId(input.projectId);
 
@@ -214,6 +218,7 @@ export const pamProjectRecordingConfigServiceFactory = ({
 
   return {
     getConfig,
+    testConfig,
     upsertConfig,
     deleteConfig,
     resolveConfigForProject

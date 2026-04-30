@@ -4,6 +4,7 @@ import { z } from "zod";
 import { PamProjectRecordingConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording-storage/pam-session-recording-storage-enums";
+import { TPamRecordingResolvedConfig } from "@app/ee/services/pam-session-recording-storage/pam-session-recording-storage-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
@@ -76,13 +77,11 @@ export const registerPamRecordingConfigRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      let config;
-      let corsProbeUrl: string | null = null;
+      const upsertInput = { projectId: req.params.projectId, ...req.body };
+
+      let resolvedConfig: TPamRecordingResolvedConfig | undefined;
       try {
-        ({ config, corsProbeUrl } = await server.services.pamProjectRecordingConfig.upsertConfig(
-          { projectId: req.params.projectId, ...req.body },
-          req.permission
-        ));
+        ({ resolvedConfig } = await server.services.pamProjectRecordingConfig.testConfig(upsertInput, req.permission));
       } catch (err) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
@@ -101,6 +100,12 @@ export const registerPamRecordingConfigRouter = async (server: FastifyZodProvide
         });
         throw err;
       }
+
+      const { config, corsProbeUrl } = await server.services.pamProjectRecordingConfig.upsertConfig(
+        upsertInput,
+        req.permission,
+        resolvedConfig
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
