@@ -82,6 +82,16 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return row ? HoneyTokensSchema.parse(row) : null;
   };
 
+  const countByOrgId = async (orgId: string, tx?: Knex) => {
+    const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
+      .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.Project}.orgId`, orgId)
+      .whereNot(`${TableName.HoneyToken}.status`, "revoked")
+      .count(`${TableName.HoneyToken}.id`);
+
+    return Number((result as unknown as { count: number }).count || 0);
+  };
+
   const tryMarkTriggered = async (
     tokenIdentifier: string,
     cooldownMs: number,
@@ -107,5 +117,5 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return parsedRows.length > 0 ? parsedRows[0] : null;
   };
 
-  return { ...orm, findByFolderIds, countByFolderIds, findOneByTokenIdentifierAndOrgId, tryMarkTriggered };
+  return { ...orm, findByFolderIds, countByFolderIds, findOneByTokenIdentifierAndOrgId, countByOrgId, tryMarkTriggered };
 };

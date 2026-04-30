@@ -20,6 +20,29 @@ const SanitizedHoneyTokenConfigSchema = HoneyTokenConfigsSchema.pick({
 
 export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
   server.route({
+    url: "/limits",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      querystring: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          used: z.number(),
+          limit: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      return server.services.honeyTokenCrud.getOrgHoneyTokenLimit({ projectId: req.query.projectId }, req.permission);
+    }
+  });
+
+  server.route({
     url: "/",
     method: "POST",
     config: {

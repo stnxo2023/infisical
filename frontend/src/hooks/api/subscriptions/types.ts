@@ -77,4 +77,5 @@ export type SubscriptionPlan = {
   secretShareExternalBranding: boolean;
   emailDomainVerification: boolean;
   honeyTokens: boolean;
+  honeyTokenLimit: number;
 };

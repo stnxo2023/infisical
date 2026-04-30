@@ -116,7 +116,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   machineIdentityAuthTemplates: false,
   pkiLegacyTemplates: false,
   secretShareExternalBranding: false,
-  honeyTokens: false
+  honeyTokens: false,
+  honeyTokenLimit: 0
 });
 
 export const setupLicenseRequestWithStore = (

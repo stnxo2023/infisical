@@ -157,6 +157,15 @@ export const honeyTokenServiceFactory = ({
       });
     }
 
+    if (plan.honeyTokenLimit !== null) {
+      const honeyTokensCreated = await honeyTokenDAL.countByOrgId(actor.orgId);
+      if (honeyTokensCreated >= plan.honeyTokenLimit) {
+        throw new BadRequestError({
+          message: `Failed to create honey token because your organization has reached its honey token limit (${honeyTokensCreated}/${plan.honeyTokenLimit}).`
+        });
+      }
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -695,6 +704,27 @@ export const honeyTokenServiceFactory = ({
     return honeyTokenDAL.countByFolderIds(folderIds, search);
   };
 
+  const getOrgHoneyTokenLimit = async ({ projectId }: { projectId: string }, actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Create, ProjectPermissionSub.Secrets);
+
+    const plan = await licenseService.getPlan(actor.orgId);
+    const used = await honeyTokenDAL.countByOrgId(actor.orgId);
+
+    return {
+      used,
+      limit: plan.honeyTokenLimit
+    };
+  };
+
   const getDashboardHoneyTokens = async (
     {
       projectId,
@@ -895,6 +925,7 @@ export const honeyTokenServiceFactory = ({
     getHoneyTokenById,
     getHoneyTokenEvents,
     getDashboardHoneyTokenCount,
+    getOrgHoneyTokenLimit,
     getDashboardHoneyTokens
   };
 };

@@ -2534,8 +2534,30 @@ const OverviewPageContent = () => {
                         text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
                       });
                     }}
-                    onAddHoneyToken={() => {
+                    onAddHoneyToken={async () => {
                       if (subscription?.honeyTokens) {
+                        try {
+                          const { data } = await apiRequest.get<{ used: number; limit: number }>(
+                            "/api/v1/honey-tokens/limits",
+                            {
+                              params: { projectId }
+                            }
+                          );
+
+                          if (data.used >= data.limit) {
+                            handlePopUpOpen("upgradePlan", {
+                              text: `You have used ${data.used} out of the ${data.limit} honey token limit.`
+                            });
+                            return;
+                          }
+                        } catch {
+                          createNotification({
+                            text: "Failed to check honey token limits. Please try again.",
+                            type: "error"
+                          });
+                          return;
+                        }
+
                         handlePopUpOpen("addHoneyToken");
                         return;
                       }

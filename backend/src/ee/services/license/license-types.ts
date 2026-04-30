@@ -96,6 +96,7 @@ export type TFeatureSet = {
   eventSubscriptions: false;
   secretShareExternalBranding: false;
   honeyTokens: false;
+  honeyTokenLimit: 0;
 };
 
 export type TOrgPlansTableDTO = {
