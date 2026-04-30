@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { HoneyTokensSchema, THoneyTokens } from "@app/db/schemas/honey-tokens";
 import { ormify } from "@app/lib/knex";
 
 export type THoneyTokenDALFactory = ReturnType<typeof honeyTokenDALFactory>;
@@ -66,18 +67,26 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number((result as unknown as { count: number }).count || 0);
   };
 
-  const findOneByTokenIdentifierAndOrgId = async (tokenIdentifier: string, orgId: string, tx?: Knex) => {
-    const row = await (tx || db.replicaNode())(TableName.HoneyToken)
+  const findOneByTokenIdentifierAndOrgId = async (
+    tokenIdentifier: string,
+    orgId: string,
+    tx?: Knex
+  ): Promise<THoneyTokens | null> => {
+    const row: unknown = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.HoneyToken}.tokenIdentifier`, tokenIdentifier)
       .andWhere(`${TableName.Project}.orgId`, orgId)
       .select(`${TableName.HoneyToken}.*`)
       .first();
 
-    return row ?? null;
+    return row ? HoneyTokensSchema.parse(row) : null;
   };
 
-  const tryMarkTriggered = async (tokenIdentifier: string, cooldownMs: number, tx?: Knex) => {
+  const tryMarkTriggered = async (
+    tokenIdentifier: string,
+    cooldownMs: number,
+    tx?: Knex
+  ): Promise<THoneyTokens | null> => {
     const COOLDOWN_INTERVAL_MS = cooldownMs;
     const now = new Date();
     const cooldownThreshold = new Date(now.getTime() - COOLDOWN_INTERVAL_MS);
@@ -94,7 +103,8 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       })
       .returning("*");
 
-    return rows.length > 0 ? rows[0] : null;
+    const parsedRows = HoneyTokensSchema.array().parse(rows);
+    return parsedRows.length > 0 ? parsedRows[0] : null;
   };
 
   return { ...orm, findByFolderIds, countByFolderIds, findOneByTokenIdentifierAndOrgId, tryMarkTriggered };
