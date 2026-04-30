@@ -572,7 +572,10 @@ export const KUBERNETES_AUTH = {
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
     kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
-    caCert: "The PEM-encoded CA cert for the Kubernetes API server.",
+    caCert:
+      "The PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when enableSsl is true.",
+    enableSsl:
+      "Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, TLS verification is skipped. If omitted, defaults to true when caCert is provided and false otherwise.",
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     tokenReviewMode:
@@ -591,7 +594,10 @@ export const KUBERNETES_AUTH = {
   UPDATE: {
     identityId: "The ID of the machine identity to update the auth method for.",
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
-    caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
+    caCert:
+      "The new PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when enableSsl is true.",
+    enableSsl:
+      "Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, TLS verification is skipped. If omitted while supplying a non-empty caCert in the same update, the toggle is auto-promoted to true; otherwise the stored value is preserved.",
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     tokenReviewMode:

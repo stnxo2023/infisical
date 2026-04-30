@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faInfoCircle, faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faInfoCircle, faPlus, faQuestionCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
@@ -15,6 +15,7 @@ import {
   Input,
   Select,
   SelectItem,
+  Switch,
   Tab,
   TabList,
   TabPanel,
@@ -61,6 +62,7 @@ const schema = z
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
     caCert: z.string().optional(),
+    enableSsl: z.boolean().default(true),
     accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
       message: "Access Token TTL cannot be greater than 315360000"
     }),
@@ -98,6 +100,18 @@ const schema = z
         code: z.ZodIssueCode.custom,
         message:
           "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+      });
+    }
+
+    if (
+      data.enableSsl &&
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !data.caCert?.length
+    ) {
+      ctx.addIssue({
+        path: ["caCert"],
+        code: z.ZodIssueCode.custom,
+        message: "A CA certificate is required when SSL verification is enabled."
       });
     }
   });
@@ -166,6 +180,7 @@ export const IdentityKubernetesAuthForm = ({
       gatewayId: "",
       allowedAudience: "",
       caCert: "",
+      enableSsl: true,
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
@@ -189,6 +204,7 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces: data.allowedNamespaces,
         allowedAudience: data.allowedAudience,
         caCert: data.caCert,
+        enableSsl: data.enableSsl ?? true,
         gatewayId: data.gatewayPoolId ? null : data.gatewayId || null,
         gatewayPoolId: data.gatewayPoolId || null,
         accessTokenTTL: String(data.accessTokenTTL),
@@ -213,6 +229,7 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces: "",
         allowedAudience: "",
         caCert: "",
+        enableSsl: true,
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "",
@@ -313,6 +330,7 @@ export const IdentityKubernetesAuthForm = ({
     allowedNamespaces,
     allowedAudience,
     caCert,
+    enableSsl,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -338,6 +356,7 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces,
         allowedAudience,
         caCert,
+        enableSsl,
         identityId,
         gatewayId: gatewayPoolId ? null : gatewayId || null,
         gatewayPoolId: gatewayPoolId || null,
@@ -365,6 +384,7 @@ export const IdentityKubernetesAuthForm = ({
         gatewayId: gatewayPoolId ? null : gatewayId || null,
         gatewayPoolId: gatewayPoolId || null,
         caCert: caCert || "",
+        enableSsl,
         tokenReviewMode,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -384,6 +404,13 @@ export const IdentityKubernetesAuthForm = ({
   };
 
   const tokenReviewMode = watch("tokenReviewMode");
+  const watchedCaCert = watch("caCert");
+
+  useEffect(() => {
+    if (watchedCaCert && watchedCaCert.length > 0) {
+      setValue("enableSsl", true, { shouldDirty: true });
+    }
+  }, [watchedCaCert, setValue]);
 
   return (
     <form
@@ -692,20 +719,77 @@ export const IdentityKubernetesAuthForm = ({
             )}
           />
           {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
-            <Controller
-              control={control}
-              name="caCert"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="CA Certificate"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
-                >
-                  <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-                </FormControl>
-              )}
-            />
+            <>
+              <Controller
+                control={control}
+                name="enableSsl"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                    <Switch
+                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                      id="k8s-enable-ssl"
+                      thumbClassName="bg-mineshaft-800"
+                      isChecked={value}
+                      onCheckedChange={onChange}
+                    >
+                      <p className="w-44 text-sm font-normal text-mineshaft-400">
+                        Enable SSL Verification
+                        <Tooltip
+                          className="max-w-md"
+                          content={
+                            <div className="flex flex-col gap-2">
+                              <p>
+                                When enabled, Infisical validates the Kubernetes API server&apos;s
+                                TLS certificate against the CA certificate provided below.
+                              </p>
+                              <p>
+                                Leaving this disabled means any host that responds at the configured
+                                Kubernetes URL will be trusted, regardless of its certificate. Only
+                                do this for testing or if you cannot supply a CA certificate.
+                              </p>
+                            </div>
+                          }
+                        >
+                          <FontAwesomeIcon
+                            icon={faQuestionCircle}
+                            size="sm"
+                            className="ml-1 text-mineshaft-400"
+                          />
+                        </Tooltip>
+                      </p>
+                    </Switch>
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="caCert"
+                render={({ field, fieldState: { error } }) => {
+                  const enableSsl = watch("enableSsl");
+                  return (
+                    <FormControl
+                      label="CA Certificate"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      isRequired={enableSsl}
+                      tooltipClassName="max-w-md"
+                      tooltipText={
+                        <div className="flex flex-col gap-2">
+                          <p>
+                            An optional PEM-encoded CA certificate that issued the Kubernetes API
+                            server&apos;s TLS certificate. Required when SSL verification is
+                            enabled.
+                          </p>
+                          <p>This is required when SSL verification is enabled.</p>
+                        </div>
+                      }
+                    >
+                      <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
+                    </FormControl>
+                  );
+                }}
+              />
+            </>
           )}
           {accessTokenTrustedIpsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>
