@@ -270,7 +270,10 @@ export const HoneyTokenTableRow = ({
           environments.map(({ slug }, i) => {
             if (isExpanded)
               return (
-                <TableCell key={`ht-overview-${slug}-${i + 1}`} className="border-b-0 bg-container-hover" />
+                <TableCell
+                  key={`ht-overview-${slug}-${i + 1}`}
+                  className="border-b-0 bg-container-hover"
+                />
               );
 
             const isPresent = isHoneyTokenInEnv(honeyTokenName, slug);

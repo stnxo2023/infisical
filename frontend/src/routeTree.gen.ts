@@ -157,7 +157,6 @@ import { Route as sshSshCaByIDPageRouteImport } from './pages/ssh/SshCaByIDPage/
 import { Route as secretManagerSecretDashboardPageRouteImport } from './pages/secret-manager/SecretDashboardPage/route'
 import { Route as secretManagerIntegrationsSelectIntegrationAuthPageRouteImport } from './pages/secret-manager/integrations/SelectIntegrationAuthPage/route'
 import { Route as secretManagerIntegrationsDetailsByIDPageRouteImport } from './pages/secret-manager/IntegrationsDetailsByIDPage/route'
-import { Route as secretManagerHoneyTokenDetailsByIDPageRouteImport } from './pages/secret-manager/HoneyTokenDetailsByIDPage/route'
 import { Route as pamPamSessionsByIDPageRouteImport } from './pages/pam/PamSessionsByIDPage/route'
 import { Route as pamApprovalRequestDetailPageRouteImport } from './pages/pam/ApprovalRequestDetailPage/route'
 import { Route as certManagerPkiSubscriberDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSubscriberDetailsByIDPage/route'
@@ -1667,13 +1666,6 @@ const secretManagerIntegrationsDetailsByIDPageRouteRoute =
     path: '/$integrationId',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRoute,
-  } as any)
-
-const secretManagerHoneyTokenDetailsByIDPageRouteRoute =
-  secretManagerHoneyTokenDetailsByIDPageRouteImport.update({
-    id: '/honey-tokens/$honeyTokenId',
-    path: '/honey-tokens/$honeyTokenId',
-    getParentRoute: () => secretManagerLayoutRoute,
   } as any)
 
 const pamPamSessionsByIDPageRouteRoute =
@@ -3766,13 +3758,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof pamPamSessionsByIDPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/honey-tokens/$honeyTokenId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/honey-tokens/$honeyTokenId'
-      path: '/honey-tokens/$honeyTokenId'
-      fullPath: '/organizations/$orgId/projects/secret-management/$projectId/honey-tokens/$honeyTokenId'
-      preLoaderRoute: typeof secretManagerHoneyTokenDetailsByIDPageRouteImport
-      parentRoute: typeof secretManagerLayoutImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId'
       path: '/$integrationId'
@@ -5479,7 +5464,6 @@ interface secretManagerLayoutRouteChildren {
   projectAppConnectionsPageRouteSecretManagerRoute: typeof projectAppConnectionsPageRouteSecretManagerRoute
   projectAuditLogsPageRouteSecretManagerRoute: typeof projectAuditLogsPageRouteSecretManagerRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRouteWithChildren
-  secretManagerHoneyTokenDetailsByIDPageRouteRoute: typeof secretManagerHoneyTokenDetailsByIDPageRouteRoute
   secretManagerSecretDashboardPageRouteRoute: typeof secretManagerSecretDashboardPageRouteRoute
   projectGroupDetailsByIDPageRouteSecretManagerRoute: typeof projectGroupDetailsByIDPageRouteSecretManagerRoute
   projectIdentityDetailsByIDPageRouteSecretManagerRoute: typeof projectIdentityDetailsByIDPageRouteSecretManagerRoute
@@ -5504,8 +5488,6 @@ const secretManagerLayoutRouteChildren: secretManagerLayoutRouteChildren = {
     projectAuditLogsPageRouteSecretManagerRoute,
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRoute:
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRouteWithChildren,
-  secretManagerHoneyTokenDetailsByIDPageRouteRoute:
-    secretManagerHoneyTokenDetailsByIDPageRouteRoute,
   secretManagerSecretDashboardPageRouteRoute:
     secretManagerSecretDashboardPageRouteRoute,
   projectGroupDetailsByIDPageRouteSecretManagerRoute:
@@ -6155,7 +6137,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
-  '/organizations/$orgId/projects/secret-management/$projectId/honey-tokens/$honeyTokenId': typeof secretManagerHoneyTokenDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
@@ -6416,7 +6397,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
-  '/organizations/$orgId/projects/secret-management/$projectId/honey-tokens/$honeyTokenId': typeof secretManagerHoneyTokenDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
@@ -6705,7 +6685,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/honey-tokens/$honeyTokenId': typeof secretManagerHoneyTokenDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
@@ -6989,7 +6968,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
     | '/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId'
     | '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId'
-    | '/organizations/$orgId/projects/secret-management/$projectId/honey-tokens/$honeyTokenId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
     | '/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
@@ -7249,7 +7227,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
     | '/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId'
     | '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId'
-    | '/organizations/$orgId/projects/secret-management/$projectId/honey-tokens/$honeyTokenId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
     | '/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
@@ -7536,7 +7513,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/honey-tokens/$honeyTokenId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/select-integration-auth'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug'
@@ -8236,7 +8212,6 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/app-connections",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/audit-logs",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/honey-tokens/$honeyTokenId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/identities/$identityId",
@@ -8718,10 +8693,6 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId": {
       "filePath": "pam/PamSessionsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/honey-tokens/$honeyTokenId": {
-      "filePath": "secret-manager/HoneyTokenDetailsByIDPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId": {
       "filePath": "secret-manager/IntegrationsDetailsByIDPage/route.tsx",

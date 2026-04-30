@@ -28,7 +28,6 @@ import {
   CreateHoneyTokenModal,
   EditHoneyTokenModal,
   HoneyTokenDetailsDrawer,
-  type HoneyTokenDetailsDrawerHandle,
   RevokeHoneyTokenModal,
   ViewHoneyTokenCredentialsModal
 } from "@app/components/honey-tokens";
@@ -284,6 +283,7 @@ const OverviewPageContent = () => {
       search: el.search,
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
+      honeyTokenId: el.honeyTokenId,
       filterBy: el.filterBy
     })
   });
@@ -789,7 +789,21 @@ const OverviewPageContent = () => {
     "viewHoneyTokenCredentials"
   ] as const);
 
-  const honeyTokenDetailsRef = useRef<HoneyTokenDetailsDrawerHandle>(null);
+  const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
+
+  console.log("[HoneyTokenDrawer] render", {
+    detailsDrawerHoneyTokenId,
+    routerSearchHoneyTokenId: routerSearch.honeyTokenId
+  });
+
+  // Auto-open honey token drawer when linked via notification/email
+  useEffect(() => {
+    console.log("[HoneyTokenDrawer] useEffect fired", { honeyTokenId: routerSearch.honeyTokenId });
+    if (routerSearch.honeyTokenId) {
+      console.log("[HoneyTokenDrawer] setting drawer id to", routerSearch.honeyTokenId);
+      setDetailsDrawerHoneyTokenId(routerSearch.honeyTokenId);
+    }
+  }, [routerSearch.honeyTokenId]);
 
   // Auto-open dynamic secret leases modal when linked via notification/email
   useEffect(() => {
@@ -3106,7 +3120,7 @@ const OverviewPageContent = () => {
                                 handlePopUpOpen("viewHoneyTokenCredentials", honeyToken)
                               }
                               onViewDetails={(honeyToken) =>
-                                honeyTokenDetailsRef.current?.open(honeyToken.id)
+                                setDetailsDrawerHoneyTokenId(honeyToken.id)
                               }
                             />
                           ))}
@@ -3463,7 +3477,16 @@ const OverviewPageContent = () => {
         projectId={projectId}
         onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
       />
-      <HoneyTokenDetailsDrawer ref={honeyTokenDetailsRef} projectId={projectId} />
+      <HoneyTokenDetailsDrawer
+        projectId={projectId}
+        honeyTokenId={detailsDrawerHoneyTokenId}
+        onClose={() => {
+          setDetailsDrawerHoneyTokenId(null);
+          if (routerSearch.honeyTokenId) {
+            navigate({ search: (prev) => ({ ...prev, honeyTokenId: undefined }), replace: true });
+          }
+        }}
+      />
       <ImportSecretsModal
         isOpen={popUp.importSecrets.isOpen}
         onOpenChange={(isOpen) => {

@@ -34,7 +34,6 @@ const secretManagerRoutes = route("/organizations/$orgId/projects/secret-managem
         )
       ])
     ]),
-    route("/honey-tokens/$honeyTokenId", "secret-manager/HoneyTokenDetailsByIDPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-secret-manager.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
     route("/app-connections", "project/AppConnectionsPage/route-secret-manager.tsx"),

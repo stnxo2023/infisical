@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useReducer, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   AlertTriangle,
@@ -53,14 +53,13 @@ import {
   useGetHoneyTokenById,
   useGetHoneyTokenCredentials
 } from "@app/hooks/api/honeyTokens/queries";
-import { HoneyTokenEventsSection } from "@app/pages/secret-manager/HoneyTokenDetailsByIDPage/components";
 
-export type HoneyTokenDetailsDrawerHandle = {
-  open: (honeyTokenId: string) => void;
-};
+import { HoneyTokenEventsSection } from "./HoneyTokenEventsSection";
 
 type Props = {
   projectId: string;
+  honeyTokenId: string | null;
+  onClose: () => void;
 };
 
 const CredentialField = ({ label, value }: { label: string; value?: string }) => {
@@ -434,20 +433,16 @@ const DrawerContent = ({
   );
 };
 
-export const HoneyTokenDetailsDrawer = forwardRef<HoneyTokenDetailsDrawerHandle, Props>(
-  ({ projectId }, ref) => {
-    const [honeyTokenId, setHoneyTokenId] = useState<string | null>(null);
-    const isOpen = Boolean(honeyTokenId);
+export const HoneyTokenDetailsDrawer = ({ projectId, honeyTokenId, onClose }: Props) => {
+  const isOpen = Boolean(honeyTokenId);
 
-    useImperativeHandle(ref, () => ({
-      open: (id: string) => setHoneyTokenId(id)
-    }));
+  console.log("[HoneyTokenDetailsDrawer] render", { honeyTokenId, isOpen, projectId });
 
   return (
     <Sheet
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) setHoneyTokenId(null);
+        if (!open) onClose();
       }}
     >
       <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-3xl">
@@ -460,7 +455,4 @@ export const HoneyTokenDetailsDrawer = forwardRef<HoneyTokenDetailsDrawerHandle,
       </SheetContent>
     </Sheet>
   );
-  }
-);
-
-HoneyTokenDetailsDrawer.displayName = "HoneyTokenDetailsDrawer";
+};
