@@ -5,9 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { Button } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
-import { Button } from "@app/components/v3";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";

@@ -1,7 +1,13 @@
 import crypto from "node:crypto";
 
 import { CloudFormationClient, DescribeStacksCommand } from "@aws-sdk/client-cloudformation";
-import { CreateAccessKeyCommand, CreateUserCommand, DeleteAccessKeyCommand, DeleteUserCommand, IAMClient } from "@aws-sdk/client-iam";
+import {
+  CreateAccessKeyCommand,
+  CreateUserCommand,
+  DeleteAccessKeyCommand,
+  DeleteUserCommand,
+  IAMClient
+} from "@aws-sdk/client-iam";
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
