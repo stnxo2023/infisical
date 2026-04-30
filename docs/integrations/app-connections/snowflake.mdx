@@ -39,12 +39,12 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
 
         GRANT ALL PRIVILEGES ON DATABASE SECRET_SYNC_TEST TO ROLE INFISICAL_ROLE;
         GRANT ALL PRIVILEGES ON SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
-        GRANT OWNERSHIP ON ALL SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS;
-        GRANT OWNERSHIP ON FUTURE SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS;
+        GRANT OWNERSHIP ON ALL SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS; -- Transfers ownership
+        GRANT OWNERSHIP ON FUTURE SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS; -- Transfers ownership
         ```
 
         <Note>
-            **Transfers ownership—you cannot rely on grants alone.** Grants on the database and schema cover access, but **each existing secret in the sync target schema stays owned by whoever created it** unless you intentionally move ownership. Infisical’s Snowflake user must run with a role that **owns every secret Infisical will manage** (`GRANT OWNERSHIP ON ALL SECRETS IN SCHEMA ...` plus `OWNERSHIP ON FUTURE SECRETS IN SCHEMA ...` as shown above). If anything in that schema is still owned elsewhere, syncing can fail when Infisical runs `CREATE OR REPLACE SECRET` or `DROP SECRET`.
+            If you select a custom role, note that **secret ownership is enforced per object**. Existing secrets in the target schema remain owned by their creator unless you transfer ownership. Infisical must use a role that **owns every secret it manages** (required for `CREATE OR REPLACE SECRET` and `DROP SECRET`). If the schema already has secrets, run the `GRANT OWNERSHIP ON ALL SECRETS ...` statement; always keep the `GRANT OWNERSHIP ON FUTURE SECRETS ...` statement.
         </Note>
     </Step>
 
