@@ -77,6 +77,10 @@ export const certKeyAlgorithms = [
     value: CertKeyAlgorithm.ECDSA_P384
   },
   {
+    label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.ECDSA_P521],
+    value: CertKeyAlgorithm.ECDSA_P521
+  },
+  {
     label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.ML_DSA_44],
     value: CertKeyAlgorithm.ML_DSA_44
   },
