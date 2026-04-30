@@ -6,6 +6,7 @@ import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import {
   TCreateHoneyTokenDTO,
   THoneyToken,
+  TCreateHoneyTokenResponse,
   TRevokeHoneyTokenDTO,
   TUpdateHoneyTokenDTO
 } from "./types";
@@ -13,9 +14,9 @@ import {
 export const useCreateHoneyToken = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<THoneyToken, object, TCreateHoneyTokenDTO>({
+  return useMutation<TCreateHoneyTokenResponse, object, TCreateHoneyTokenDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post<THoneyToken>("/api/v1/honey-tokens", dto);
+      const { data } = await apiRequest.post<TCreateHoneyTokenResponse>("/api/v1/honey-tokens", dto);
       return data;
     },
     onSuccess: () => {

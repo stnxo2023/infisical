@@ -48,13 +48,17 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
             secretsMapping: z.unknown(),
             createdAt: z.date(),
             updatedAt: z.date()
+          }),
+          stackDeployment: z.object({
+            deployed: z.boolean(),
+            status: z.string().nullable()
           })
         })
       }
     },
     handler: async (req) => {
-      const { honeyToken } = await server.services.honeyTokenCrud.create(req.body, req.permission);
-      return { honeyToken };
+      const { honeyToken, stackDeployment } = await server.services.honeyTokenCrud.create(req.body, req.permission);
+      return { honeyToken, stackDeployment };
     }
   });
 

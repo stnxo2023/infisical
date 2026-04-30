@@ -33,6 +33,14 @@ export type TCreateHoneyTokenDTO = {
   secretPath: string;
 };
 
+export type TCreateHoneyTokenResponse = {
+  honeyToken: THoneyToken;
+  stackDeployment: {
+    deployed: boolean;
+    status: string | null;
+  };
+};
+
 export type TUpdateHoneyTokenDTO = {
   honeyTokenId: string;
   projectId: string;

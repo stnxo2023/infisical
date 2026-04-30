@@ -2,6 +2,7 @@ export type {
   TAwsHoneyToken,
   TAwsHoneyTokenCredentialsResponse,
   TAwsHoneyTokenOption,
+  TCreateHoneyTokenResponse,
   TCreateHoneyTokenDTO,
   TDashboardAwsHoneyToken,
   TDashboardHoneyToken,

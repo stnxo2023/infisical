@@ -1,12 +1,7 @@
 import crypto from "node:crypto";
 
-import {
-  CreateAccessKeyCommand,
-  CreateUserCommand,
-  DeleteAccessKeyCommand,
-  DeleteUserCommand,
-  IAMClient
-} from "@aws-sdk/client-iam";
+import { CloudFormationClient, DescribeStacksCommand } from "@aws-sdk/client-cloudformation";
+import { CreateAccessKeyCommand, CreateUserCommand, DeleteAccessKeyCommand, DeleteUserCommand, IAMClient } from "@aws-sdk/client-iam";
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
@@ -14,6 +9,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -38,8 +34,10 @@ import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
+import { AwsHoneyTokenConfigSchema } from "./honey-token-types";
 
 const HONEY_TOKEN_IAM_USER_PREFIX = "inf_ht_";
+const CF_COMPLETE_STATUSES = new Set(["CREATE_COMPLETE", "UPDATE_COMPLETE", "IMPORT_COMPLETE"]);
 
 type THoneyTokenServiceFactoryDep = {
   honeyTokenDAL: THoneyTokenDALFactory;
@@ -88,6 +86,43 @@ export const honeyTokenServiceFactory = ({
   snapshotService,
   secretQueueService
 }: THoneyTokenServiceFactoryDep) => {
+  const verifyStackDeployment = async ({
+    connectionId,
+    stackName
+  }: {
+    connectionId: string;
+    stackName: string;
+  }): Promise<{ deployed: boolean; status: string | null }> => {
+    try {
+      const appConnection = await appConnectionDAL.findById(connectionId);
+      if (!appConnection) return { deployed: false, status: null };
+
+      const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
+      const awsConfig = decryptedConnection as unknown as TAwsConnectionConfig;
+      const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
+
+      const cfn = new CloudFormationClient({ credentials: awsCredentials, region: "us-east-1" });
+      const res = await cfn.send(new DescribeStacksCommand({ StackName: stackName }));
+      const stack = res.Stacks?.[0];
+
+      if (!stack) return { deployed: false, status: null };
+
+      return {
+        deployed: CF_COMPLETE_STATUSES.has(stack.StackStatus ?? ""),
+        status: stack.StackStatus ?? null
+      };
+    } catch (err) {
+      const awsCode = (err as { code?: string }).code;
+
+      if (awsCode === "ValidationError") {
+        return { deployed: false, status: null };
+      }
+
+      logger.warn({ err, connectionId, stackName }, "Failed to verify honey token CloudFormation stack deployment");
+      return { deployed: false, status: null };
+    }
+  };
+
   const create = async (
     {
       projectId,
@@ -146,6 +181,16 @@ export const honeyTokenServiceFactory = ({
           "No honey token configuration found for this organization. Configure it in Organization Settings first."
       });
     }
+
+    const { decryptor: configDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: actor.orgId
+    });
+    const stackName = orgConfig.encryptedConfig
+      ? AwsHoneyTokenConfigSchema.parse(
+          JSON.parse(configDecryptor({ cipherTextBlob: orgConfig.encryptedConfig }).toString()) as unknown
+        ).stackName
+      : "infisical-honey-tokens";
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 
@@ -283,6 +328,11 @@ export const honeyTokenServiceFactory = ({
       excludeReplication: true
     });
 
+    const stackDeployment = await verifyStackDeployment({
+      connectionId: orgConfig.connectionId,
+      stackName
+    });
+
     return {
       honeyToken: {
         id: honeyToken.id,
@@ -294,7 +344,8 @@ export const honeyTokenServiceFactory = ({
         secretsMapping: honeyToken.secretsMapping,
         createdAt: honeyToken.createdAt,
         updatedAt: honeyToken.updatedAt
-      }
+      },
+      stackDeployment
     };
   };
 

@@ -2,10 +2,12 @@ import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization, useProject } from "@app/context";
 import { Button } from "@app/components/v3";
-import { useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
@@ -50,6 +52,7 @@ export const HoneyTokenForm = ({
   const createHoneyToken = useCreateHoneyToken();
   const updateHoneyToken = useUpdateHoneyToken();
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { name: tokenTypeName } = HONEY_TOKEN_MAP[type];
 
   const isUpdate = Boolean(honeyToken);
@@ -85,18 +88,43 @@ export const HoneyTokenForm = ({
         description: formData.description,
         secretsMapping: formData.secretsMapping
       });
+
+      createNotification({
+        text: `Successfully updated ${tokenTypeName} Honey Token`,
+        type: "success"
+      });
     } else {
-      await createHoneyToken.mutateAsync({
+      const { stackDeployment } = await createHoneyToken.mutateAsync({
         ...formData,
         environment: environment.slug,
         projectId: currentProject.id
       });
-    }
 
-    createNotification({
-      text: `Successfully ${honeyToken ? "updated" : "created"} ${tokenTypeName} Honey Token`,
-      type: "success"
-    });
+      if (!stackDeployment.deployed) {
+        const isDeploying = stackDeployment.status?.endsWith("_IN_PROGRESS");
+        createNotification({
+          text: isDeploying
+            ? "Token was created, but stack is still deploying."
+            : "Token was created, but stack is not deployed yet.",
+          callToAction: (
+            <Link
+              className="inline-flex h-7 items-center rounded border border-mineshaft-500 px-2 text-xs text-primary transition-colors hover:bg-mineshaft-700 hover:text-primary"
+              to={ROUTE_PATHS.Organization.SettingsPage.path}
+              params={{ orgId: currentOrg.id }}
+              search={{ selectedTab: "product-settings" }}
+            >
+              Go to settings
+            </Link>
+          ),
+          type: "warning"
+        });
+      } else {
+        createNotification({
+          text: `Successfully created ${tokenTypeName} Honey Token`,
+          type: "success"
+        });
+      }
+    }
     onComplete();
   };
 
