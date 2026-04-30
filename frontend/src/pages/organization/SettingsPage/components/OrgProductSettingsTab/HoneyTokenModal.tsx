@@ -292,7 +292,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                   isPending={isSaving}
                   isDisabled={!isAllowed || isSaving}
                 >
-                  Save
+                  {isConfigured ? "Update" : "Save"}
                 </Button>
               )}
             </OrgPermissionCan>
