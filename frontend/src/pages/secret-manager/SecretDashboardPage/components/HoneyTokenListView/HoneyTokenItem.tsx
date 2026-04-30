@@ -1,19 +1,17 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AsteriskIcon,
   BanIcon,
   ExternalLinkIcon,
+  HexagonIcon,
   InfoIcon,
-  PencilIcon,
-  HexagonIcon
+  PencilIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Badge, IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
@@ -25,13 +23,16 @@ type Props = {
   onEdit: () => void;
   onRevoke: () => void;
   onViewCredentials: () => void;
+  onViewDetails: () => void;
 };
 
-export const HoneyTokenItem = ({ honeyToken, onEdit, onRevoke, onViewCredentials }: Props) => {
-  const navigate = useNavigate();
-  const { orgId, projectId } = useParams({
-    from: ROUTE_PATHS.SecretManager.SecretDashboardPage.id
-  });
+export const HoneyTokenItem = ({
+  honeyToken,
+  onEdit,
+  onRevoke,
+  onViewCredentials,
+  onViewDetails
+}: Props) => {
   const { name, type, status, secretsMapping } = honeyToken;
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -120,10 +121,7 @@ export const HoneyTokenItem = ({ honeyToken, onEdit, onRevoke, onViewCredentials
                   className="opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate({
-                      to: ROUTE_PATHS.SecretManager.HoneyTokenDetailsByIDPage.path,
-                      params: { orgId, projectId, honeyTokenId: honeyToken.id }
-                    });
+                    onViewDetails();
                   }}
                 >
                   <ExternalLinkIcon className="size-4" />

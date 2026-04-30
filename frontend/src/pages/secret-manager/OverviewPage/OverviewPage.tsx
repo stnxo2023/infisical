@@ -27,6 +27,7 @@ import { twMerge } from "tailwind-merge";
 import {
   CreateHoneyTokenModal,
   EditHoneyTokenModal,
+  HoneyTokenDetailsDrawer,
   RevokeHoneyTokenModal,
   ViewHoneyTokenCredentialsModal
 } from "@app/components/honey-tokens";
@@ -784,7 +785,8 @@ const OverviewPageContent = () => {
     "confirmDisableBatchMode",
     "editHoneyToken",
     "revokeHoneyToken",
-    "viewHoneyTokenCredentials"
+    "viewHoneyTokenCredentials",
+    "viewHoneyTokenDetails"
   ] as const);
 
   // Auto-open dynamic secret leases modal when linked via notification/email
@@ -3101,6 +3103,9 @@ const OverviewPageContent = () => {
                               onViewCredentials={(honeyToken) =>
                                 handlePopUpOpen("viewHoneyTokenCredentials", honeyToken)
                               }
+                              onViewDetails={(honeyToken) =>
+                                handlePopUpOpen("viewHoneyTokenDetails", honeyToken)
+                              }
                             />
                           ))}
                           {mergedSecKeys.map((key, index) => (
@@ -3455,6 +3460,12 @@ const OverviewPageContent = () => {
         honeyToken={popUp.viewHoneyTokenCredentials.data as TDashboardHoneyToken}
         projectId={projectId}
         onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
+      />
+      <HoneyTokenDetailsDrawer
+        isOpen={popUp.viewHoneyTokenDetails.isOpen}
+        honeyTokenId={(popUp.viewHoneyTokenDetails.data as TDashboardHoneyToken)?.id ?? ""}
+        projectId={projectId}
+        onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenDetails", isOpen)}
       />
       <ImportSecretsModal
         isOpen={popUp.importSecrets.isOpen}

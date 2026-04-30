@@ -1,12 +1,11 @@
-import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   AsteriskIcon,
   BanIcon,
   ChevronDownIcon,
   EditIcon,
   ExternalLinkIcon,
-  InfoIcon,
-  HexagonIcon
+  HexagonIcon,
+  InfoIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -24,7 +23,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
@@ -51,6 +49,7 @@ type Props = {
   onEdit: (honeyToken: TDashboardHoneyToken) => void;
   onRevoke: (honeyToken: TDashboardHoneyToken) => void;
   onViewCredentials: (honeyToken: TDashboardHoneyToken) => void;
+  onViewDetails: (honeyToken: TDashboardHoneyToken) => void;
 };
 
 export const HoneyTokenTableRow = ({
@@ -61,12 +60,9 @@ export const HoneyTokenTableRow = ({
   tableWidth,
   onEdit,
   onRevoke,
-  onViewCredentials
+  onViewCredentials,
+  onViewDetails
 }: Props) => {
-  const navigate = useNavigate();
-  const { orgId, projectId } = useParams({
-    from: ROUTE_PATHS.SecretManager.OverviewPage.id
-  });
   const [isExpanded, setIsExpanded] = useToggle(false);
 
   const isSingleEnvView = environments.length === 1;
@@ -102,12 +98,7 @@ export const HoneyTokenTableRow = ({
               variant="ghost"
               size="xs"
               className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
-              onClick={() =>
-                navigate({
-                  to: ROUTE_PATHS.SecretManager.HoneyTokenDetailsByIDPage.path,
-                  params: { orgId, projectId, honeyTokenId: honeyToken.id }
-                })
-              }
+              onClick={() => onViewDetails(honeyToken)}
             >
               <ExternalLinkIcon />
             </IconButton>

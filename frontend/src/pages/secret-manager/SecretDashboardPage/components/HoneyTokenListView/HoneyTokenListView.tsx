@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import {
   EditHoneyTokenModal,
+  HoneyTokenDetailsDrawer,
   RevokeHoneyTokenModal,
   ViewHoneyTokenCredentialsModal
 } from "@app/components/honey-tokens";
@@ -20,6 +21,7 @@ export const HoneyTokenListView = ({ honeyTokens }: Props) => {
   const [revokeTarget, setRevokeTarget] = useState<TDashboardHoneyToken>();
   const [editTarget, setEditTarget] = useState<TDashboardHoneyToken>();
   const [credentialsTarget, setCredentialsTarget] = useState<TDashboardHoneyToken>();
+  const [detailsTarget, setDetailsTarget] = useState<TDashboardHoneyToken>();
 
   return (
     <>
@@ -30,6 +32,7 @@ export const HoneyTokenListView = ({ honeyTokens }: Props) => {
           onEdit={() => setEditTarget(honeyToken)}
           onRevoke={() => setRevokeTarget(honeyToken)}
           onViewCredentials={() => setCredentialsTarget(honeyToken)}
+          onViewDetails={() => setDetailsTarget(honeyToken)}
         />
       ))}
       <EditHoneyTokenModal
@@ -52,6 +55,14 @@ export const HoneyTokenListView = ({ honeyTokens }: Props) => {
           if (!isOpen) setCredentialsTarget(undefined);
         }}
         honeyToken={credentialsTarget}
+        projectId={projectId}
+      />
+      <HoneyTokenDetailsDrawer
+        isOpen={Boolean(detailsTarget)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setDetailsTarget(undefined);
+        }}
+        honeyTokenId={detailsTarget?.id ?? ""}
         projectId={projectId}
       />
     </>
