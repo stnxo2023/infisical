@@ -256,11 +256,7 @@ const StatCard = ({
             to &&
             params &&
             count > 0 && (
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={() => navigate({ to, params })}
-              >
+              <Button variant="outline" size="xs" onClick={() => navigate({ to, params })}>
                 {viewLabel}
               </Button>
             )
