@@ -8,7 +8,7 @@ body:
       label: Product
       description: Which Infisical product is this bug related to?
       options:
-        - Platform (General/Multiple Products)
+        - Platform/Access controls/Other
         - Secret Manager
         - Certificate Manager (PKI)
         - KMS
@@ -56,10 +56,10 @@ body:
       required: false
 
   - type: dropdown
-    id: platform
+    id: deployment-type
     attributes:
-      label: Platform
-      description: What platform are you experiencing the issue on?
+      label: Deployment Type
+      description: What deployment type are you experiencing the issue on?
       options:
         - Infisical Cloud
         - Self-hosted

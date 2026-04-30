@@ -15,35 +15,37 @@ jobs:
         with:
           script: |
             const body = context.payload.issue.body || '';
-
+            
             const productLabels = {
-              'Platform (General/Multiple Products)': 'product:platform',
+              'Platform/Access controls/Other': 'product:platform',
               'Secret Manager': 'product:secret-manager',
               'Certificate Manager (PKI)': 'product:pki',
               'KMS': 'product:kms',
               'Secret Scanning': 'product:secret-scanning',
               'Privileged Access Manager (PAM)': 'product:pam'
             };
-
-            const platformLabels = {
-              'Infisical Cloud': 'platform:cloud',
-              'Self-hosted': 'platform:self-hosted'
+            
+            const deploymentLabels = {
+              'Infisical Cloud': 'deployment:cloud',
+              'Self-hosted': 'deployment:self-hosted'
             };
-
+            
+            // Parse the Product field specifically (between "### Product" and next "###")
+            const productMatch = body.match(/### Product\s*\n\s*(.+?)(?=\n\s*###|\n\s*$)/s);
+            const productValue = productMatch ? productMatch[1].trim() : '';
+            
+            // Parse the Deployment Type field specifically
+            const deploymentMatch = body.match(/### Deployment Type\s*\n\s*(.+?)(?=\n\s*###|\n\s*$)/s);
+            const deploymentValue = deploymentMatch ? deploymentMatch[1].trim() : '';
+            
             const labelsToAdd = [];
-
-            for (const [product, label] of Object.entries(productLabels)) {
-              if (body.includes(product)) {
-                labelsToAdd.push(label);
-                break;
-              }
+            
+            if (productValue && productLabels[productValue]) {
+              labelsToAdd.push(productLabels[productValue]);
             }
-
-            for (const [platform, label] of Object.entries(platformLabels)) {
-              if (body.includes(platform)) {
-                labelsToAdd.push(label);
-                break;
-              }
+            
+            if (deploymentValue && deploymentLabels[deploymentValue]) {
+              labelsToAdd.push(deploymentLabels[deploymentValue]);
             }
 
             if (labelsToAdd.length > 0) {
