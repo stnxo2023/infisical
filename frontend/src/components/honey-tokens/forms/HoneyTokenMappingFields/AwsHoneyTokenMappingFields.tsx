@@ -4,8 +4,8 @@ import { ArrowRightIcon, InfoIcon, KeyIcon, LockIcon } from "lucide-react";
 import {
   Badge,
   FieldError,
+  FieldLabel,
   Input,
-  Label,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -46,45 +46,43 @@ export const AwsHoneyTokenMappingFields = () => {
         <thead>
           <tr className="text-left">
             <th className="pb-3 whitespace-nowrap">
-              <Label className="text-xs">Decoy Credential</Label>
+              <FieldLabel>Decoy Credential</FieldLabel>
             </th>
             <th className="pb-3" />
             <th className="pb-3">
-              <div className="flex items-center gap-1">
-                <Label className="text-xs">Secret Name</Label>
+              <FieldLabel>
+                Secret Name
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <InfoIcon className="text-muted-foreground size-3.5" />
+                    <InfoIcon className="size-3.5 text-muted" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     The name of the secret that the decoy credential will be mapped to in your
                     project.
                   </TooltipContent>
                 </Tooltip>
-              </div>
+              </FieldLabel>
             </th>
           </tr>
         </thead>
         <tbody>
           {items.map(({ name, icon, fieldName, placeholder }) => (
             <tr key={name}>
-              <td className="whitespace-nowrap">
-                <div className="mb-4 flex h-full items-start justify-center">
-                  <Badge variant="neutral" className="h-[36px] w-full justify-center text-xs">
-                    {icon}
-                    {name}
-                  </Badge>
-                </div>
+              <td className="align-top whitespace-nowrap pb-4">
+                <Badge variant="neutral" className="h-9 w-full justify-center text-xs">
+                  {icon}
+                  {name}
+                </Badge>
               </td>
-              <td className="pr-5 pl-5 whitespace-nowrap">
-                <div className="mb-4 flex items-center justify-center">
+              <td className="align-top px-5 pb-4">
+                <div className="flex h-9 items-center">
                   <ArrowRightIcon className="size-5 text-accent" />
                 </div>
               </td>
-              <td className="w-full">
+              <td className="w-full align-top pb-4">
                 <Controller
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
-                    <div className="mb-4">
+                    <div>
                       <div className="relative">
                         <Input
                           value={value}
