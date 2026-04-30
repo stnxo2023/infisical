@@ -94,6 +94,24 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     });
   }, [existingConfig, reset]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (existingConfig?.decryptedConfig) {
+      reset({
+        connectionId: existingConfig.connectionId ?? "",
+        webhookSigningKey: existingConfig.decryptedConfig.webhookSigningKey,
+        stackName: existingConfig.decryptedConfig.stackName ?? DEFAULT_STACK_NAME
+      });
+    } else {
+      reset({
+        connectionId: "",
+        webhookSigningKey: "",
+        stackName: DEFAULT_STACK_NAME
+      });
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const webhookSigningKey = watch("webhookSigningKey");
   const stackName = watch("stackName");
 
@@ -248,7 +266,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
           </div>
 
           {isConfigured && (
-            <div className="mb-4 rounded-md border border-mineshaft-600 bg-bunker-800 p-4">
+            <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
               <div className="mb-3 flex items-center gap-2 text-sm text-mineshaft-300">
                 <FontAwesomeIcon icon={faTerminal} className="text-mineshaft-400" />
                 <span className="font-medium tracking-wide uppercase">
@@ -260,8 +278,8 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                 user and wires CloudTrail alerts back to Infisical.
               </p>
               <div className="relative">
-                <pre className="rounded-md bg-black/40 p-4 pr-12 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-mineshaft-200">
-                  <span className="text-mineshaft-500 select-none">$ </span>
+                <pre className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 pr-12 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-mineshaft-300">
+                  <span className="text-mineshaft-400 select-none">$ </span>
                   {cfCommand}
                 </pre>
                 <IconButton
@@ -281,7 +299,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
           )}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} type="button">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
               Cancel
             </Button>
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>

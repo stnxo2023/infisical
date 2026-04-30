@@ -69,7 +69,7 @@ export const HoneyTokenSection = () => {
                 </Button>
               )}
               <Button
-                colorSchema={isConfigured ? "secondary" : "primary"}
+                variant="org"
                 isDisabled={!isAllowed}
                 onClick={() => handlePopUpOpen("honeyTokenModal")}
               >
