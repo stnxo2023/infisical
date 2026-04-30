@@ -322,7 +322,7 @@ const DrawerContent = ({
             <div className="mb-2 flex items-center gap-2">
               <AlertTriangle size={16} className="text-yellow-500" />
               <p className="text-sm font-medium text-yellow-500">
-                Respond to a triggered honeytoken
+                Respond to a triggered honey token
               </p>
             </div>
             <p className="mb-3 text-xs text-muted">
@@ -333,8 +333,8 @@ const DrawerContent = ({
               <div>
                 <p className="text-xs font-medium">1. False alarm confirmed?</p>
                 <p className="text-xs text-muted">
-                  You might want to <strong>reset the honeytoken</strong>. This will revert its
-                  status to active and hide the past events, so that the honeytoken can be triggered
+                  You might want to <strong>reset the honey token</strong>. This will revert its
+                  status to active and hide the past events, so that the honey token can be triggered
                   again.
                 </p>
               </div>
@@ -344,12 +344,12 @@ const DrawerContent = ({
                   1. Take immediate steps as per your company Incident Response Plan.
                   <br />
                   2. <strong>Rotate any real secrets</strong> that were stored alongside the
-                  honeytoken, as they may also be compromised.
+                  honey token, as they may also be compromised.
                   <br />
-                  3. <strong>Revoke the honeytoken</strong>. This will prevent any new connections
+                  3. <strong>Revoke the honey token</strong>. This will prevent any new connections
                   while we keep the compromised key in our records.
                   <br />
-                  4. Don&apos;t forget to recreate a new honeytoken to replace it in the same
+                  4. Don&apos;t forget to recreate a new honey token to replace it in the same
                   location.
                 </p>
               </div>
