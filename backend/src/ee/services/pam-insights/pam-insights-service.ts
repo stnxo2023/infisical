@@ -32,7 +32,6 @@ type TPamInsightsServiceFactoryDep = {
     | "countByProject"
     | "countFailedRotationsByProject"
     | "findFailedRotationsByProject"
-    | "countByProjectGroupedByResourceType"
     | "findRotationCandidatesByProject"
   >;
   pamResourceRotationRulesDAL: Pick<TPamResourceRotationRulesDALFactory, "findByResourceIds">;
@@ -181,18 +180,11 @@ export const pamInsightsServiceFactory = ({
       key: KeyStorePrefixes.InsightsCache(projectId, "pam:resource-breakdown"),
       ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
       fetcher: async () => {
-        const [resourceCounts, accountCounts] = await Promise.all([
-          pamResourceDAL.countByProjectGroupedByType(projectId),
-          pamAccountDAL.countByProjectGroupedByResourceType(projectId)
-        ]);
-
-        const accountsByType = new Map<string, number>();
-        accountCounts.forEach((row) => accountsByType.set(row.resourceType, row.count));
+        const resourceCounts = await pamResourceDAL.countByProjectGroupedByType(projectId);
 
         const breakdown = resourceCounts.map((row) => ({
           resourceType: row.resourceType,
-          resourceCount: row.count,
-          accountCount: accountsByType.get(row.resourceType) ?? 0
+          resourceCount: row.count
         }));
 
         breakdown.sort((a, b) => b.resourceCount - a.resourceCount);

@@ -135,8 +135,7 @@ export const registerPamInsightsRouter = async (server: FastifyZodProvider) => {
           breakdown: z.array(
             z.object({
               resourceType: z.string(),
-              resourceCount: z.number(),
-              accountCount: z.number()
+              resourceCount: z.number()
             })
           )
         })

@@ -45,7 +45,6 @@ export type TPamTopActorsResponse = {
 export type TPamResourceBreakdownEntry = {
   resourceType: string;
   resourceCount: number;
-  accountCount: number;
 };
 
 export type TPamResourceBreakdownResponse = {

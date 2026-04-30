@@ -342,25 +342,6 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }[];
   };
 
-  const countByProjectGroupedByResourceType = async (
-    projectId: string,
-    tx?: Knex
-  ): Promise<{ resourceType: string; count: number }[]> => {
-    // leftJoin + COALESCE so domain accounts (resourceId IS NULL) are bucketed under
-    // a synthetic "domain" type instead of being silently dropped from the breakdown.
-    const rows = (await (tx || db.replicaNode())(TableName.PamAccount)
-      .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-      .select(db.raw(`COALESCE("${TableName.PamResource}"."resourceType", 'domain') as "resourceType"`))
-      .count(`${TableName.PamAccount}.id as count`)
-      .where(`${TableName.PamAccount}.projectId`, projectId)
-      .groupByRaw(`COALESCE("${TableName.PamResource}"."resourceType", 'domain')`)) as unknown as {
-      resourceType: string;
-      count: string | number;
-    }[];
-
-    return rows.map((row) => ({ resourceType: row.resourceType, count: Number(row.count) }));
-  };
-
   const findRotationCandidatesByProject = async (
     projectId: string,
     tx?: Knex
@@ -409,7 +390,6 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     findRotationCandidatesByProject,
     countByProject,
     countFailedRotationsByProject,
-    findFailedRotationsByProject,
-    countByProjectGroupedByResourceType
+    findFailedRotationsByProject
   };
 };
