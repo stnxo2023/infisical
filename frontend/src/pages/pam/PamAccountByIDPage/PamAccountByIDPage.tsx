@@ -366,7 +366,25 @@ const PageContent = () => {
           onOpenChange={(isOpen) => handlePopUpToggle("selectResource", isOpen)}
           domainType={account.domain.domainType}
           domainId={account.domain.id}
-          onSelect={(resource) => {
+          onSelect={async (resource) => {
+            const { requiresApproval } = await checkPolicyMatch({
+              policyType: ApprovalPolicyType.PamAccess,
+              projectId: projectId!,
+              inputs: {
+                resourceName: resource.name,
+                accountName: account.name
+              }
+            });
+
+            if (requiresApproval) {
+              handlePopUpOpen("requestAccount", {
+                resourceName: resource.name,
+                accountName: account.name,
+                accountAccessed: true
+              });
+              return;
+            }
+
             handlePopUpOpen("accessAccount", { account, resource });
           }}
         />

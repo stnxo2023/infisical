@@ -733,22 +733,29 @@ export const pamAccountServiceFactory = ({
       throw new NotFoundError({ message: `Resource with name '${inputResourceName}' not found` });
     }
 
-    let account = await pamAccountDAL.findOne({
+    const localAccount = await pamAccountDAL.findOne({
       projectId,
       resourceId: resource.id,
       name: inputAccountName
     });
+    const domainAccount = resource.domainId
+      ? await pamAccountDAL.findOne({
+          projectId,
+          domainId: resource.domainId,
+          name: inputAccountName
+        })
+      : null;
 
-    // Fall back to a domain account when the resource is joined to a domain.
-    let isDomainAccount = false;
-    if (!account && resource.domainId) {
-      account = await pamAccountDAL.findOne({
-        projectId,
-        domainId: resource.domainId,
-        name: inputAccountName
+    // Reject collisions explicitly: 'Administrator' commonly exists in both the
+    // local SAM and AD, and (resourceName, accountName) alone can't distinguish.
+    if (localAccount && domainAccount) {
+      throw new BadRequestError({
+        message: `Both a local and a domain account named '${inputAccountName}' exist on resource '${inputResourceName}'. Rename one to disambiguate.`
       });
-      if (account) isDomainAccount = true;
     }
+
+    const account = localAccount ?? domainAccount;
+    const isDomainAccount = !localAccount && !!domainAccount;
 
     if (!account) {
       throw new NotFoundError({
