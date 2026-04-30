@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { honeyTokenKeys } from "./queries";
-import { TUpsertHoneyTokenConfigDTO } from "./types";
+import { HoneyTokenType, TUpsertHoneyTokenConfigDTO } from "./types";
 
 export const useUpsertHoneyTokenConfig = () => {
   const queryClient = useQueryClient();
@@ -15,6 +15,19 @@ export const useUpsertHoneyTokenConfig = () => {
     },
     onSuccess: (_, dto) => {
       queryClient.invalidateQueries({ queryKey: honeyTokenKeys.config(dto.type) });
+    }
+  });
+};
+
+export const useTestHoneyTokenConnection = () => {
+  return useMutation({
+    mutationFn: async (type: HoneyTokenType) => {
+      const { data } = await apiRequest.post<{
+        isConnected: boolean;
+        status: string | null;
+        stackName: string;
+      }>(`/api/v1/honey-tokens/configs/${type}/test-connection`);
+      return data;
     }
   });
 };

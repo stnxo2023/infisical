@@ -146,19 +146,6 @@ export const honeyTokenConfigServiceFactory = ({
 
     const validatedConfig = AwsHoneyTokenConfigSchema.parse(config);
 
-    const stackDeployment = await verifyStackDeployment({
-      connectionId,
-      stackName: validatedConfig.stackName
-    });
-
-    if (!stackDeployment.deployed) {
-      throw new BadRequestError({
-        message: stackDeployment.status
-          ? `CloudFormation stack "${validatedConfig.stackName}" is not ready (status: ${stackDeployment.status}). Wait for it to complete or fix the issue before saving.`
-          : `CloudFormation stack "${validatedConfig.stackName}" was not found. Deploy the stack before saving.`
-      });
-    }
-
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
@@ -186,6 +173,49 @@ export const honeyTokenConfigServiceFactory = ({
       connectionId,
       encryptedConfig
     });
+  };
+
+  const testConnection = async ({ orgPermission, type }: { orgPermission: OrgServiceActor; type: HoneyTokenType }) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+
+    const config = await honeyTokenConfigDAL.findOne({
+      orgId: orgPermission.orgId,
+      type
+    });
+
+    if (!config?.encryptedConfig || !config.connectionId) {
+      throw new BadRequestError({
+        message: "Honey token configuration not found. Save the configuration first."
+      });
+    }
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: orgPermission.orgId
+    });
+
+    const decrypted = decryptor({ cipherTextBlob: config.encryptedConfig });
+    const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
+
+    const stackDeployment = await verifyStackDeployment({
+      connectionId: config.connectionId,
+      stackName: storedConfig.stackName
+    });
+
+    return {
+      isConnected: stackDeployment.deployed,
+      status: stackDeployment.status,
+      stackName: storedConfig.stackName
+    };
   };
 
   const getConfig = async ({ orgPermission, type }: { orgPermission: OrgServiceActor; type: HoneyTokenType }) => {
@@ -403,6 +433,7 @@ export const honeyTokenConfigServiceFactory = ({
 
   return {
     upsertConfig,
+    testConnection,
     getConfig,
     handleTrigger
   };

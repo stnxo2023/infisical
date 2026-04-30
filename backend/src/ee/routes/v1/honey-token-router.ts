@@ -347,6 +347,33 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    url: "/configs/:type/test-connection",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      params: z.object({
+        type: z.nativeEnum(HoneyTokenType)
+      }),
+      response: {
+        200: z.object({
+          isConnected: z.boolean(),
+          status: z.string().nullable(),
+          stackName: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      return server.services.honeyToken.testConnection({
+        orgPermission: req.permission,
+        type: req.params.type
+      });
+    }
+  });
+
+  server.route({
     url: "/configs/:type",
     method: "GET",
     config: {
