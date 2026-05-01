@@ -37,11 +37,13 @@ export const createDistinguishedName = (parts: TDNParts) => {
 };
 
 /**
- * Helper to get the first value of a DN attribute from an x509 Name object.
+ * Helper to get the last value of a DN attribute from an x509 Name object.
+ * Returns the last value for backward compatibility with the old parsing behavior
+ * which used loop assignment (last occurrence wins for multi-valued attributes).
  */
 const getNameField = (name: x509.Name, field: string): string | undefined => {
   const values = name.getField(field);
-  return values.length > 0 ? values[0] : undefined;
+  return values.length > 0 ? values[values.length - 1] : undefined;
 };
 
 /**
