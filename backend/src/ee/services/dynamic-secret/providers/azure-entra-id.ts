@@ -137,10 +137,9 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
     }
 
     const response = await safeRequest.get<{
-      value: [{ id: string; displayName: string; userPrincipalName: string }];
+      value: { id: string; displayName: string; userPrincipalName: string }[];
     }>(`${MSFT_GRAPH_API_URL}/users`, {
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
         Authorization: `Bearer ${data.token}`
       }
     });
