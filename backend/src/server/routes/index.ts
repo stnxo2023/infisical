@@ -1908,7 +1908,6 @@ export const registerRoutes = async (
   });
 
   const identityTokenAuthService = identityTokenAuthServiceFactory({
-    identityDAL,
     identityTokenAuthDAL,
     identityAccessTokenDAL,
     permissionService,
