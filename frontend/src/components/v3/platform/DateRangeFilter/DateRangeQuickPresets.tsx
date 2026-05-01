@@ -1,6 +1,6 @@
 import { cn } from "@app/components/v3/utils";
 
-import { Button } from "../Button";
+import { Button } from "../../generic/Button";
 import type { DateRangeFilterAccent, DateRangeFilterResult } from "./DateRangeFilter";
 import { ACCENT_STYLES } from "./DateRangeFilter";
 

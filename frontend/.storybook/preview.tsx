@@ -27,7 +27,8 @@ const preview: Preview = {
     backgrounds: {
       default: "dark",
       options: {
-        dark: { name: "Dark", value: "var(--background)" }
+        dark: { name: "Dark", value: "var(--background)" },
+        card: { name: "Card", value: "var(--color-card)" }
       }
     }
   },
