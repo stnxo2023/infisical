@@ -33,7 +33,8 @@ export type THoneyTokenEventMetadata = z.infer<typeof HoneyTokenEventMetadataSch
 
 export const AwsHoneyTokenConfigSchema = z.object({
   webhookSigningKey: z.string().min(1),
-  stackName: z.string().min(1).max(128).default("infisical-honey-tokens")
+  stackName: z.string().min(1).max(128).default("infisical-honey-tokens"),
+  awsRegion: z.string().min(1).default("us-east-1")
 });
 
 export type TAwsHoneyTokenConfig = z.infer<typeof AwsHoneyTokenConfigSchema>;

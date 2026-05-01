@@ -12,6 +12,7 @@ export type THoneyTokenConfig = {
   decryptedConfig: {
     webhookSigningKey: string;
     stackName: string;
+    awsRegion: string;
   } | null;
 };
 
@@ -21,5 +22,6 @@ export type TUpsertHoneyTokenConfigDTO = {
   config: {
     webhookSigningKey: string;
     stackName?: string;
+    awsRegion?: string;
   };
 };

@@ -425,7 +425,9 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
             connectionId: z.string().nullable(),
             createdAt: z.date().nullable(),
             updatedAt: z.date().nullable(),
-            decryptedConfig: z.object({ webhookSigningKey: z.string(), stackName: z.string() }).nullable()
+            decryptedConfig: z
+              .object({ webhookSigningKey: z.string(), stackName: z.string(), awsRegion: z.string() })
+              .nullable()
           })
         })
       }

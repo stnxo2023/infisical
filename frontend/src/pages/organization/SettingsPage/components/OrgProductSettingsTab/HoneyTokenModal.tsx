@@ -37,11 +37,13 @@ const CF_TEMPLATE_URL =
   "https://infisical-static-assets.s3.us-east-1.amazonaws.com/honey-tokens/honey-tokens-v1.yaml";
 
 const DEFAULT_STACK_NAME = "infisical-honey-tokens";
+const DEFAULT_AWS_REGION = "us-east-1";
 
 const schema = z.object({
   connectionId: z.string().min(1, "AWS Connection is required"),
   webhookSigningKey: z.string().min(1, "Webhook Signing Key is required"),
-  stackName: z.string().trim().min(1, "Stack name is required").max(128)
+  stackName: z.string().trim().min(1, "Stack name is required").max(128),
+  awsRegion: z.string().trim().min(1, "AWS region is required")
 });
 
 type FormData = z.infer<typeof schema>;
@@ -80,7 +82,8 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     defaultValues: {
       connectionId: "",
       webhookSigningKey: "",
-      stackName: DEFAULT_STACK_NAME
+      stackName: DEFAULT_STACK_NAME,
+      awsRegion: DEFAULT_AWS_REGION
     }
   });
 
@@ -90,7 +93,8 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     reset({
       connectionId: existingConfig.connectionId ?? "",
       webhookSigningKey: existingConfig.decryptedConfig.webhookSigningKey,
-      stackName: existingConfig.decryptedConfig.stackName ?? DEFAULT_STACK_NAME
+      stackName: existingConfig.decryptedConfig.stackName ?? DEFAULT_STACK_NAME,
+      awsRegion: existingConfig.decryptedConfig.awsRegion ?? DEFAULT_AWS_REGION
     });
   }, [existingConfig, reset]);
 
@@ -101,25 +105,28 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
       reset({
         connectionId: existingConfig.connectionId ?? "",
         webhookSigningKey: existingConfig.decryptedConfig.webhookSigningKey,
-        stackName: existingConfig.decryptedConfig.stackName ?? DEFAULT_STACK_NAME
+        stackName: existingConfig.decryptedConfig.stackName ?? DEFAULT_STACK_NAME,
+        awsRegion: existingConfig.decryptedConfig.awsRegion ?? DEFAULT_AWS_REGION
       });
     } else {
       reset({
         connectionId: "",
         webhookSigningKey: "",
-        stackName: DEFAULT_STACK_NAME
+        stackName: DEFAULT_STACK_NAME,
+        awsRegion: DEFAULT_AWS_REGION
       });
     }
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const webhookSigningKey = watch("webhookSigningKey");
   const stackName = watch("stackName");
+  const awsRegion = watch("awsRegion");
 
   const cfCommand = useMemo(
     () =>
       [
         "aws cloudformation create-stack \\",
-        "  --region us-east-1 \\",
+        `  --region ${awsRegion || DEFAULT_AWS_REGION} \\`,
         `  --stack-name ${stackName || DEFAULT_STACK_NAME} \\`,
         `  --template-url ${CF_TEMPLATE_URL} \\`,
         "  --capabilities CAPABILITY_NAMED_IAM \\",
@@ -127,7 +134,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
         `    ParameterKey=WebhookUrl,ParameterValue=${webhookUrl} \\`,
         `    ParameterKey=WebhookSigningKey,ParameterValue=${webhookSigningKey}`
       ].join("\n"),
-    [stackName, webhookSigningKey, webhookUrl]
+    [awsRegion, stackName, webhookSigningKey, webhookUrl]
   );
 
   const onSubmit = async (data: FormData) => {
@@ -137,7 +144,8 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
         connectionId: data.connectionId,
         config: {
           webhookSigningKey: data.webhookSigningKey,
-          stackName: data.stackName
+          stackName: data.stackName,
+          awsRegion: data.awsRegion
         }
       });
       createNotification({
@@ -255,6 +263,19 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                             placeholder={DEFAULT_STACK_NAME}
                             isError={Boolean(error)}
                           />
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="awsRegion"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel>AWS Region</FieldLabel>
+                        <FieldContent>
+                          <Input {...field} placeholder={DEFAULT_AWS_REGION} isError={Boolean(error)} />
                           <FieldError errors={[error]} />
                         </FieldContent>
                       </Field>

@@ -68,10 +68,12 @@ export const honeyTokenConfigServiceFactory = ({
 }: THoneyTokenConfigServiceFactoryDep) => {
   const verifyStackDeployment = async ({
     connectionId: connId,
-    stackName
+    stackName,
+    awsRegion
   }: {
     connectionId: string;
     stackName: string;
+    awsRegion: string;
   }): Promise<{ deployed: boolean; status: string | null }> => {
     try {
       const appConnection = await appConnectionDAL.findById(connId);
@@ -83,7 +85,7 @@ export const honeyTokenConfigServiceFactory = ({
       const awsConfig = decryptedConnection as unknown as TAwsConnectionConfig;
       const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
 
-      const cfn = new CloudFormationClient({ credentials: awsCredentials, region: "us-east-1" });
+      const cfn = new CloudFormationClient({ credentials: awsCredentials, region: awsRegion });
       const res = await cfn.send(new DescribeStacksCommand({ StackName: stackName }));
 
       const stack = res.Stacks?.[0];
@@ -111,8 +113,8 @@ export const honeyTokenConfigServiceFactory = ({
       }
 
       logger.warn(
-        { err, connectionId: connId, stackName },
-        `Failed to verify CloudFormation stack [stackName=${stackName}]`
+        { err, connectionId: connId, stackName, awsRegion },
+        `Failed to verify CloudFormation stack [stackName=${stackName}] [awsRegion=${awsRegion}]`
       );
       return { deployed: false, status: null };
     }
@@ -127,7 +129,7 @@ export const honeyTokenConfigServiceFactory = ({
     orgPermission: OrgServiceActor;
     type: HoneyTokenType;
     connectionId: string;
-    config: { webhookSigningKey: string; stackName?: string };
+    config: { webhookSigningKey: string; stackName?: string; awsRegion?: string };
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -211,7 +213,8 @@ export const honeyTokenConfigServiceFactory = ({
 
     const stackDeployment = await verifyStackDeployment({
       connectionId: config.connectionId,
-      stackName: storedConfig.stackName
+      stackName: storedConfig.stackName,
+      awsRegion: storedConfig.awsRegion
     });
 
     return {
@@ -247,7 +250,11 @@ export const honeyTokenConfigServiceFactory = ({
         connectionId: null,
         createdAt: null,
         updatedAt: null,
-        decryptedConfig: { webhookSigningKey: generatedKey, stackName: "infisical-honey-tokens" }
+        decryptedConfig: {
+          webhookSigningKey: generatedKey,
+          stackName: "infisical-honey-tokens",
+          awsRegion: "us-east-1"
+        }
       };
     }
 
@@ -256,7 +263,7 @@ export const honeyTokenConfigServiceFactory = ({
       orgId: orgPermission.orgId
     });
 
-    let decryptedConfig: { webhookSigningKey: string; stackName: string } | null = null;
+    let decryptedConfig: { webhookSigningKey: string; stackName: string; awsRegion: string } | null = null;
     if (config.encryptedConfig) {
       const decrypted = decryptor({
         cipherTextBlob: config.encryptedConfig
