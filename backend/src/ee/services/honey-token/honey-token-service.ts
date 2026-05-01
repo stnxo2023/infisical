@@ -806,8 +806,8 @@ export const honeyTokenServiceFactory = ({
     }
 
     const rawEvents = Array.isArray(payload) ? (payload as unknown[]) : [payload];
-    /* eslint-disable no-await-in-loop, no-continue */
-    for (const rawEvent of rawEvents) {
+    /* eslint-disable no-continue */
+    for await (const rawEvent of rawEvents) {
       const wrapped = rawEvent as { event?: unknown };
       const parsed = AwsHoneyTokenEventMetadataSchema.safeParse(wrapped.event ?? rawEvent);
       if (!parsed.success) {
@@ -834,7 +834,7 @@ export const honeyTokenServiceFactory = ({
         void sendTriggerNotification({ orgId, honeyToken, eventMetadata: parsed.data });
       }
     }
-    /* eslint-enable no-await-in-loop, no-continue */
+    /* eslint-enable no-continue */
 
     return { acknowledged: true };
   };
