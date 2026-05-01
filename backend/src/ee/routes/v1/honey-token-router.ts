@@ -8,6 +8,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { AwsHoneyTokenCredentialsSchema } from "@app/ee/services/honey-token/honey-token-aws-types";
 
 const SanitizedHoneyTokenConfigSchema = HoneyTokenConfigsSchema.pick({
   id: true,
@@ -63,6 +64,13 @@ const HoneyTokenResetResponseSchema = HoneyTokensSchema.pick({
 }).extend({
   lastResetAt: z.date().nullable()
 });
+
+const HoneyTokenCredentialsResponseSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal(HoneyTokenType.AWS),
+    credentials: AwsHoneyTokenCredentialsSchema
+  })
+]);
 
 export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -277,9 +285,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       response: {
-        200: z.object({
-          credentials: z.record(z.string(), z.string())
-        })
+        200: HoneyTokenCredentialsResponseSchema
       }
     },
     handler: async (req) => {
@@ -290,7 +296,10 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
         },
         req.permission
       );
-      return { credentials };
+      return {
+        type: HoneyTokenType.AWS,
+        credentials
+      };
     }
   });
 

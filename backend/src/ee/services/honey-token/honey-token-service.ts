@@ -41,6 +41,10 @@ import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
 import { AwsHoneyTokenConfigSchema } from "./honey-token-types";
+import {
+  parseAwsHoneyTokenDecryptedCredentials,
+  TAwsHoneyTokenCredentials
+} from "./honey-token-aws-types";
 
 const HONEY_TOKEN_IAM_USER_PREFIX = "inf_ht_";
 const CF_COMPLETE_STATUSES = new Set(["CREATE_COMPLETE", "UPDATE_COMPLETE", "IMPORT_COMPLETE"]);
@@ -792,7 +796,7 @@ export const honeyTokenServiceFactory = ({
   const getCredentials = async (
     { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
     actor: OrgServiceActor
-  ) => {
+  ): Promise<{ credentials: TAwsHoneyTokenCredentials }> => {
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -815,18 +819,16 @@ export const honeyTokenServiceFactory = ({
       orgId: actor.orgId
     });
 
-    const decryptedCredentials = JSON.parse(
-      decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
-    ) as Record<string, string>;
+    const decryptedCredentials = parseAwsHoneyTokenDecryptedCredentials(
+      JSON.parse(decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()) as unknown
+    );
 
-    const mapping = honeyToken.secretsMapping as Record<string, string>;
-
-    const credentials: Record<string, string> = {};
-    for (const [credentialKey, secretName] of Object.entries(mapping)) {
-      credentials[secretName] = decryptedCredentials[credentialKey] ?? "";
-    }
-
-    return { credentials };
+    return {
+      credentials: {
+        accessKeyId: decryptedCredentials.accessKeyId,
+        secretAccessKey: decryptedCredentials.secretAccessKey
+      }
+    };
   };
 
   const getHoneyTokenById = async (
