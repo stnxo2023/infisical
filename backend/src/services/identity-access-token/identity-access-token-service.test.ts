@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { IdentityAuthMethod, TableName } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto";
 import { IPType, TIp } from "@app/lib/ip";
 
@@ -454,7 +454,9 @@ describe("identityAccessTokenServiceFactory", () => {
       rootOrgId: "org-id",
       parentOrgId: "org-id"
     });
-    expect(identityAccessTokenDAL.findOne).toHaveBeenCalledWith({ id: "legacy-token-id" });
+    expect(identityAccessTokenDAL.findOne).toHaveBeenCalledWith({
+      [`${TableName.IdentityAccessToken}.id`]: "legacy-token-id"
+    });
     expect(orgDAL.findEffectiveOrgMembership).toHaveBeenCalledWith({
       actorType: "identity",
       actorId: "identity-id",

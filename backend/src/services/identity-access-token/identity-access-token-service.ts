@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { IdentityAuthMethod, OrgMembershipStatus, TIdentityAccessTokens } from "@app/db/schemas";
+import { IdentityAuthMethod, OrgMembershipStatus, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
@@ -208,7 +208,11 @@ export const identityAccessTokenServiceFactory = ({
   // the lazy-insert model and always have a row; revoked or missing rows mean
   // the token can't be safely upgraded. Auth uses a subset of these fields.
   const loadLegacyTokenSource = async (decoded: TMinimalRenewClaims): Promise<TRenewSource> => {
-    const row = await identityAccessTokenDAL.findOne({ id: decoded.identityAccessTokenId });
+    // Qualify the column — the DAL joins with Identity which also has an `id`,
+    // so an unprefixed filter is ambiguous and the DB rejects the query.
+    const row = await identityAccessTokenDAL.findOne({
+      [`${TableName.IdentityAccessToken}.id` as "id"]: decoded.identityAccessTokenId
+    });
     if (!row || row.isAccessTokenRevoked) {
       throw new UnauthorizedError({ message: "Cannot renew revoked or unknown access token" });
     }
