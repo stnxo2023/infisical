@@ -20,7 +20,6 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
@@ -36,7 +35,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -114,15 +113,11 @@ export const identityOidcAuthServiceFactory = ({
 
       const requestAgent = caCert ? new https.Agent({ ca: caCert, rejectUnauthorized: true }) : undefined;
 
-      await blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl);
-
       let discoveryDoc: { jwks_uri: string };
       try {
-        const response = await request.get<{ jwks_uri: string }>(
+        const response = await safeRequest.get<{ jwks_uri: string }>(
           `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
-          {
-            httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
-          }
+          caCert && identityOidcAuth.oidcDiscoveryUrl.includes("https") ? { ca: caCert } : {}
         );
         discoveryDoc = response.data;
       } catch (error) {

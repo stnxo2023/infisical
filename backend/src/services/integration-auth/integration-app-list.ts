@@ -7,6 +7,7 @@ import { TIntegrationAuths } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { NotFoundError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
 
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import { Integrations, IntegrationUrls } from "./integration-list";
@@ -641,7 +642,7 @@ const getAppsGitlab = async ({
         per_page: String(perPage)
       });
 
-      const { data } = await request.get<{ name: string; id: string }[]>(
+      const { data } = await safeRequest.get<{ name: string; id: string }[]>(
         `${gitLabApiUrl}/v4/groups/${teamId}/projects`,
         {
           params,
@@ -669,7 +670,7 @@ const getAppsGitlab = async ({
     // case: fetch projects for individual in GitLab
 
     const { id } = (
-      await request.get<{ id: string }>(`${gitLabApiUrl}/v4/user`, {
+      await safeRequest.get<{ id: string }>(`${gitLabApiUrl}/v4/user`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Accept-Encoding": "application/json"
@@ -683,13 +684,16 @@ const getAppsGitlab = async ({
         per_page: String(perPage)
       });
 
-      const { data } = await request.get<{ name: string; id: string }[]>(`${gitLabApiUrl}/v4/users/${id}/projects`, {
-        params,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json"
+      const { data } = await safeRequest.get<{ name: string; id: string }[]>(
+        `${gitLabApiUrl}/v4/users/${id}/projects`,
+        {
+          params,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
         }
-      });
+      );
 
       data.forEach((a) => {
         apps.push({
@@ -714,7 +718,7 @@ const getAppsGitlab = async ({
  */
 const getAppsTeamCity = async ({ accessToken, url }: { url: string; accessToken: string }) => {
   const res = (
-    await request.get<{ project: { name: string; id: string }[] }>(`${url}/app/rest/projects`, {
+    await safeRequest.get<{ project: { name: string; id: string }[] }>(`${url}/app/rest/projects`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"

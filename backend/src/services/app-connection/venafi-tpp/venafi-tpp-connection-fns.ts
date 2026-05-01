@@ -9,7 +9,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
+import { safeRequest } from "@app/lib/validator/validate-url";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { VenafiTppConnectionMethod } from "./venafi-tpp-connection-enums";
@@ -51,10 +51,10 @@ export const requestWithVenafiTppGateway = async <T>(
   const { gatewayId } = appConnection;
 
   const url = new URL(requestConfig.url as string);
-  await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));
 
+  // Non-gateway path: use safeRequest to validate and pin the connection.
   if (!gatewayId) {
-    return request.request(requestConfig);
+    return safeRequest.request<T>({ ...requestConfig, url: requestConfig.url as string });
   }
 
   const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });

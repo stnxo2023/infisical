@@ -12,7 +12,7 @@ import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@ap
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 
 import { AppConnection } from "../app-connection-enums";
@@ -80,7 +80,7 @@ export const requestWithGitHubGateway = async <T>(
 
   // If gateway isn't set up, don't proxy request
   if (!gatewayId) {
-    return httpRequest.request(requestConfig);
+    return safeRequest.request<T>({ ...requestConfig, url: requestConfig.url as string });
   }
 
   const url = new URL(requestConfig.url as string);

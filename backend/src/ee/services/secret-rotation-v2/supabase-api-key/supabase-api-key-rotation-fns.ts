@@ -7,8 +7,8 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
 import {
   getSupabaseAuthHeaders,
   getSupabaseInstanceUrl
@@ -56,7 +56,7 @@ export const supabaseApiKeyRotationFactory: TRotationFactory<
     const headers = getSupabaseAuthHeaders(connectionConfig);
 
     try {
-      const { data } = await request.post<TSupabaseApiKeyCreateResponse>(
+      const { data } = await safeRequest.post<TSupabaseApiKeyCreateResponse>(
         `${baseUrl}/v1/projects/${encodeURIComponent(projectRef)}/api-keys`,
         {
           type: keyType === SupabaseApiKeyType.Publishable ? "publishable" : "secret",
@@ -92,7 +92,7 @@ export const supabaseApiKeyRotationFactory: TRotationFactory<
     const headers = getSupabaseAuthHeaders(connectionConfig);
 
     try {
-      await request.delete(
+      await safeRequest.delete(
         `${baseUrl}/v1/projects/${encodeURIComponent(projectRef)}/api-keys/${encodeURIComponent(keyId)}`,
         {
           headers,

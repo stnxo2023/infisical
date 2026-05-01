@@ -177,28 +177,78 @@ type TLookupAllCallback = (err: NodeJS.ErrnoException | null, addresses: LookupA
 const makePinnedLookup = (entries: LookupAddress[]): LookupFunction =>
   ((_hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
     // Node may invoke `lookup(hostname, callback)` (2-arg) or `lookup(hostname, options, callback)` (3-arg).
-    const first: LookupAddress = entries[0];
     if (typeof optionsOrCb === "function") {
+      const first: LookupAddress = entries[0];
       (optionsOrCb as TLookupOneCallback)(null, first.address, first.family);
       return;
     }
-    const opts = (optionsOrCb ?? {}) as { all?: boolean };
+    const opts = (optionsOrCb ?? {}) as { all?: boolean; family?: number };
+
+    const filtered = opts.family ? entries.filter((e) => e.family === opts.family) : entries;
+    const usable = filtered.length > 0 ? filtered : entries;
     if (opts.all) {
-      (maybeCb as TLookupAllCallback)(null, entries);
+      (maybeCb as TLookupAllCallback)(null, usable);
     } else {
+      const first: LookupAddress = usable[0];
       (maybeCb as TLookupOneCallback)(null, first.address, first.family);
     }
   }) as LookupFunction;
 
+type TBuildAgentOptions = {
+  addressFamily?: 4 | 6;
+  /**
+   * Custom CA for verifying the server certificate. Forwarded to https.Agent.
+   * Only applied to HTTPS requests.
+   */
+  ca?: string | string[];
+  /**
+   * Whether to reject self-signed/invalid TLS certs. Forwarded to https.Agent.
+   * Use with care — typically only set for legacy/internal services that ship
+   * with their own CA (e.g. NetScaler, Venafi TPP).
+   */
+  rejectUnauthorized?: boolean;
+  /**
+   * TLS Server Name Indication (SNI). Forwarded to https.Agent so cert
+   * verification uses the original hostname even when we connect by IP.
+   * Required for hosts that present certs valid only for a specific name
+   * (e.g. Kubernetes API servers).
+   */
+  servername?: string;
+};
+
+const hasAgentCustomization = (opts: TBuildAgentOptions): boolean =>
+  Boolean(opts.addressFamily) ||
+  opts.rejectUnauthorized !== undefined ||
+  opts.ca !== undefined ||
+  opts.servername !== undefined;
+
 const buildPinnedAgent = (
   validated: TValidatedHost | undefined,
-  protocol: string
+  protocol: string,
+  opts: TBuildAgentOptions = {}
 ): http.Agent | https.Agent | undefined => {
-  if (!validated) return undefined;
-  const lookup = makePinnedLookup(validated.entries);
-  return protocol === "https:"
-    ? new https.Agent({ lookup, keepAlive: false })
-    : new http.Agent({ lookup, keepAlive: false });
+  // If we don't have a pinned IP set AND there's no other agent customization,
+  // fall through to Axios's default agent. This is the dev-mode/private-ip path.
+  if (!validated && !hasAgentCustomization(opts)) return undefined;
+
+  const isHttps = protocol === "https:";
+  const lookup = validated ? makePinnedLookup(validated.entries) : undefined;
+  const baseOpts: http.AgentOptions = {
+    keepAlive: false,
+    family: opts.addressFamily,
+    lookup
+  };
+
+  if (isHttps) {
+    const httpsOpts: https.AgentOptions = {
+      ...baseOpts,
+      ...(opts.ca !== undefined && { ca: opts.ca }),
+      ...(opts.rejectUnauthorized !== undefined && { rejectUnauthorized: opts.rejectUnauthorized }),
+      ...(opts.servername !== undefined && { servername: opts.servername })
+    };
+    return new https.Agent(httpsOpts);
+  }
+  return new http.Agent(baseOpts);
 };
 
 /**
@@ -229,24 +279,81 @@ export const validateSsrfUrl = async (
   return validated;
 };
 
+type TSafeRequestExtras = {
+  allowPrivateIps?: boolean;
+  /**
+   * Force IPv4 or IPv6 for the connection. The pinned lookup will filter the
+   * validated IP set to this family. Mostly used for Azure App Configuration
+   * where the docker setup's IPv6 path is unreliable.
+   */
+  addressFamily?: 4 | 6;
+  /**
+   * Custom CA for verifying the server certificate. Forwarded to the
+   * per-request https.Agent so it composes with the pinned lookup.
+   * Only applied to HTTPS URLs.
+   */
+  ca?: string | string[];
+  /**
+   * Whether to reject self-signed / invalid TLS certs. Forwarded to the
+   * per-request https.Agent. Use with care.
+   */
+  rejectUnauthorized?: boolean;
+  /**
+   * TLS SNI servername forwarded to the per-request https.Agent. Required
+   * for endpoints that present certs valid only for a specific hostname
+   * (e.g. Kubernetes API servers). Defaults to the URL hostname if unset.
+   */
+  servername?: string;
+};
+
 type TSafeRequestConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent" | "maxRedirects" | "url" | "method">;
 
+type TSafeRequestFullConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent" | "maxRedirects"> & {
+  url: string;
+} & TSafeRequestExtras;
+
+const resolveBaseUrl = (url: string, baseURL?: string): string => {
+  if (!baseURL) return url;
+  try {
+    return new URL(url).toString();
+  } catch {
+    return new URL(url, baseURL).toString();
+  }
+};
+
 const dispatch = async <T>(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   url: string,
   data: unknown,
-  options: TSafeRequestConfig & Pick<SsrfSafeRequestOptions, "allowPrivateIps"> = {}
+  options: TSafeRequestConfig & TSafeRequestExtras = {}
 ) => {
-  const { allowPrivateIps, ...axiosOpts } = options;
-  const validated = await validateSsrfUrl(url, { allowPrivateIps });
-  const { protocol } = new URL(url);
-  const agent = buildPinnedAgent(validated, protocol);
+  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, ...axiosOpts } = options;
+  const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
+  const validated = await validateSsrfUrl(effectiveUrl, { allowPrivateIps });
+  const { protocol } = new URL(effectiveUrl);
+  const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
 
   return request.request<T>({
     ...axiosOpts,
     method,
     url,
     data,
+    maxRedirects: 0,
+    httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
+    httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
+  });
+};
+
+const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
+  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, url, ...axiosOpts } = config;
+  const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
+  const validated = await validateSsrfUrl(effectiveUrl, { allowPrivateIps });
+  const { protocol } = new URL(effectiveUrl);
+  const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
+
+  return request.request<T>({
+    ...axiosOpts,
+    url,
     maxRedirects: 0,
     httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
     httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
@@ -334,12 +441,24 @@ export const ssrfSafePost = async <T>(
  * which collapses the two DNS resolutions into one, eliminating the rebinding
  * window.
  */
+// Defaults `T` to `any` to match Axios's `request.get`/`request.post` defaults,
+// keeping `safeRequest` a true drop-in replacement.
 export const safeRequest = {
-  get: <T>(url: string, options?: TSafeRequestConfig & Pick<SsrfSafeRequestOptions, "allowPrivateIps">) =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get: <T = any>(url: string, options?: TSafeRequestConfig & TSafeRequestExtras) =>
     dispatch<T>("GET", url, undefined, options),
-  post: <T>(
-    url: string,
-    data: unknown,
-    options?: TSafeRequestConfig & Pick<SsrfSafeRequestOptions, "allowPrivateIps">
-  ) => dispatch<T>("POST", url, data, options)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  post: <T = any>(url: string, data: unknown, options?: TSafeRequestConfig & TSafeRequestExtras) =>
+    dispatch<T>("POST", url, data, options),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  put: <T = any>(url: string, data: unknown, options?: TSafeRequestConfig & TSafeRequestExtras) =>
+    dispatch<T>("PUT", url, data, options),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  patch: <T = any>(url: string, data: unknown, options?: TSafeRequestConfig & TSafeRequestExtras) =>
+    dispatch<T>("PATCH", url, data, options),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete: <T = any>(url: string, options?: TSafeRequestConfig & TSafeRequestExtras) =>
+    dispatch<T>("DELETE", url, undefined, options),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  request: <T = any>(config: TSafeRequestFullConfig) => dispatchFull<T>(config)
 };
