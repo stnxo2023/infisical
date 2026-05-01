@@ -209,10 +209,8 @@ export const identityV2ServiceFactory = ({
       throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
     }
 
-    // Set the identity-wide revocation epoch in Redis before removing the
-    // row so that any JWT issued for this identity (with iat < now) is
-    // immediately rejected on the auth path. The revoke also async-mirrors
-    // a sentinel row to PG for the boot-time hydrator.
+    // Set the identity-wide PG revocation epoch before removing the row so
+    // any JWT issued for this identity (with iat < now) is rejected.
     await identityAccessTokenService.revokeAllTokensForIdentity(dto.selector.identityId);
 
     const deletedIdentity = await identityDAL.deleteById(dto.selector.identityId);

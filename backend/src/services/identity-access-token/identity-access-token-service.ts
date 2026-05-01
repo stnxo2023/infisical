@@ -235,7 +235,12 @@ export const identityAccessTokenServiceFactory = ({
       if (remainingFromState === null) {
         // Counter was lost (Redis flush). Re-seed from the JWT's numUsesLimit claim
         // and allow this request; subsequent requests decrement the live counter.
-        await setUsesRemaining(token.identityId, token.jti, token.numUsesLimit - 1, appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE);
+        await setUsesRemaining(
+          token.identityId,
+          token.jti,
+          token.numUsesLimit - 1,
+          appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
+        );
       } else {
         const remaining = await keyStore.incrementBy(
           KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, token.jti),

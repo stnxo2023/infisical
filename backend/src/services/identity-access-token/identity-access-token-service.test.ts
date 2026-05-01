@@ -4,7 +4,8 @@ import { IdentityAuthMethod } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto";
 import { IPType, TIp } from "@app/lib/ip";
 
-import { signIdentityAccessToken } from "./identity-access-token-fns";
+import { AuthTokenType } from "../auth/auth-type";
+import { signIdentityAccessToken, verifyAccessTokenJwt } from "./identity-access-token-fns";
 import { identityAccessTokenServiceFactory } from "./identity-access-token-service";
 import { TIdentityAccessTokenJwtPayload } from "./identity-access-token-types";
 
@@ -29,11 +30,13 @@ vi.mock("@app/lib/logger", () => ({
 const createService = ({
   trustedIps = [],
   membership = { isActive: true },
-  activeRevocations = []
+  activeRevocations = [],
+  tokenRow = null
 }: {
   trustedIps?: TIp[] | null;
   membership?: { isActive: boolean } | null;
   activeRevocations?: Array<{ id: string; identityId: string; revokedAt?: Date | null; createdAt: Date }>;
+  tokenRow?: Record<string, unknown> | null;
 } = {}) => {
   const keyStore = {
     getItem: vi.fn().mockResolvedValue(null),
@@ -53,7 +56,7 @@ const createService = ({
   };
 
   const service = identityAccessTokenServiceFactory({
-    identityAccessTokenDAL: { findOne: vi.fn() } as never,
+    identityAccessTokenDAL: { findOne: vi.fn().mockResolvedValue(tokenRow) } as never,
     identityAccessTokenRevocationDAL: identityAccessTokenRevocationDAL as never,
     identityDAL: identityDAL as never,
     orgDAL: orgDAL as never,
@@ -78,12 +81,47 @@ const createTokenClaims = (
   ipRestrictionEnabled: false,
   clientSecretId: "",
   identityAccessTokenId: "token-id",
-  authTokenType: "identity-access-token",
+  authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
   accessTokenTTL: 0,
   accessTokenMaxTTL: 0,
   accessTokenPeriod: 0,
   creationEpoch: NOW_SECONDS,
   identityAuth: {},
+  ...overrides
+});
+
+const signLegacyAccessToken = (overrides: Partial<TIdentityAccessTokenJwtPayload> = {}) =>
+  crypto.jwt().sign(
+    {
+      identityId: "identity-id",
+      identityName: "identity-name",
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      identityAccessTokenId: "legacy-token-id",
+      authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+      identityAuth: {},
+      ...overrides
+    },
+    AUTH_SECRET,
+    {
+      jwtid: "legacy-token-id",
+      expiresIn: MAX_AGE
+    }
+  );
+
+const createLegacyTokenRow = (overrides: Record<string, unknown> = {}) => ({
+  id: "legacy-token-id",
+  identityId: "identity-id",
+  authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+  accessTokenTTL: 3600,
+  accessTokenMaxTTL: 7200,
+  accessTokenPeriod: 0,
+  isAccessTokenRevoked: false,
+  createdAt: new Date(NOW_SECONDS * 1000),
+  identityOrgId: "org-id",
+  identityName: "identity-name",
   ...overrides
 });
 
@@ -215,6 +253,33 @@ describe("identityAccessTokenServiceFactory", () => {
     expect(keyStore.incrementBy).toHaveBeenCalledWith("identity-token-uses-remaining:identity-id:token-id", -1);
   });
 
+  test("reseeds a lost Redis usage counter from JWT claims", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue(null);
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
+    ).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      "identity-token-uses-remaining:identity-id:token-id",
+      MAX_AGE,
+      2
+    );
+    expect(keyStore.incrementBy).not.toHaveBeenCalled();
+  });
+
+  test("does not require Redis counters for unlimited-use tokens", async () => {
+    const { service, keyStore } = createService();
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalled();
+    expect(keyStore.incrementBy).not.toHaveBeenCalled();
+  });
+
   test("rejects exhausted Redis usage counters", async () => {
     const { service, keyStore } = createService();
     keyStore.getItem.mockResolvedValue("0");
@@ -248,6 +313,176 @@ describe("identityAccessTokenServiceFactory", () => {
     });
 
     await expect(service.renewAccessToken({ accessToken })).rejects.toThrow("token has been revoked");
+  });
+
+  test("renews active new-format tokens and the renewed JWT authenticates", async () => {
+    const { accessToken } = signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: 0,
+      ipRestrictionEnabled: false,
+      ttlSeconds: 3600,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {}
+    });
+    const { service } = createService();
+
+    const renewed = await service.renewAccessToken({ accessToken });
+    const renewedClaims = verifyAccessTokenJwt(renewed.accessToken);
+
+    expect(renewed.expiresIn).toBe(3600);
+    expect(renewedClaims).toMatchObject({
+      jti: "token-id",
+      identityId: "identity-id",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      creationEpoch: NOW_SECONDS
+    });
+    await expect(service.fnValidateIdentityAccessTokenFast(renewedClaims, "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+  });
+
+  test("rejects renewal when identity-wide PG revocation is after token iat", async () => {
+    const { accessToken } = signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: 0,
+      ipRestrictionEnabled: false,
+      ttlSeconds: 3600,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {}
+    });
+    const { service } = createService({
+      activeRevocations: [
+        {
+          id: "identity-id",
+          identityId: "identity-id",
+          revokedAt: new Date((NOW_SECONDS + 10) * 1000),
+          createdAt: new Date((NOW_SECONDS + 10) * 1000)
+        }
+      ]
+    });
+
+    await expect(service.renewAccessToken({ accessToken })).rejects.toThrow("identity tokens have been revoked");
+  });
+
+  test("rejects renewal when Redis usage counter is exhausted", async () => {
+    const { accessToken } = signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: 2,
+      ipRestrictionEnabled: false,
+      ttlSeconds: 3600,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {}
+    });
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue("0");
+
+    await expect(service.renewAccessToken({ accessToken })).rejects.toThrow("Cannot renew exhausted access token");
+  });
+
+  test("authenticates legacy tokens with fast-path claims", async () => {
+    const { service } = createService();
+    const legacyToken = signLegacyAccessToken();
+    const legacyClaims = verifyAccessTokenJwt(legacyToken);
+
+    await expect(service.fnValidateIdentityAccessTokenFast(legacyClaims, "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id",
+      orgId: "org-id"
+    });
+  });
+
+  test("renews legacy tokens from their PG row into new-format tokens", async () => {
+    const { service } = createService({ tokenRow: createLegacyTokenRow() });
+    const legacyToken = signLegacyAccessToken();
+
+    const renewed = await service.renewAccessToken({ accessToken: legacyToken });
+    const renewedClaims = verifyAccessTokenJwt(renewed.accessToken);
+
+    expect(renewed.expiresIn).toBe(3600);
+    expect(renewedClaims).toMatchObject({
+      jti: "legacy-token-id",
+      identityId: "identity-id",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS
+    });
+  });
+
+  test("rejects legacy renewal when the PG row is missing", async () => {
+    const { service } = createService({ tokenRow: null });
+    const legacyToken = signLegacyAccessToken();
+
+    await expect(service.renewAccessToken({ accessToken: legacyToken })).rejects.toThrow(
+      "Cannot renew revoked or unknown access token"
+    );
+  });
+
+  test("rejects legacy renewal when the PG row is revoked", async () => {
+    const { service } = createService({
+      tokenRow: createLegacyTokenRow({ isAccessTokenRevoked: true })
+    });
+    const legacyToken = signLegacyAccessToken();
+
+    await expect(service.renewAccessToken({ accessToken: legacyToken })).rejects.toThrow(
+      "Cannot renew revoked or unknown access token"
+    );
+  });
+
+  test("rejects legacy renewal when the row maxTTL budget is exhausted", async () => {
+    const { service } = createService({
+      tokenRow: createLegacyTokenRow({
+        accessTokenTTL: 3600,
+        accessTokenMaxTTL: 3600,
+        createdAt: new Date((NOW_SECONDS - 3600) * 1000)
+      })
+    });
+    const legacyToken = signLegacyAccessToken();
+
+    await expect(service.renewAccessToken({ accessToken: legacyToken })).rejects.toThrow("has reached its max TTL");
+  });
+
+  test("rejects legacy JWTs without exp after MAX_MACHINE_IDENTITY_TOKEN_AGE", async () => {
+    const { service } = createService();
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(
+        createTokenClaims({ exp: undefined, iat: NOW_SECONDS - MAX_AGE - 1 }),
+        "10.0.0.1"
+      )
+    ).rejects.toThrow("exceeded max age");
   });
 
   test("checks current trusted IPs even when the token was issued without IP restrictions", async () => {

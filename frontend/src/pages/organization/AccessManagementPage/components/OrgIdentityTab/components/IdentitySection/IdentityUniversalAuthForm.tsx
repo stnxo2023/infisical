@@ -108,10 +108,7 @@ export const IdentityUniversalAuthForm = ({
     enabled: isUpdate
   });
 
-  const resolver = useMemo(
-    () => zodResolver(buildSchema(maxAccessTokenTTL)),
-    [maxAccessTokenTTL]
-  );
+  const resolver = useMemo(() => zodResolver(buildSchema(maxAccessTokenTTL)), [maxAccessTokenTTL]);
 
   const {
     control,

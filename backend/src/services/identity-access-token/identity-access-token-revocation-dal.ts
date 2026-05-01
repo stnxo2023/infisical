@@ -41,13 +41,15 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
     identityId: string;
   }): Promise<TRevocationRow[]> => {
     try {
-      return (await db
-        .replicaNode()(TableName.IdentityAccessTokenRevocation)
-        .select("id", "identityId", "revokedAt", "createdAt")
-        .where("expiresAt", ">", db.fn.now())
-        .where("identityId", identityId)
-        // Revoke-all uses identityId as id
-        .whereIn("id", [tokenId, identityId])) as TRevocationRow[];
+      return (
+        (await db
+          .replicaNode()(TableName.IdentityAccessTokenRevocation)
+          .select("id", "identityId", "revokedAt", "createdAt")
+          .where("expiresAt", ">", db.fn.now())
+          .where("identityId", identityId)
+          // Revoke-all uses identityId as id
+          .whereIn("id", [tokenId, identityId])) as TRevocationRow[]
+      );
     } catch (error) {
       throw new DatabaseError({ error, name: "IdentityAccessTokenRevocationFindActiveForToken" });
     }
