@@ -1,0 +1,66 @@
+version: v0.159.19
+releasedAt: 2026-04-22T03:30:00+05:30
+sourceTag: v0.159.19
+previousTag: v0.159.18
+impactLevel: medium
+summary: Run database migrations. PAM Active Directory data moves to domains,
+  and the public upgrade-path endpoint is removed.
+requiresDbMigration: true
+breakingChanges:
+  - title: Upgrade-path API removed
+    description: The backend upgrade-path service and route were removed. Any
+      automation or UI that calls the built-in upgrade-path endpoint will stop
+      working after upgrade.
+    action: Remove dependencies on the in-app upgrade-path endpoint before
+      upgrading, or replace them with your own external process.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#6085"
+        url: https://github.com/Infisical/infisical/pull/6085
+      - type: file
+        ref: backend/src/server/routes/v1/upgrade-path-router.ts
+        path: backend/src/server/routes/v1/upgrade-path-router.ts
+      - type: file
+        ref: backend/upgrade-path.yaml
+        path: backend/upgrade-path.yaml
+dbSchemaChanges:
+  - title: PAM domains migration
+    description: Adds pam_domains and new domain reference columns, then migrates
+      existing Active Directory PAM resources into domains. It also removes
+      adServerResourceId and enforces pam_accounts to reference either a
+      resource or a domain.
+    action: Back up the database and run migrations during maintenance. Validate PAM
+      Active Directory domains, accounts, and related resources after upgrade.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260408062748_pam-domains.ts
+        path: backend/src/db/migrations/20260408062748_pam-domains.ts
+      - type: pr
+        ref: "#5982"
+        url: https://github.com/Infisical/infisical/pull/5982
+  - title: Certificates metadata column
+    description: Adds a nullable externalMetadata JSONB column to certificates. This
+      requires the normal database migration step but should not need manual
+      data changes.
+    action: Run database migrations before starting updated application nodes.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260416231234_add-external-metadata-to-certificates.ts
+        path: backend/src/db/migrations/20260416231234_add-external-metadata-to-certificates.ts
+      - type: pr
+        ref: "#6069"
+        url: https://github.com/Infisical/infisical/pull/6069
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-01T18:24:20.216Z
+  sourceRange:
+    from: v0.159.18
+    to: v0.159.19

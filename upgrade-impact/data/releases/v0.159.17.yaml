@@ -1,0 +1,52 @@
+version: v0.159.17
+releasedAt: 2026-04-18T12:45:00+02:00
+sourceTag: v0.159.17
+previousTag: v0.159.16
+impactLevel: medium
+summary: Run the new database migration before serving traffic. It creates a new
+  external migration config table and copies existing Vault migration settings
+  into it.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: External migration table added
+    description: A new external_migration_configs table is created with provider,
+      encryptedConfig, orgId, and optional connectionId. Existing Vault
+      migration configs are copied into the new table during migration.
+    action: Apply database migrations during upgrade. Verify the app can access
+      KMS/HSM-backed encryption settings while migrations run.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260330172252_rename-vault-to-external-migration-config.ts
+        path: backend/src/db/migrations/20260330172252_rename-vault-to-external-migration-config.ts
+      - type: file
+        ref: backend/src/db/schemas/external-migration-configs.ts
+        path: backend/src/db/schemas/external-migration-configs.ts
+      - type: file
+        ref: backend/src/db/schemas/models.ts
+        path: backend/src/db/schemas/models.ts
+        description: Adds ExternalMigrationConfig table name
+configChanges: []
+deploymentNotes:
+  - title: Migration needs encryption services
+    description: The migration initializes logger, HSM, super-admin, KMS root
+      config, and encryption services before copying existing Vault migration
+      rows into encryptedConfig.
+    action: Run migrations in an environment with the same KMS/HSM and super-admin
+      configuration as the application.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260330172252_rename-vault-to-external-migration-config.ts
+        path: backend/src/db/migrations/20260330172252_rename-vault-to-external-migration-config.ts
+        description: Builds HSM and KMS services in migration
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-01T18:25:02.583Z
+  sourceRange:
+    from: v0.159.16
+    to: v0.159.17

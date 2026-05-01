@@ -1,0 +1,57 @@
+version: v0.159.25
+releasedAt: 2026-04-30T19:46:57-03:00
+sourceTag: v0.159.25
+previousTag: v0.159.24
+impactLevel: medium
+summary: Run database migrations. Kubernetes Auth adds TLS verification state,
+  and PKI internal CAs add CRL distribution point URLs.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Kubernetes Auth TLS column
+    description: Adds verifyTlsCertificate to identity Kubernetes auth records.
+      Existing records with a stored CA certificate are backfilled to true;
+      others default to false.
+    action: Run database migrations before starting upgraded services. Review
+      Kubernetes Auth identities if you rely on custom CA or skipped TLS
+      verification.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260430141040_add-verify-tls-certificate-to-identity-kubernetes-auth.ts
+        path: backend/src/db/migrations/20260430141040_add-verify-tls-certificate-to-identity-kubernetes-auth.ts
+      - type: file
+        ref: backend/src/db/schemas/identity-kubernetes-auths.ts
+        path: backend/src/db/schemas/identity-kubernetes-auths.ts
+      - type: file
+        ref: docs/documentation/platform/identities/kubernetes-auth.mdx
+        path: docs/documentation/platform/identities/kubernetes-auth.mdx
+        description: Docs describe auto-enable with CA cert
+  - title: Internal CA CRL URLs
+    description: Adds crlDistributionPointUrls to internal certificate authorities.
+      This supports custom CRL distribution points for private CAs.
+    action: Run database migrations. If you manage PKI automation or direct database
+      integrations, account for the new nullable text array column.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260428000635_add-internal-ca-distribution-point-urls.ts
+        path: backend/src/db/migrations/20260428000635_add-internal-ca-distribution-point-urls.ts
+      - type: file
+        ref: backend/src/db/schemas/internal-certificate-authorities.ts
+        path: backend/src/db/schemas/internal-certificate-authorities.ts
+      - type: file
+        ref: docs/documentation/platform/pki/ca/private-ca.mdx
+        path: docs/documentation/platform/pki/ca/private-ca.mdx
+        description: Private CA docs changed
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-01T18:21:48.171Z
+  sourceRange:
+    from: v0.159.24
+    to: v0.159.25

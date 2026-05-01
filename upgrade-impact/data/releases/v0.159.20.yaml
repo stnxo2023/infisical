@@ -1,0 +1,61 @@
+version: v0.159.20
+releasedAt: 2026-04-24T12:14:15+05:30
+sourceTag: v0.159.20
+previousTag: v0.159.19
+impactLevel: medium
+summary: Run database migrations. If you use a reverse proxy, set
+  TRUSTED_PROXY_CIDRS to trusted proxy ranges before or during upgrade.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Two columns added
+    description: Database migrations add a nullable reason column to pam_sessions
+      and a nullable encryptedPrivateKey column to certificate_requests.
+    action: Run the application migrations before serving traffic. Verify your
+      database user can alter existing tables.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260417245211_pam-session-reason.ts
+        path: backend/src/db/migrations/20260417245211_pam-session-reason.ts
+      - type: file
+        ref: backend/src/db/migrations/20260421135044_add-digicert-external-ca-columns.ts
+        path: backend/src/db/migrations/20260421135044_add-digicert-external-ca-columns.ts
+configChanges:
+  - title: Set trusted proxy CIDRs
+    description: A new TRUSTED_PROXY_CIDRS setting controls which proxy source
+      ranges can supply forwarded client IP headers. Leaving it unset keeps
+      prior behavior and trusts all forwarded headers.
+    action: If Infisical sits behind Nginx, ALB, Cloudflare, or another proxy, set
+      TRUSTED_PROXY_CIDRS to those proxy CIDRs.
+    confidence: high
+    evidence:
+      - type: file
+        ref: docs/self-hosting/configuration/envars.mdx
+        path: docs/self-hosting/configuration/envars.mdx
+        description: Documents TRUSTED_PROXY_CIDRS behavior
+deploymentNotes:
+  - title: Update bundled Nginx header
+    description: Bundled Nginx configs now send X-Real-IP instead of the misspelled
+      X-Real-RIP header.
+    action: If you copied the provided Nginx config into your own manifests or
+      images, update the header name there too.
+    confidence: high
+    evidence:
+      - type: file
+        ref: nginx/default.conf
+        path: nginx/default.conf
+        description: Uses X-Real-IP in current config
+      - type: file
+        ref: nginx/default.dev.conf
+        path: nginx/default.dev.conf
+        description: Uses X-Real-IP in dev config
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-01T18:23:47.649Z
+  sourceRange:
+    from: v0.159.19
+    to: v0.159.20

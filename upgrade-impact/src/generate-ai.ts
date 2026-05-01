@@ -335,7 +335,7 @@ export const generateWithOpenAiAgentic = async (bundle: ReleaseEvidenceBundle): 
     name: "list_changed_files",
     description: "List changed files in this release, optionally filtered by category.",
     parameters: z.object({
-      category: z.enum(FILE_CATEGORIES).optional()
+      category: z.enum(FILE_CATEGORIES).nullable()
     }),
     async execute({ category }) {
       const limitError = recordToolCall();
@@ -361,9 +361,9 @@ export const generateWithOpenAiAgentic = async (bundle: ReleaseEvidenceBundle): 
       "Return a capped git diff for a changed file in this release. Use this before making claims about file-level behavior.",
     parameters: z.object({
       file: z.string(),
-      contextLines: z.number().min(0).max(120).optional()
+      contextLines: z.number().min(0).max(120).nullable()
     }),
-    async execute({ file, contextLines = 40 }) {
+    async execute({ file, contextLines }) {
       const limitError = recordToolCall();
       if (limitError) {
         return limitError;
@@ -373,7 +373,13 @@ export const generateWithOpenAiAgentic = async (bundle: ReleaseEvidenceBundle): 
         return { error: `File is not in changed file set: ${file}` };
       }
 
-      const diff = runGit(["diff", `--unified=${contextLines}`, `${bundle.previousTag}..${bundle.tag}`, "--", file]);
+      const diff = runGit([
+        "diff",
+        `--unified=${contextLines ?? 40}`,
+        `${bundle.previousTag}..${bundle.tag}`,
+        "--",
+        file
+      ]);
       const truncated = truncateText(diff, agenticLimits.maxDiffCharsPerFile);
 
       return recordToolResult({

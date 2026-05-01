@@ -1,0 +1,42 @@
+version: v0.159.24
+releasedAt: 2026-04-29T16:46:24-03:00
+sourceTag: v0.159.24
+previousTag: v0.159.23
+impactLevel: medium
+summary: Identity auth now enforces TLS certificate verification for OIDC, JWT,
+  and Kubernetes auth providers. Fix invalid or incomplete provider TLS settings
+  before upgrading.
+requiresDbMigration: false
+breakingChanges:
+  - title: Identity auth enforces TLS verification
+    description: OIDC, JWT, and Kubernetes identity auth providers now require valid
+      TLS verification. Providers using self-signed, mismatched, or incomplete
+      certificates may fail authentication after upgrade.
+    action: Test each identity auth provider in staging. Install a trusted CA chain
+      or correct the certificate hostname before upgrading.
+    confidence: medium
+    evidence:
+      - type: release
+        ref: v0.159.24
+        url: https://github.com/Infisical/infisical/releases/tag/v0.159.24
+      - type: file
+        ref: backend/src/services/identity-jwt-auth/identity-jwt-auth-service.ts
+        path: backend/src/services/identity-jwt-auth/identity-jwt-auth-service.ts
+      - type: file
+        ref: backend/src/services/identity-kubernetes-auth/identity-kubernetes-auth-service.ts
+        path: backend/src/services/identity-kubernetes-auth/identity-kubernetes-auth-service.ts
+      - type: file
+        ref: backend/src/services/identity-oidc-auth/identity-oidc-auth-service.ts
+        path: backend/src/services/identity-oidc-auth/identity-oidc-auth-service.ts
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-01T18:22:04.070Z
+  sourceRange:
+    from: v0.159.23
+    to: v0.159.24
