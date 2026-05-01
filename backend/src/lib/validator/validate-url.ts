@@ -174,8 +174,17 @@ type SsrfSafeRequestOptions = {
 type TLookupOneCallback = (err: NodeJS.ErrnoException | null, address: string, family: number) => void;
 type TLookupAllCallback = (err: NodeJS.ErrnoException | null, addresses: LookupAddress[]) => void;
 
+const notFoundError = (hostname: string): NodeJS.ErrnoException => {
+  const err = new Error(`getaddrinfo ENOTFOUND ${hostname}`) as NodeJS.ErrnoException & { hostname?: string };
+  err.code = "ENOTFOUND";
+  err.errno = -3008;
+  err.syscall = "getaddrinfo";
+  err.hostname = hostname;
+  return err;
+};
+
 const makePinnedLookup = (entries: LookupAddress[]): LookupFunction =>
-  ((_hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
+  ((hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
     // Node may invoke `lookup(hostname, callback)` (2-arg) or `lookup(hostname, options, callback)` (3-arg).
     if (typeof optionsOrCb === "function") {
       const first: LookupAddress = entries[0];
@@ -184,12 +193,30 @@ const makePinnedLookup = (entries: LookupAddress[]): LookupFunction =>
     }
     const opts = (optionsOrCb ?? {}) as { all?: boolean; family?: number };
 
-    const filtered = opts.family ? entries.filter((e) => e.family === opts.family) : entries;
-    const usable = filtered.length > 0 ? filtered : entries;
+    // If the caller asked for a specific address family but none of the
+    // pre-validated entries match, fail with ENOTFOUND rather than silently
+    // returning a different family. Honoring the contract is important for
+    // integrations (e.g. Azure App Configuration) whose TLS / connectivity
+    // path is broken on the unwanted family.
+    if (opts.family) {
+      const filtered = entries.filter((e) => e.family === opts.family);
+      if (filtered.length === 0) {
+        (maybeCb as TLookupOneCallback | TLookupAllCallback)(notFoundError(hostname), null as never, 0 as never);
+        return;
+      }
+      if (opts.all) {
+        (maybeCb as TLookupAllCallback)(null, filtered);
+      } else {
+        const first: LookupAddress = filtered[0];
+        (maybeCb as TLookupOneCallback)(null, first.address, first.family);
+      }
+      return;
+    }
+
     if (opts.all) {
-      (maybeCb as TLookupAllCallback)(null, usable);
+      (maybeCb as TLookupAllCallback)(null, entries);
     } else {
-      const first: LookupAddress = usable[0];
+      const first: LookupAddress = entries[0];
       (maybeCb as TLookupOneCallback)(null, first.address, first.family);
     }
   }) as LookupFunction;
@@ -214,13 +241,28 @@ type TBuildAgentOptions = {
    * (e.g. Kubernetes API servers).
    */
   servername?: string;
+  /**
+   * Keep sockets alive between requests. Default `false` — short-lived,
+   * single-request agents are the safer default. Set `true` only for
+   * protocols that require socket reuse across a multi-step exchange
+   * (e.g. NTLM authentication via axios-ntlm).
+   */
+  keepAlive?: boolean;
+  /**
+   * Override TLS hostname verification. Use to skip the default identity
+   * check on legacy enterprise CAs whose certificates are issued for IP
+   * addresses or non-DNS subjects (e.g. AD CS web enrollment).
+   */
+  checkServerIdentity?: https.AgentOptions["checkServerIdentity"];
 };
 
 const hasAgentCustomization = (opts: TBuildAgentOptions): boolean =>
   Boolean(opts.addressFamily) ||
   opts.rejectUnauthorized !== undefined ||
   opts.ca !== undefined ||
-  opts.servername !== undefined;
+  opts.servername !== undefined ||
+  opts.keepAlive !== undefined ||
+  opts.checkServerIdentity !== undefined;
 
 const buildPinnedAgent = (
   validated: TValidatedHost | undefined,
@@ -234,7 +276,7 @@ const buildPinnedAgent = (
   const isHttps = protocol === "https:";
   const lookup = validated ? makePinnedLookup(validated.entries) : undefined;
   const baseOpts: http.AgentOptions = {
-    keepAlive: false,
+    keepAlive: opts.keepAlive ?? false,
     family: opts.addressFamily,
     lookup
   };
@@ -244,7 +286,8 @@ const buildPinnedAgent = (
       ...baseOpts,
       ...(opts.ca !== undefined && { ca: opts.ca }),
       ...(opts.rejectUnauthorized !== undefined && { rejectUnauthorized: opts.rejectUnauthorized }),
-      ...(opts.servername !== undefined && { servername: opts.servername })
+      ...(opts.servername !== undefined && { servername: opts.servername }),
+      ...(opts.checkServerIdentity !== undefined && { checkServerIdentity: opts.checkServerIdentity })
     };
     return new https.Agent(httpsOpts);
   }
@@ -277,6 +320,48 @@ export const validateSsrfUrl = async (
   await verifyHostInputValidity({ host: parsedUrl.hostname, isGateway: false, isDynamicSecret: false });
 
   return validated;
+};
+
+type TBuildSsrfSafeAgentOptions = {
+  allowPrivateIps?: boolean;
+  addressFamily?: 4 | 6;
+  ca?: string | string[];
+  rejectUnauthorized?: boolean;
+  servername?: string;
+  keepAlive?: boolean;
+  checkServerIdentity?: https.AgentOptions["checkServerIdentity"];
+};
+
+/**
+ * Builds an SSRF-safe `http.Agent` / `https.Agent` for a given URL. The
+ * returned agent:
+ *  - Pins DNS to the IPs validated at this call (defeats DNS rebinding).
+ *  - Forwards `ca` / `rejectUnauthorized` / `servername` for TLS verification.
+ *
+ * Use this when you need to hand a pinned agent off to a third-party HTTP
+ * client (e.g. `jwks-rsa`'s `requestAgent`, `acme-client`, etc.) that doesn't
+ * route through Axios — `safeRequest` handles the Axios case directly.
+ *
+ * Returns `undefined` when there is nothing to customize (dev mode + no TLS
+ * options + private IP allowed) so the caller can fall through to the default
+ * agent.
+ */
+export const buildSsrfSafeAgent = async (
+  url: string,
+  options: TBuildSsrfSafeAgentOptions = {}
+): Promise<http.Agent | https.Agent | undefined> => {
+  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, keepAlive, checkServerIdentity } =
+    options;
+  const validated = await validateSsrfUrl(url, { allowPrivateIps });
+  const { protocol } = new URL(url);
+  return buildPinnedAgent(validated, protocol, {
+    addressFamily,
+    ca,
+    rejectUnauthorized,
+    servername,
+    keepAlive,
+    checkServerIdentity
+  });
 };
 
 type TSafeRequestExtras = {
@@ -312,13 +397,23 @@ type TSafeRequestFullConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent
   url: string;
 } & TSafeRequestExtras;
 
+/**
+ * Combines a request URL with an Axios `baseURL` exactly the way Axios does.
+ * Axios's `combineURLs` is a simple `${baseURL}/${url}` join with slash
+ * de-duplication and is path-preserving — `new URL("/v1/foo", baseURL)` would
+ * instead REPLACE the base path. Matching Axios's semantics keeps the URL we
+ * SSRF-validate byte-for-byte equal to the URL Axios actually requests.
+ */
+const combineURLs = (baseURL: string, relativeURL: string): string => {
+  if (!relativeURL) return baseURL.replace(/\/+$/, "");
+  return `${baseURL.replace(/\/+$/, "")}/${relativeURL.replace(/^\/+/, "")}`;
+};
+
+const isAbsoluteURL = (url: string): boolean => /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url);
+
 const resolveBaseUrl = (url: string, baseURL?: string): string => {
-  if (!baseURL) return url;
-  try {
-    return new URL(url).toString();
-  } catch {
-    return new URL(url, baseURL).toString();
-  }
+  if (!baseURL || isAbsoluteURL(url)) return url;
+  return combineURLs(baseURL, url);
 };
 
 const dispatch = async <T>(

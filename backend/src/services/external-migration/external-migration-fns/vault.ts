@@ -9,7 +9,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 
 import { InfisicalImportData, KvVersion, VaultMappingType } from "../external-migration-types";
 
@@ -309,8 +309,9 @@ const vaultFactory = (
         getData
       );
     } else {
-      await blockLocalAndPrivateIpAddresses(baseUrl);
-      data = await getData(baseUrl);
+      const pinnedAgent = await buildSsrfSafeAgent(baseUrl, { rejectUnauthorized: true });
+      const isHttps = new URL(baseUrl).protocol === "https:";
+      data = await getData(baseUrl, undefined, isHttps ? (pinnedAgent as https.Agent | undefined) : undefined);
     }
 
     return data;

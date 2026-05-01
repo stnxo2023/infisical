@@ -548,7 +548,7 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
 const getAppsDatabricks = async ({ url, accessToken }: { url?: string | null; accessToken: string }) => {
   const databricksApiUrl = `${url}/api`;
 
-  const res = await request.get<{ scopes: { name: string; backend_type: string }[] }>(
+  const res = await safeRequest.get<{ scopes: { name: string; backend_type: string }[] }>(
     `${databricksApiUrl}/2.0/secrets/scopes/list`,
     {
       headers: {
@@ -848,7 +848,7 @@ const getAppsBitbucket = async ({ accessToken, workspaceSlug }: { accessToken: s
   let repositoriesUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}`;
 
   while (hasNextPage) {
-    const { data }: { data: RepositoriesResponse } = await request.get(repositoriesUrl, {
+    const { data }: { data: RepositoriesResponse } = await safeRequest.get(repositoriesUrl, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
@@ -929,7 +929,7 @@ const getAppsCodefresh = async ({ accessToken }: { accessToken: string }) => {
  */
 const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?: string | null }) => {
   const apiUrl = url ? `${url}/api` : IntegrationUrls.WINDMILL_API_URL;
-  const { data } = await request.get<{ id: string; name: string }[]>(`${apiUrl}/workspaces/list`, {
+  const { data } = await safeRequest.get<{ id: string; name: string }[]>(`${apiUrl}/workspaces/list`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Accept-Encoding": "application/json"
@@ -942,7 +942,7 @@ const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?
       const userPath = "u/user/variable";
       const folderPath = "f/folder/variable";
 
-      const { data: writeUser } = await request.post<object>(
+      const { data: writeUser } = await safeRequest.post<object>(
         `${apiUrl}/w/${app.id}/variables/create`,
         {
           path: userPath,
@@ -958,7 +958,7 @@ const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?
         }
       );
 
-      const { data: writeFolder } = await request.post<object>(
+      const { data: writeFolder } = await safeRequest.post<object>(
         `${apiUrl}/w/${app.id}/variables/create`,
         {
           path: folderPath,
@@ -976,14 +976,14 @@ const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?
 
       // is write access is allowed then delete the created secrets from workspace
       if (writeUser && writeFolder) {
-        await request.delete(`${apiUrl}/w/${app.id}/variables/delete/${userPath}`, {
+        await safeRequest.delete(`${apiUrl}/w/${app.id}/variables/delete/${userPath}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Accept-Encoding": "application/json"
           }
         });
 
-        await request.delete(`${apiUrl}/w/${app.id}/variables/delete/${folderPath}`, {
+        await safeRequest.delete(`${apiUrl}/w/${app.id}/variables/delete/${folderPath}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Accept-Encoding": "application/json"

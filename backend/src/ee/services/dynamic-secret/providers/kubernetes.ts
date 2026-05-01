@@ -61,9 +61,14 @@ export const KubernetesProvider = ({
    *   validates the user-supplied URL and pins the connection to the
    *   validated IP set to defeat DNS rebinding TOCTOU between validation
    *   and connect. `httpsAgent` from caller is dropped because safeRequest
-   *   builds its own pinned agent; CA / rejectUnauthorized are forwarded
-   *   through safeRequest options instead.
+   *   builds its own pinned agent; CA / rejectUnauthorized / servername
+   *   are forwarded through safeRequest options instead.
    *
+   * Direct mode sets `allowPrivateIps: true` on purpose: in-cluster
+   * Kubernetes API servers commonly resolve to RFC1918 / link-local IPs,
+   * and the trust boundary is the configured cluster token plus TLS
+   * verification (CA + `sslRejectUnauthorized`), not the IP class. This
+   * matches the identity-auth Kubernetes flow.
    */
   const k8sHttpClient = (providerInputs: z.infer<typeof DynamicSecretKubernetesSchema>, isGatewayProxied: boolean) => {
     type K8sRequestConfig = AxiosRequestConfig & { httpsAgent?: https.Agent };
@@ -83,6 +88,7 @@ export const KubernetesProvider = ({
       delete (rest as { httpsAgent?: https.Agent }).httpsAgent;
       return {
         ...rest,
+        allowPrivateIps: true,
         // Only forward TLS overrides on direct API auth; Gateway auth method
         // does not need a custom CA because traffic flows through the proxy.
         ...(providerInputs.authMethod === KubernetesAuthMethod.Api && providerInputs.sslEnabled && providerInputs.ca

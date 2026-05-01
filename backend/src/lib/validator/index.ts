@@ -12,6 +12,7 @@ export {
 } from "./validate-smb";
 export {
   blockLocalAndPrivateIpAddresses,
+  buildSsrfSafeAgent,
   safeRequest,
   ssrfSafeGet,
   ssrfSafePost,

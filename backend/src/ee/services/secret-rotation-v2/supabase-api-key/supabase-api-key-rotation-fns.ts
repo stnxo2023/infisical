@@ -52,7 +52,7 @@ export const supabaseApiKeyRotationFactory: TRotationFactory<
   };
 
   const $createApiKey = async () => {
-    const baseUrl = await getSupabaseInstanceUrl(connectionConfig);
+    const baseUrl = getSupabaseInstanceUrl(connectionConfig);
     const headers = getSupabaseAuthHeaders(connectionConfig);
 
     try {
@@ -88,7 +88,7 @@ export const supabaseApiKeyRotationFactory: TRotationFactory<
   };
 
   const $deleteApiKey = async (keyId: string) => {
-    const baseUrl = await getSupabaseInstanceUrl(connectionConfig);
+    const baseUrl = getSupabaseInstanceUrl(connectionConfig);
     const headers = getSupabaseAuthHeaders(connectionConfig);
 
     try {

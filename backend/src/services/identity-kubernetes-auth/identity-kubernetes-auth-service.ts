@@ -346,7 +346,6 @@ export const identityKubernetesAuthServiceFactory = ({
 
         const baseUrl = port ? `${host}:${port}` : host;
 
-        const isGatewayProxied = port !== undefined;
         const res = await safeRequest
           .post<TCreateTokenReviewResponse>(
             `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
@@ -367,7 +366,7 @@ export const identityKubernetesAuthServiceFactory = ({
               },
               signal: AbortSignal.timeout(10000),
               timeout: 10000,
-              allowPrivateIps: isGatewayProxied,
+              allowPrivateIps: true,
               ca: caCert || undefined,
               rejectUnauthorized: $resolveEffectiveVerifyTlsCertificate(
                 caCert,
