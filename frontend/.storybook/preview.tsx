@@ -2,6 +2,8 @@ import type { Preview } from "@storybook/react-vite";
 
 import { DocumentDecorator, RouterDecorator } from "./decorators";
 
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
 import "../src/index.css";
 
 const preview: Preview = {
