@@ -106,9 +106,9 @@ import { pamDomainDALFactory } from "@app/ee/services/pam-domain/pam-domain-dal"
 import { pamDomainServiceFactory } from "@app/ee/services/pam-domain/pam-domain-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
+import { pamInsightsServiceFactory } from "@app/ee/services/pam-insights/pam-insights-service";
 import { pamProjectRecordingConfigDALFactory } from "@app/ee/services/pam-project-recording-config/pam-project-recording-config-dal";
 import { pamProjectRecordingConfigServiceFactory } from "@app/ee/services/pam-project-recording-config/pam-project-recording-config-service";
-import { pamInsightsServiceFactory } from "@app/ee/services/pam-insights/pam-insights-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { pamResourceFavoriteDALFactory } from "@app/ee/services/pam-resource/pam-resource-favorite-dal";
 import { pamResourceRotationRulesDALFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-dal";

@@ -41,8 +41,8 @@ import {
   registerPamDomainRouter
 } from "./pam-domain-routers";
 import { registerPamFolderRouter } from "./pam-folder-router";
-import { registerPamRecordingConfigRouter } from "./pam-recording-config-router";
 import { registerPamInsightsRouter } from "./pam-insights-router";
+import { registerPamRecordingConfigRouter } from "./pam-recording-config-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRotationRulesRouter } from "./pam-resource-routers/pam-resource-rotation-rules-router";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
