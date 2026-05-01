@@ -1,12 +1,11 @@
 import { Knex } from "knex";
 
 import { IdentityAuthMethod, OrgMembershipStatus, TIdentityAccessTokens } from "@app/db/schemas";
-import { IdentityTokenStateFields, KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
-import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -19,13 +18,11 @@ import {
   computeIssuedTtl,
   hasFullRenewClaims,
   hasNonWildcardTrustedIps,
-  parseRevokedAfter,
   parseUsesRemaining,
   resolveTtlInputs,
   signIdentityAccessToken,
   verifyAccessTokenJwt
 } from "./identity-access-token-fns";
-import { TIdentityAccessTokenQueueServiceFactory } from "./identity-access-token-queue";
 import { TIdentityAccessTokenRevocationDALFactory } from "./identity-access-token-revocation-dal";
 import {
   TAWSAuthDetails,
@@ -71,11 +68,7 @@ type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenRevocationDAL: TIdentityAccessTokenRevocationDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "getTrustedIpsByAuthMethod" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
-  keyStore: Pick<
-    TKeyStoreFactory,
-    "hashGetMulti" | "hashIncrementBy" | "hashSetWithExpiry" | "setItemWithExpiry" | "setItemWithExpiryNX"
-  >;
-  identityAccessTokenQueue: TIdentityAccessTokenQueueServiceFactory;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "incrementBy" | "setItemWithExpiry">;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
@@ -85,9 +78,46 @@ export const identityAccessTokenServiceFactory = ({
   identityAccessTokenRevocationDAL,
   identityDAL,
   orgDAL,
-  keyStore,
-  identityAccessTokenQueue
+  keyStore
 }: TIdentityAccessTokenServiceFactoryDep) => {
+  const setUsesRemaining = async (identityId: string, tokenId: string, usesRemaining: number, ttlSeconds: number) => {
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.IdentityTokenUsesRemaining(identityId, tokenId),
+      ttlSeconds,
+      usesRemaining
+    );
+  };
+
+  const assertTokenIsNotRevoked = async ({
+    tokenId,
+    identityId,
+    issuedAtMs,
+    messagePrefix = "Failed to authorize"
+  }: {
+    tokenId: string;
+    identityId: string;
+    issuedAtMs: number;
+    messagePrefix?: "Failed to authorize" | "Cannot renew";
+  }) => {
+    const activeRevocations = await identityAccessTokenRevocationDAL.findActiveRevocationsForToken({
+      tokenId,
+      identityId
+    });
+
+    for (const revocation of activeRevocations) {
+      if (revocation.id === tokenId) {
+        throw new UnauthorizedError({ message: `${messagePrefix}: token has been revoked` });
+      }
+
+      if (revocation.id === identityId) {
+        const revokedAtMs = (revocation.revokedAt ?? revocation.createdAt).getTime();
+        if (issuedAtMs < revokedAtMs) {
+          throw new UnauthorizedError({ message: `${messagePrefix}: identity tokens have been revoked` });
+        }
+      }
+    }
+  };
+
   // Token Auth materializes a PG row at issuance (admin-managed UI list);
   // every other method lazily inserts a row only on revoke.
   const issueIdentityAccessToken = async (
@@ -163,9 +193,10 @@ export const identityAccessTokenServiceFactory = ({
     });
 
     if (numUsesLimit > 0) {
-      await keyStore.hashSetWithExpiry(
-        KeyStorePrefixes.IdentityTokenState(input.identityId),
-        { [IdentityTokenStateFields.UsesRemaining(identityAccessToken.id)]: numUsesLimit },
+      await setUsesRemaining(
+        input.identityId,
+        identityAccessToken.id,
+        numUsesLimit,
         appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
       );
     }
@@ -185,38 +216,29 @@ export const identityAccessTokenServiceFactory = ({
       throw new UnauthorizedError({ message: "Identity access token exceeded max age, please re-authenticate" });
     }
 
-    const stateKey = KeyStorePrefixes.IdentityTokenState(token.identityId);
-
-    const [revokedAfter, usesRemainingRaw] = await keyStore.hashGetMulti(stateKey, [
-      IdentityTokenStateFields.RevokedAfter,
-      IdentityTokenStateFields.UsesRemaining(token.jti)
+    const [, usesRemainingRaw] = await Promise.all([
+      assertTokenIsNotRevoked({
+        tokenId: token.jti,
+        identityId: token.identityId,
+        issuedAtMs
+      }),
+      keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, token.jti))
     ]);
 
-    const revokedAfterMs = parseRevokedAfter(revokedAfter);
-    if (revokedAfterMs !== null && issuedAtMs < revokedAfterMs) {
-      throw new UnauthorizedError({ message: "Failed to authorize: identity tokens have been revoked" });
-    }
-
-    // The counter doubles as the per-token revoke marker. null means
-    // unlimited and not revoked; <= 0 means revoked or exhausted.
+    // null means unlimited or the Redis counter was lost; <= 0 means exhausted.
     const remainingFromState = parseUsesRemaining(usesRemainingRaw);
     if (remainingFromState !== null && remainingFromState <= 0) {
-      throw new UnauthorizedError({ message: "Failed to authorize: token revoked or usage limit reached" });
+      throw new UnauthorizedError({ message: "Failed to authorize: token usage limit reached" });
     }
 
     if (token.numUsesLimit && token.numUsesLimit > 0) {
       if (remainingFromState === null) {
         // Counter was lost (Redis flush). Re-seed from the JWT's numUsesLimit claim
         // and allow this request; subsequent requests decrement the live counter.
-        await keyStore.hashSetWithExpiry(
-          stateKey,
-          { [IdentityTokenStateFields.UsesRemaining(token.jti)]: token.numUsesLimit - 1 },
-          appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
-        );
+        await setUsesRemaining(token.identityId, token.jti, token.numUsesLimit - 1, appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE);
       } else {
-        const remaining = await keyStore.hashIncrementBy(
-          stateKey,
-          IdentityTokenStateFields.UsesRemaining(token.jti),
+        const remaining = await keyStore.incrementBy(
+          KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, token.jti),
           -1
         );
         if (remaining < 0) {
@@ -318,22 +340,21 @@ export const identityAccessTokenServiceFactory = ({
         }
       : await loadLegacyRenewSource(decodedToken);
 
-    const stateKey = KeyStorePrefixes.IdentityTokenState(decodedToken.identityId);
     const { jti } = decodedToken;
 
-    const [existingUsesRemainingRaw, revokedAfterRaw] = await keyStore.hashGetMulti(stateKey, [
-      IdentityTokenStateFields.UsesRemaining(jti),
-      IdentityTokenStateFields.RevokedAfter
+    const [, existingUsesRemainingRaw] = await Promise.all([
+      assertTokenIsNotRevoked({
+        tokenId: jti,
+        identityId: decodedToken.identityId,
+        issuedAtMs: decodedToken.iat * 1000,
+        messagePrefix: "Cannot renew"
+      }),
+      keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(decodedToken.identityId, jti))
     ]);
 
     const existingRemaining = parseUsesRemaining(existingUsesRemainingRaw);
     if (existingRemaining !== null && existingRemaining <= 0) {
-      throw new UnauthorizedError({ message: "Cannot renew revoked or exhausted access token" });
-    }
-
-    const renewRevokedAfterMs = parseRevokedAfter(revokedAfterRaw);
-    if (renewRevokedAfterMs !== null && decodedToken.iat * 1000 < renewRevokedAfterMs) {
-      throw new UnauthorizedError({ message: "Cannot renew: identity tokens have been revoked" });
+      throw new UnauthorizedError({ message: "Cannot renew exhausted access token" });
     }
 
     const { requestedTTL, requestedMaxTTL } = resolveTtlInputs(
@@ -374,15 +395,11 @@ export const identityAccessTokenServiceFactory = ({
       creationEpoch: source.creationEpoch
     });
 
-    // Renewed JWT keeps the same `jti`, so any existing revocation marker
-    // already applies. Reseed the counter to the current remaining budget.
+    // Renewed JWT keeps the same `jti`; PG revocation already applies. Reseed
+    // the Redis counter to the current remaining budget.
     if (numUsesLimit > 0) {
       const remainingUses = existingRemaining === null ? numUsesLimit : Math.max(0, existingRemaining);
-      await keyStore.hashSetWithExpiry(
-        stateKey,
-        { [IdentityTokenStateFields.UsesRemaining(jti)]: remainingUses },
-        appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
-      );
+      await setUsesRemaining(decodedToken.identityId, jti, remainingUses, appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE);
     }
 
     return {
@@ -397,20 +414,12 @@ export const identityAccessTokenServiceFactory = ({
 
     const decodedToken = assertRevocableClaims(verifyAccessTokenJwt(accessToken));
     const { jti, identityId } = decodedToken;
+    const expiresAt = new Date((decodedToken.exp ?? decodedToken.iat + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE) * 1000);
 
-    await keyStore.hashSetWithExpiry(
-      KeyStorePrefixes.IdentityTokenState(identityId),
-      { [IdentityTokenStateFields.UsesRemaining(jti)]: 0 },
-      appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
-    );
-
-    void identityAccessTokenQueue.queuePgMirror({
-      kind: "revoke-token",
-      tokenId: decodedToken.identityAccessTokenId,
+    await identityAccessTokenRevocationDAL.insertRevocation({
+      id: jti,
       identityId,
-      expiresAt: new Date(
-        (decodedToken.exp ?? decodedToken.iat + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE) * 1000
-      ).toISOString()
+      expiresAt
     });
 
     return { revokedToken: { id: decodedToken.identityAccessTokenId, identityId, isAccessTokenRevoked: true } };
@@ -429,14 +438,6 @@ export const identityAccessTokenServiceFactory = ({
     identityId: string;
     expiresAt: Date;
   }) => {
-    const appCfg = getConfig();
-
-    await keyStore.hashSetWithExpiry(
-      KeyStorePrefixes.IdentityTokenState(identityId),
-      { [IdentityTokenStateFields.UsesRemaining(tokenId)]: 0 },
-      appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
-    );
-
     if (expiresAt.getTime() <= Date.now()) {
       return;
     }
@@ -453,93 +454,12 @@ export const identityAccessTokenServiceFactory = ({
     const appCfg = getConfig();
     const revokedAt = new Date();
 
-    await keyStore.hashSetWithExpiry(
-      KeyStorePrefixes.IdentityTokenState(identityId),
-      { [IdentityTokenStateFields.RevokedAfter]: revokedAt.toISOString() },
-      appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
-    );
-
-    void identityAccessTokenQueue.queuePgMirror({
-      kind: "revoke-all-for-identity",
+    await identityAccessTokenRevocationDAL.insertRevocation({
+      id: identityId,
       identityId,
-      revokedAt: revokedAt.toISOString()
+      revokedAt,
+      expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
     });
-  };
-
-  const HYDRATION_LEASE_SECONDS = 600;
-  const HYDRATION_MARKER_SECONDS = 2_592_000;
-
-  const hydrateRedisFromPg = async () => {
-    const acquired = await keyStore.setItemWithExpiryNX(
-      KeyStorePrefixes.IdentityTokenHydrate,
-      HYDRATION_LEASE_SECONDS,
-      "in-progress"
-    );
-    if (acquired === null) {
-      logger.info("identityAccessToken.hydrateRedisFromPg: skipped (another pod or already hydrated)");
-      return;
-    }
-
-    const appCfg = getConfig();
-    const BATCH_SIZE = 5_000;
-
-    logger.info("identityAccessToken.hydrateRedisFromPg: starting Redis hydration from Postgres");
-
-    let afterId: string | undefined;
-    let totalTokens = 0;
-    let totalIdentities = 0;
-    try {
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        // Cursor pagination on id avoids MVCC drift across batches. The
-        // expiresAt > NOW() filter inside the DAL drives partition pruning.
-        // eslint-disable-next-line no-await-in-loop
-        const rows = await identityAccessTokenRevocationDAL.findActive({ limit: BATCH_SIZE, afterId });
-
-        if (rows.length === 0) {
-          break;
-        }
-
-        const fieldsByIdentity = new Map<string, Record<string, string | number>>();
-        for (const row of rows) {
-          const bucket = fieldsByIdentity.get(row.identityId) ?? {};
-          if (row.id === row.identityId) {
-            bucket[IdentityTokenStateFields.RevokedAfter] = (row.revokedAt ?? row.createdAt).toISOString();
-            totalIdentities += 1;
-          } else {
-            bucket[IdentityTokenStateFields.UsesRemaining(row.id)] = 0;
-            totalTokens += 1;
-          }
-          fieldsByIdentity.set(row.identityId, bucket);
-        }
-
-        // eslint-disable-next-line no-await-in-loop
-        await Promise.allSettled(
-          Array.from(fieldsByIdentity.entries()).map(async ([identityId, fields]) =>
-            keyStore.hashSetWithExpiry(
-              KeyStorePrefixes.IdentityTokenState(identityId),
-              fields,
-              appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
-            )
-          )
-        );
-
-        if (rows.length < BATCH_SIZE) {
-          break;
-        }
-        afterId = rows[rows.length - 1].id;
-      }
-    } catch (err) {
-      logger.error(err, "identityAccessToken.hydrateRedisFromPg: failed during hydration");
-      return;
-    }
-
-    // Promote the lease to a long-lived marker. Failure here is non-fatal: the
-    // lease will expire and the next pod retries idempotently.
-    await keyStore.setItemWithExpiry(KeyStorePrefixes.IdentityTokenHydrate, HYDRATION_MARKER_SECONDS, "complete");
-    logger.info(
-      `identityAccessToken.hydrateRedisFromPg: completed [tokenRevocations=${totalTokens}] [identityRevocations=${totalIdentities}]`
-    );
   };
 
   return {
@@ -548,7 +468,6 @@ export const identityAccessTokenServiceFactory = ({
     revokeAccessToken,
     revokeAllTokensForIdentity,
     markPerTokenRevocation,
-    fnValidateIdentityAccessTokenFast,
-    hydrateRedisFromPg
+    fnValidateIdentityAccessTokenFast
   };
 };

@@ -306,7 +306,6 @@ import { identityMetadataDALFactory } from "@app/services/identity/identity-meta
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
 import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
-import { identityAccessTokenQueueServiceFactory } from "@app/services/identity-access-token/identity-access-token-queue";
 import { identityAccessTokenRevocationDALFactory } from "@app/services/identity-access-token/identity-access-token-revocation-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { identityAliCloudAuthDALFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-dal";
@@ -1878,18 +1877,12 @@ export const registerRoutes = async (
     membershipRoleDAL
   });
 
-  const identityAccessTokenQueue = identityAccessTokenQueueServiceFactory({
-    queueService,
-    identityAccessTokenRevocationDAL
-  });
-
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
     identityAccessTokenRevocationDAL,
     identityDAL,
     orgDAL,
-    keyStore,
-    identityAccessTokenQueue
+    keyStore
   });
 
   const identityV2Service = identityV2ServiceFactory({
@@ -3463,11 +3456,6 @@ export const registerRoutes = async (
   if (getConfig().isBddNockApiEnabled) {
     await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
   }
-
-  // Fire-and-forget: replay revoked-token markers from Postgres into Redis so
-  // the auth hot path is authoritative after a Redis flush. Errors are logged
-  // inside hydrateRedisFromPg; this must not block server startup.
-  void identityAccessTokenService.hydrateRedisFromPg();
 
   server.addHook("onClose", async () => {
     cronJobs.forEach((job) => job.stop());

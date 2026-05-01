@@ -77,41 +77,6 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     hashGet: async (key, field) => {
       return hashStore[key]?.[field] ?? null;
     },
-    hashGetMulti: async (key, fields) => {
-      const bucket = hashStore[key] ?? {};
-      return fields.map((field) => bucket[field] ?? null);
-    },
-    hashIncrementBy: async (key, field, value) => {
-      if (!hashStore[key]) {
-        hashStore[key] = {};
-      }
-      const current = parseInt(hashStore[key][field] ?? "0", 10);
-      const next = (Number.isNaN(current) ? 0 : current) + value;
-      hashStore[key][field] = String(next);
-      return next;
-    },
-    hashSetWithExpiry: async (key, fields) => {
-      if (!hashStore[key]) {
-        hashStore[key] = {};
-      }
-      for (const [field, value] of Object.entries(fields)) {
-        hashStore[key][field] = String(value);
-      }
-    },
-    hashDelete: async (key, ...fields) => {
-      const bucket = hashStore[key];
-      if (!bucket) {
-        return 0;
-      }
-      let deleted = 0;
-      for (const field of fields) {
-        if (field in bucket) {
-          delete bucket[field];
-          deleted += 1;
-        }
-      }
-      return deleted;
-    },
     pgIncrementBy: async () => {
       return 1;
     },

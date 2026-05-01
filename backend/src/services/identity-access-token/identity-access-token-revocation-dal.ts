@@ -7,9 +7,8 @@ type TRevocationRow = Pick<TIdentityAccessTokenRevocations, "id" | "identityId" 
 export type TIdentityAccessTokenRevocationDALFactory = ReturnType<typeof identityAccessTokenRevocationDALFactory>;
 
 // `id` is set explicitly: JWT jti for per-token revocations, identityId for
-// revoke-all sentinels. `revokedAt` is populated only for sentinels so
-// hydration can replay the exact revocation time rather than falling back to
-// createdAt (which is BullMQ job execution time, not the revocation call).
+// revoke-all sentinels. `revokedAt` is populated only for sentinels so runtime
+// validation can compare the JWT iat against the exact revocation time.
 type TInsertRevocationInput = {
   id: string;
   identityId: string;
@@ -23,31 +22,34 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
       await db(TableName.IdentityAccessTokenRevocation)
         .insert(row)
         .onConflict(["id"])
-        .merge({ updatedAt: db.fn.now() });
+        .merge({
+          identityId: row.identityId,
+          expiresAt: row.expiresAt,
+          revokedAt: row.revokedAt ?? null,
+          updatedAt: db.fn.now()
+        });
     } catch (error) {
       throw new DatabaseError({ error, name: "IdentityAccessTokenRevocationInsert" });
     }
   };
 
-  // Cursor pagination keyed on id. The WHERE on expiresAt prunes expired rows
-  // from the scan; ORDER BY id keeps batches stable across MVCC churn between
-  // calls.
-  const findActive = async ({ limit, afterId }: { limit: number; afterId?: string }): Promise<TRevocationRow[]> => {
+  const findActiveRevocationsForToken = async ({
+    tokenId,
+    identityId
+  }: {
+    tokenId: string;
+    identityId: string;
+  }): Promise<TRevocationRow[]> => {
     try {
-      let query = db
+      return (await db
         .replicaNode()(TableName.IdentityAccessTokenRevocation)
         .select("id", "identityId", "revokedAt", "createdAt")
         .where("expiresAt", ">", db.fn.now())
-        .orderBy("id", "asc")
-        .limit(limit);
-
-      if (afterId) {
-        query = query.andWhere("id", ">", afterId);
-      }
-
-      return (await query) as TRevocationRow[];
+        .where("identityId", identityId)
+        // Revoke-all uses identityId as id
+        .whereIn("id", [tokenId, identityId])) as TRevocationRow[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "IdentityAccessTokenRevocationFindActive" });
+      throw new DatabaseError({ error, name: "IdentityAccessTokenRevocationFindActiveForToken" });
     }
   };
 
@@ -61,7 +63,7 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
 
   return {
     insertRevocation,
-    findActive,
+    findActiveRevocationsForToken,
     removeExpiredRevocations
   };
 };

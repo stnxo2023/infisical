@@ -3,10 +3,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto";
 import { IPType, TIp } from "@app/lib/ip";
-import { QueueJobs, QueueName } from "@app/queue";
 
 import { signIdentityAccessToken } from "./identity-access-token-fns";
-import { identityAccessTokenQueueServiceFactory } from "./identity-access-token-queue";
 import { identityAccessTokenServiceFactory } from "./identity-access-token-service";
 import { TIdentityAccessTokenJwtPayload } from "./identity-access-token-types";
 
@@ -30,17 +28,21 @@ vi.mock("@app/lib/logger", () => ({
 
 const createService = ({
   trustedIps = [],
-  membership = { isActive: true }
+  membership = { isActive: true },
+  activeRevocations = []
 }: {
   trustedIps?: TIp[] | null;
   membership?: { isActive: boolean } | null;
+  activeRevocations?: Array<{ id: string; identityId: string; revokedAt?: Date | null; createdAt: Date }>;
 } = {}) => {
   const keyStore = {
-    hashGetMulti: vi.fn().mockResolvedValue([null, null]),
-    hashIncrementBy: vi.fn(),
-    hashSetWithExpiry: vi.fn(),
-    setItemWithExpiry: vi.fn(),
-    setItemWithExpiryNX: vi.fn()
+    getItem: vi.fn().mockResolvedValue(null),
+    incrementBy: vi.fn(),
+    setItemWithExpiry: vi.fn()
+  };
+  const identityAccessTokenRevocationDAL = {
+    findActiveRevocationsForToken: vi.fn().mockResolvedValue(activeRevocations),
+    insertRevocation: vi.fn()
   };
   const identityDAL = {
     getTrustedIpsByAuthMethod: vi.fn().mockResolvedValue(trustedIps),
@@ -49,22 +51,16 @@ const createService = ({
   const orgDAL = {
     findEffectiveOrgMembership: vi.fn().mockResolvedValue(membership)
   };
-  const identityAccessTokenQueue = {
-    queuePgMirror: vi.fn(),
-    startPartitionMaintenanceCron: vi.fn(),
-    runPartitionMaintenance: vi.fn()
-  };
 
   const service = identityAccessTokenServiceFactory({
     identityAccessTokenDAL: { findOne: vi.fn() } as never,
-    identityAccessTokenRevocationDAL: {} as never,
+    identityAccessTokenRevocationDAL: identityAccessTokenRevocationDAL as never,
     identityDAL: identityDAL as never,
     orgDAL: orgDAL as never,
-    keyStore: keyStore as never,
-    identityAccessTokenQueue: identityAccessTokenQueue as never
+    keyStore: keyStore as never
   });
 
-  return { service, keyStore, identityDAL, orgDAL, identityAccessTokenQueue };
+  return { service, keyStore, identityDAL, orgDAL, identityAccessTokenRevocationDAL };
 };
 
 const createTokenClaims = (
@@ -118,7 +114,7 @@ describe("identityAccessTokenServiceFactory", () => {
     vi.clearAllMocks();
   });
 
-  test("queues per-token revocation with the JWT exp for zero configured TTL tokens", async () => {
+  test("writes per-token revocation to PG with the JWT exp for zero configured TTL tokens", async () => {
     const { accessToken } = signIdentityAccessToken({
       identityAccessTokenId: "token-id",
       identityId: "identity-id",
@@ -137,16 +133,121 @@ describe("identityAccessTokenServiceFactory", () => {
       creationEpoch: NOW_SECONDS,
       identityAuth: {}
     });
-    const { service, identityAccessTokenQueue } = createService();
+    const { service, identityAccessTokenRevocationDAL } = createService();
 
     await service.revokeAccessToken(accessToken);
 
-    expect(identityAccessTokenQueue.queuePgMirror).toHaveBeenCalledWith({
-      kind: "revoke-token",
-      tokenId: "token-id",
+    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith({
+      id: "token-id",
       identityId: "identity-id",
-      expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000).toISOString()
+      expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
     });
+  });
+
+  test("writes identity-wide revocation sentinel to PG", async () => {
+    const { service, identityAccessTokenRevocationDAL } = createService();
+
+    await service.revokeAllTokensForIdentity("identity-id");
+
+    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith({
+      id: "identity-id",
+      identityId: "identity-id",
+      revokedAt: new Date(NOW_SECONDS * 1000),
+      expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
+    });
+  });
+
+  test("rejects active per-token PG revocations", async () => {
+    const { service } = createService({
+      activeRevocations: [{ id: "token-id", identityId: "identity-id", createdAt: new Date(NOW_SECONDS * 1000) }]
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
+      "token has been revoked"
+    );
+  });
+
+  test("rejects active identity-wide PG revocations for tokens issued before revokedAt", async () => {
+    const { service } = createService({
+      activeRevocations: [
+        {
+          id: "identity-id",
+          identityId: "identity-id",
+          revokedAt: new Date((NOW_SECONDS + 10) * 1000),
+          createdAt: new Date((NOW_SECONDS + 10) * 1000)
+        }
+      ]
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
+      "identity tokens have been revoked"
+    );
+  });
+
+  test("allows tokens issued after an identity-wide PG revocation", async () => {
+    const { service } = createService({
+      activeRevocations: [
+        {
+          id: "identity-id",
+          identityId: "identity-id",
+          revokedAt: new Date((NOW_SECONDS - 10) * 1000),
+          createdAt: new Date((NOW_SECONDS - 10) * 1000)
+        }
+      ]
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id",
+      orgId: "org-id"
+    });
+  });
+
+  test("keeps usage counters in Redis", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue("1");
+    keyStore.incrementBy.mockResolvedValue(0);
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
+    ).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+    expect(keyStore.incrementBy).toHaveBeenCalledWith("identity-token-uses-remaining:identity-id:token-id", -1);
+  });
+
+  test("rejects exhausted Redis usage counters", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue("0");
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
+    ).rejects.toThrow("usage limit reached");
+  });
+
+  test("rejects renewal when PG says the token is revoked", async () => {
+    const { accessToken } = signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: 0,
+      ipRestrictionEnabled: false,
+      ttlSeconds: MAX_AGE,
+      accessTokenTTL: 0,
+      accessTokenMaxTTL: 0,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {}
+    });
+    const { service } = createService({
+      activeRevocations: [{ id: "token-id", identityId: "identity-id", createdAt: new Date(NOW_SECONDS * 1000) }]
+    });
+
+    await expect(service.renewAccessToken({ accessToken })).rejects.toThrow("token has been revoked");
   });
 
   test("checks current trusted IPs even when the token was issued without IP restrictions", async () => {
@@ -188,84 +289,5 @@ describe("identityAccessTokenServiceFactory", () => {
     await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
       "membership is inactive"
     );
-  });
-});
-
-describe("identityAccessTokenQueueServiceFactory", () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  test("queues PG mirror jobs with BullMQ-safe job IDs", async () => {
-    const queueService = {
-      queue: vi.fn(),
-      upsertJobScheduler: vi.fn(),
-      listen: vi.fn(),
-      start: vi.fn()
-    };
-
-    const queue = identityAccessTokenQueueServiceFactory({
-      queueService: queueService as never,
-      identityAccessTokenRevocationDAL: {
-        insertRevocation: vi.fn(),
-        ensurePartition: vi.fn(),
-        listPartitionsExpiredBefore: vi.fn(),
-        dropPartition: vi.fn()
-      } as never
-    });
-
-    await queue.queuePgMirror({
-      kind: "revoke-token",
-      tokenId: "token-id",
-      identityId: "identity-id",
-      expiresAt: "2026-04-28T00:00:00.000Z"
-    });
-
-    expect(queueService.queue).toHaveBeenCalledWith(
-      QueueName.IdentityAccessTokenPgMirror,
-      QueueJobs.IdentityAccessTokenPgMirrorRevokeToken,
-      expect.any(Object),
-      expect.objectContaining({ jobId: "iat-revoke-token-token-id" })
-    );
-  });
-
-  test("mirrors per-token revocations using the queued expiration", async () => {
-    const insertRevocation = vi.fn();
-    let worker: ((job: { name: QueueJobs; data: unknown }) => Promise<void>) | undefined;
-    const queueService = {
-      queue: vi.fn(),
-      upsertJobScheduler: vi.fn(),
-      listen: vi.fn(),
-      start: vi.fn((_queueName: QueueName, handler: (job: { name: QueueJobs; data: unknown }) => Promise<void>) => {
-        worker = handler;
-      })
-    };
-
-    identityAccessTokenQueueServiceFactory({
-      queueService: queueService as never,
-      identityAccessTokenRevocationDAL: {
-        insertRevocation,
-        ensurePartition: vi.fn(),
-        listPartitionsExpiredBefore: vi.fn(),
-        dropPartition: vi.fn()
-      } as never
-    });
-
-    await worker?.({
-      name: QueueJobs.IdentityAccessTokenPgMirrorRevokeToken,
-      data: {
-        kind: "revoke-token",
-        tokenId: "token-id",
-        identityId: "identity-id",
-        expiresAt: "2026-04-28T00:00:00.000Z"
-      }
-    });
-
-    expect(queueService.start).toHaveBeenCalledWith(QueueName.IdentityAccessTokenPgMirror, expect.any(Function));
-    expect(insertRevocation).toHaveBeenCalledWith({
-      id: "token-id",
-      identityId: "identity-id",
-      expiresAt: new Date("2026-04-28T00:00:00.000Z")
-    });
   });
 });

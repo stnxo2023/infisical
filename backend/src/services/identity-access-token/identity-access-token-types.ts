@@ -25,14 +25,14 @@ export type TKubernetesAuthDetails = {
   name: string;
 };
 
-// Custom claims that the redesigned identity access token JWT carries so the
-// auth hot path doesn't need to hit Postgres for the common case. `jti`, `iat`,
-// and `exp` come from the JWT spec — declared here for post-verify typing.
+// Custom claims the identity access token JWT carries for stateless TTL/auth
+// context. `jti`, `iat`, and `exp` come from the JWT spec — declared here for
+// post-verify typing.
 //
 // `accessTokenTTL`, `accessTokenMaxTTL`, and `accessTokenPeriod` are mirrored
-// into every renewed JWT so the renew flow can recompute caps without a PG
-// read (the row may not exist for non-Token-Auth methods under the lazy-insert
-// model).
+// into every renewed JWT so the renew flow can recompute caps without loading
+// a token row (the row may not exist for non-Token-Auth methods under the
+// lazy-insert model).
 //
 // `creationEpoch` anchors the maxTTL lifetime budget across renewals. JWT `iat`
 // is restamped on every renewal, so it cannot anchor "since creation" — this

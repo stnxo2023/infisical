@@ -63,11 +63,8 @@ export const KeyStorePrefixes = {
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
-  // Per-identity hash of token-level state; field schema in IdentityTokenStateFields.
-  IdentityTokenState: (identityId: string) => `identity-token-state:${identityId}` as const,
-  // Single-flight marker for hydrateRedisFromPg; lives in the same Redis it gates,
-  // so a flush evicts it and the next pod re-hydrates.
-  IdentityTokenHydrate: "identity-token-hydrate" as const,
+  IdentityTokenUsesRemaining: (identityId: string, jti: string) =>
+    `identity-token-uses-remaining:${identityId}:${jti}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
@@ -128,14 +125,6 @@ export const KeyStorePrefixes = {
   TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
     `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
   TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const
-};
-
-// Field names in the IdentityTokenState hash.
-//   RevokedAfter:  ISO timestamp; identity-wide revocation epoch (JWTs with iat < this are rejected).
-//   UsesRemaining: per-token counter; <= 0 means revoked or exhausted.
-export const IdentityTokenStateFields = {
-  RevokedAfter: "revokedAfter" as const,
-  UsesRemaining: (jti: string) => `usesRemaining:${jti}` as const
 };
 
 export const KeyStoreTtls = {
@@ -223,10 +212,6 @@ export type TKeyStoreFactory = {
   // hash operations
   hashSet: (key: string, field: string, value: string) => Promise<number>;
   hashGet: (key: string, field: string) => Promise<string | null>;
-  hashGetMulti: (key: string, fields: string[]) => Promise<(string | null)[]>;
-  hashIncrementBy: (key: string, field: string, value: number) => Promise<number>;
-  hashSetWithExpiry: (key: string, fields: Record<string, string | number>, expiryInSeconds: number) => Promise<void>;
-  hashDelete: (key: string, ...fields: string[]) => Promise<number>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -371,32 +356,6 @@ export const keyStoreFactory = (
 
   const hashGet = async (key: string, field: string) => primaryRedis.hget(key, field);
 
-  // Multi-field read in a single round-trip. Returns one value (or null) per requested field, in order.
-  const hashGetMulti = async (key: string, fields: string[]) =>
-    fields.length === 0 ? [] : primaryRedis.hmget(key, ...fields);
-
-  // Atomic increment of a hash field; returns the new value. Use a negative `value` to decrement.
-  const hashIncrementBy = async (key: string, field: string, value: number) => primaryRedis.hincrby(key, field, value);
-
-  // Set multiple fields at once and refresh the key-level TTL in a single pipelined round-trip.
-  // Hashes only support key-level TTL, so the caller refreshes the expiry on each write.
-  const hashSetWithExpiry = async (key: string, fields: Record<string, string | number>, expiryInSeconds: number) => {
-    const flat: (string | number)[] = [];
-    for (const [field, value] of Object.entries(fields)) {
-      flat.push(field, value);
-    }
-    if (flat.length === 0) {
-      return;
-    }
-    const pipeline = primaryRedis.pipeline();
-    pipeline.hset(key, ...flat);
-    pipeline.expire(key, expiryInSeconds);
-    await pipeline.exec();
-  };
-
-  const hashDelete = async (key: string, ...fields: string[]) =>
-    fields.length === 0 ? 0 : primaryRedis.hdel(key, ...fields);
-
   // List operations
   const listPush = async (key: string, value: string) => primaryRedis.rpush(key, value);
 
@@ -496,10 +455,6 @@ export const keyStoreFactory = (
     pgIncrementBy,
     hashSet,
     hashGet,
-    hashGetMulti,
-    hashIncrementBy,
-    hashSetWithExpiry,
-    hashDelete,
     listPush,
     listRange,
     listRemove,

@@ -33,16 +33,6 @@ export const parseUsesRemaining = (raw: string | null): number | null => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
-// Parse the identity-wide revocation epoch (ISO timestamp) into ms-since-epoch.
-// Returns null when absent or unparseable.
-export const parseRevokedAfter = (raw: string | null): number | null => {
-  if (!raw) {
-    return null;
-  }
-  const ms = new Date(raw).getTime();
-  return Number.isFinite(ms) ? ms : null;
-};
-
 // Resolve TTL inputs into the (requestedTTL, requestedMaxTTL) pair that
 // computeIssuedTtl expects. Periodic mode (period > 0) uses period as the
 // effective TTL with no per-token max; standard mode passes the inputs through.
