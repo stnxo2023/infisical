@@ -44,7 +44,7 @@ import {
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
   createDistinguishedName,
-  parseDistinguishedName
+  extractDnParts
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -1508,7 +1508,7 @@ export const certificateV3ServiceFactory = ({
       flowDefaultTtl: ""
     });
 
-    const csrSubjectParsed = parseDistinguishedName(new x509.Pkcs10CertificateRequest(csr).subject);
+    const csrSubjectParsed = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
     const mergedSubject = {
       ...csrSubjectParsed,
       commonName: csrSubjectParsed.commonName ?? certificateRequest.commonName,

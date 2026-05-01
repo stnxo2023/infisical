@@ -36,38 +36,35 @@ export const createDistinguishedName = (parts: TDNParts) => {
   return dnParts.join(", ");
 };
 
+/**
+ * Helper to get the first value of a DN attribute from an x509 Name object.
+ */
+const getNameField = (name: x509.Name, field: string): string | undefined => {
+  const values = name.getField(field);
+  return values.length > 0 ? values[0] : undefined;
+};
+
+/**
+ * Extract DN parts directly from an x509 Name object.
+ * This is the preferred method as it uses the library's built-in RFC 4514 parsing.
+ */
+export const extractDnParts = (name: x509.Name): TDNParts => ({
+  country: getNameField(name, "C"),
+  organization: getNameField(name, "O"),
+  ou: getNameField(name, "OU"),
+  province: getNameField(name, "ST"),
+  commonName: getNameField(name, "CN"),
+  locality: getNameField(name, "L")
+});
+
+/**
+ * Parse a DN string into its component parts.
+ * Prefer using extractDnParts() with the x509 Name object when available.
+ */
 export const parseDistinguishedName = (dn: string): TDNParts => {
-  const parts: TDNParts = {};
-  const dnParts = dn.split(/,\s*/);
-
-  for (const part of dnParts) {
-    const [key, value] = part.split("=");
-    switch (key.toUpperCase()) {
-      case "C":
-        parts.country = value;
-        break;
-      case "O":
-        parts.organization = value;
-        break;
-      case "OU":
-        parts.ou = value;
-        break;
-      case "ST":
-        parts.province = value;
-        break;
-      case "CN":
-        parts.commonName = value;
-        break;
-      case "L":
-        parts.locality = value;
-        break;
-      default:
-        // Ignore unrecognized keys
-        break;
-    }
-  }
-
-  return parts;
+  // Use the x509 library's Name class to parse the DN string - it handles all RFC 4514 escaping
+  const name = new x509.Name(dn);
+  return extractDnParts(name);
 };
 
 /**
@@ -89,7 +86,7 @@ export const validateImportedCertificate = (
 ) => {
   const mismatches: string[] = [];
 
-  const certDn = parseDistinguishedName(certObj.subject);
+  const certDn = extractDnParts(certObj.subjectName);
 
   const dnFieldChecks: { label: string; expected: string; actual: string | undefined }[] = [
     { label: "Common Name (CN)", expected: caConfig.commonName, actual: certDn.commonName },
