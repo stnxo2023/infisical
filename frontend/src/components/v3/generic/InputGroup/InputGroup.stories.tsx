@@ -276,6 +276,33 @@ export const WithError: Story = {
   )
 };
 
+export const WithErrorTextArea: Story = {
+  name: "State: Error (TextArea)",
+  decorators: [
+    (Story) => (
+      <div className="w-96">
+        <Story />
+      </div>
+    )
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "`InputGroupTextArea` carries the same `isError` API as `InputGroupInput` — flip it on and the danger border + ring spans the whole group, including any `block-end` toolbar. Use this when a `TextArea` plus its addons should read as a single invalid field."
+      }
+    }
+  },
+  render: () => (
+    <InputGroup>
+      <InputGroupTextArea rows={3} defaultValue="no" isError />
+      <InputGroupAddon align="block-end">
+        <InputGroupText>Add at least 20 characters of context.</InputGroupText>
+      </InputGroupAddon>
+    </InputGroup>
+  )
+};
+
 export const SearchWithClear: Story = {
   name: "Example: Search With Clear",
   render: function SearchWithClearRender() {
@@ -384,7 +411,7 @@ export const TextAreaWithCharCounter: Story = {
           placeholder="What's on your mind?"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          aria-invalid={isError}
+          isError={isError}
         />
         <InputGroupAddon align="block-end">
           <InputGroupText>

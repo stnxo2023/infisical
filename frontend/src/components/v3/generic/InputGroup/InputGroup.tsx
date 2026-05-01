@@ -139,21 +139,22 @@ const InputGroupInput = React.forwardRef<HTMLInputElement, React.ComponentProps<
 
 InputGroupInput.displayName = "InputGroupInput";
 
-const InputGroupTextArea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<"textarea">>(
-  ({ className, ...props }, ref) => {
-    return (
-      <TextArea
-        ref={ref}
-        data-slot="input-group-control"
-        className={cn(
-          "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
+const InputGroupTextArea = React.forwardRef<
+  HTMLTextAreaElement,
+  React.ComponentProps<typeof TextArea>
+>(({ className, ...props }, ref) => {
+  return (
+    <TextArea
+      ref={ref}
+      data-slot="input-group-control"
+      className={cn(
+        "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
+        className
+      )}
+      {...props}
+    />
+  );
+});
 
 InputGroupTextArea.displayName = "InputGroupTextArea";
 
