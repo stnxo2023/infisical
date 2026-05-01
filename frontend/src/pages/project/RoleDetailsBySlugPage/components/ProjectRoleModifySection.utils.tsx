@@ -65,6 +65,15 @@ const InsightsPolicyActionSchema = z.object({
   [ProjectPermissionInsightsActions.Read]: z.boolean().optional()
 });
 
+const HoneyTokenPolicyActionSchema = z.object({
+  [ProjectPermissionHoneyTokenActions.Read]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.Create]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.TestConnection]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.Reset]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.Revoke]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.Delete]: z.boolean().optional()
+});
+
 const CertificatePolicyActionSchema = z.object({
   [ProjectPermissionCertificateActions.Create]: z.boolean().optional(),
   [ProjectPermissionCertificateActions.Delete]: z.boolean().optional(),
@@ -692,7 +701,7 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Integrations]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Webhooks]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ServiceTokens]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.HoneyTokens]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.HoneyTokens]: HoneyTokenPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
@@ -1040,6 +1049,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Integrations,
         ProjectPermissionSub.Webhooks,
         ProjectPermissionSub.ServiceTokens,
+        ProjectPermissionSub.HoneyTokens,
         ProjectPermissionSub.Settings,
         ProjectPermissionSub.Environments,
         ProjectPermissionSub.AuditLogs,
@@ -1417,6 +1427,26 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         return;
       }
 
+      if (subject === ProjectPermissionSub.HoneyTokens) {
+        const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
+        const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
+        const canTestConnection = action.includes(ProjectPermissionHoneyTokenActions.TestConnection);
+        const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
+        const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
+        const canDelete = action.includes(ProjectPermissionHoneyTokenActions.Delete);
+
+        if (!formVal[subject]) formVal[subject] = [{}];
+
+        if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
+        if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
+        if (canTestConnection)
+          formVal[subject]![0][ProjectPermissionHoneyTokenActions.TestConnection] = true;
+        if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
+        if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
+        if (canDelete) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Delete] = true;
+        return;
+      }
+
       const canRead = action.includes(ProjectPermissionActions.Read);
       const canEdit = action.includes(ProjectPermissionActions.Edit);
       const canDelete = action.includes(ProjectPermissionActions.Delete);
@@ -1691,6 +1721,26 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRead) formVal[subject]![0][ProjectPermissionCommitsActions.Read] = true;
       if (canPerformRollback)
         formVal[subject]![0][ProjectPermissionCommitsActions.PerformRollback] = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.HoneyTokens) {
+      const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
+      const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
+      const canTestConnection = action.includes(ProjectPermissionHoneyTokenActions.TestConnection);
+      const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
+      const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
+      const canDelete = action.includes(ProjectPermissionHoneyTokenActions.Delete);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
+      if (canTestConnection)
+        formVal[subject]![0][ProjectPermissionHoneyTokenActions.TestConnection] = true;
+      if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
+      if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Delete] = true;
       return;
     }
 
@@ -2432,17 +2482,27 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Create",
         value: ProjectPermissionHoneyTokenActions.Create,
-        description: "Create new honey tokens"
+        description: "Create and update honey tokens"
       },
       {
-        label: "Modify",
-        value: ProjectPermissionHoneyTokenActions.Edit,
-        description: "Update or reset honey tokens"
+        label: "Test Connection",
+        value: ProjectPermissionHoneyTokenActions.TestConnection,
+        description: "Test honey token provider connection"
       },
       {
-        label: "Remove",
+        label: "Reset",
+        value: ProjectPermissionHoneyTokenActions.Reset,
+        description: "Reset triggered honey tokens"
+      },
+      {
+        label: "Revoke",
+        value: ProjectPermissionHoneyTokenActions.Revoke,
+        description: "Revoke honey tokens and credentials"
+      },
+      {
+        label: "Delete",
         value: ProjectPermissionHoneyTokenActions.Delete,
-        description: "Revoke honey tokens"
+        description: "Delete honey token records"
       }
     ]
   },
@@ -3951,6 +4011,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.Commits,
           actions: [ProjectPermissionCommitsActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.HoneyTokens,
+          actions: [ProjectPermissionHoneyTokenActions.Read]
         }
       ]
     },
@@ -4012,6 +4076,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.Commits,
           actions: Object.values(ProjectPermissionCommitsActions)
+        },
+        {
+          subject: ProjectPermissionSub.HoneyTokens,
+          actions: Object.values(ProjectPermissionHoneyTokenActions)
         }
       ]
     },
@@ -4031,6 +4099,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       {
         subject: ProjectPermissionSub.ServiceTokens,
         actions: Object.values(ProjectPermissionActions)
+      },
+      {
+        subject: ProjectPermissionSub.HoneyTokens,
+        actions: Object.values(ProjectPermissionHoneyTokenActions)
       },
       {
         subject: ProjectPermissionSub.Webhooks,

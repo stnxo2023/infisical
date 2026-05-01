@@ -2,7 +2,6 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import {
-  ProjectPermissionActions,
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -125,16 +124,6 @@ export const honeyTokenServiceFactory = ({
   }) => {
     const { permission } = await getProjectPermission(projectId, actor);
     if (permission.can(action, ProjectPermissionSub.HoneyTokens)) {
-      return permission;
-    }
-
-    // Backwards compatibility: older roles may not yet include the new honey-token subject.
-    // Fall back to the equivalent secret/folder permission actions.
-    const legacyAction = action as ProjectPermissionActions;
-    if (
-      permission.can(legacyAction, ProjectPermissionSub.Secrets) ||
-      permission.can(legacyAction, ProjectPermissionSub.SecretFolders)
-    ) {
       return permission;
     }
 
@@ -349,7 +338,7 @@ export const honeyTokenServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     await ensurePlanSupportsHoneyTokens(actor.orgId, "update honey token");
-    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Edit });
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Create });
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -498,7 +487,7 @@ export const honeyTokenServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     await ensurePlanSupportsHoneyTokens(actor.orgId, "revoke honey token");
-    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Delete });
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Revoke });
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -572,7 +561,7 @@ export const honeyTokenServiceFactory = ({
     { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
     actor: OrgServiceActor
   ) => {
-    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Edit });
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Reset });
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -619,7 +608,7 @@ export const honeyTokenServiceFactory = ({
   };
 
   const getOrgHoneyTokenLimit = async ({ projectId }: { projectId: string }, actor: OrgServiceActor) => {
-    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Create });
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Read });
 
     const plan = await ensurePlanSupportsHoneyTokens(actor.orgId, "access honey token limits");
     const used = await honeyTokenDAL.countByOrgId(actor.orgId);
