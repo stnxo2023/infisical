@@ -21,14 +21,14 @@ import {
   useListSecretValidationRules
 } from "@app/hooks/api/secretValidationRules";
 
-import { Badge } from "../Badge";
-import { Button } from "../Button";
-import { Checkbox } from "../Checkbox";
-import { IconButton } from "../IconButton";
-import { Label } from "../Label";
-import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
-import { FilterableSelect } from "../ReactSelect";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
+import { Badge } from "../../generic/Badge";
+import { Button } from "../../generic/Button";
+import { Checkbox } from "../../generic/Checkbox";
+import { IconButton } from "../../generic/IconButton";
+import { Label } from "../../generic/Label";
+import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
+import { FilterableSelect } from "../../generic/ReactSelect";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 
 type PasswordOptionsType = {
   length: number;

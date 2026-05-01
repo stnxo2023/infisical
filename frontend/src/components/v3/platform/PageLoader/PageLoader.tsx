@@ -1,6 +1,6 @@
 import { twMerge } from "tailwind-merge";
 
-import { Lottie } from "@app/components/v2";
+import { Lottie } from "@app/components/v2/Lottie";
 
 type PageLoaderProps = {
   lottieClassName?: string;
