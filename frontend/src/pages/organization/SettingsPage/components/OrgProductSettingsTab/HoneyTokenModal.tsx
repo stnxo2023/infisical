@@ -74,7 +74,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
 
   const webhookUrl = useMemo(() => {
     const { protocol, host } = window.location;
-    return `${protocol}//${host}/api/v1/honey-tokens/${currentOrg?.id}/trigger`;
+    return `${protocol}//${host}/api/v1/honey-tokens/${HoneyTokenType.AWS}/${currentOrg?.id}/trigger`;
   }, [currentOrg?.id]);
 
   const { control, handleSubmit, watch, reset } = useForm<FormData>({

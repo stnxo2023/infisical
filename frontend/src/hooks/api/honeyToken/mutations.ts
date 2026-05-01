@@ -10,7 +10,10 @@ export const useUpsertHoneyTokenConfig = () => {
 
   return useMutation({
     mutationFn: async (dto: TUpsertHoneyTokenConfigDTO) => {
-      const { data } = await apiRequest.put("/api/v1/honey-tokens/configs", dto);
+      const { data } = await apiRequest.put(`/api/v1/honey-tokens/${dto.type}/configs`, {
+        connectionId: dto.connectionId,
+        config: dto.config
+      });
       return data.config;
     },
     onSuccess: (_, dto) => {
@@ -26,7 +29,7 @@ export const useTestHoneyTokenConnection = () => {
         isConnected: boolean;
         status: string | null;
         stackName: string;
-      }>(`/api/v1/honey-tokens/configs/${type}/test-connection`);
+      }>(`/api/v1/honey-tokens/${type}/configs/test-connection`);
       return data;
     }
   });

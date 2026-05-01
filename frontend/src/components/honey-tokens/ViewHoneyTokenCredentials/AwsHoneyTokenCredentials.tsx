@@ -17,7 +17,7 @@ export const AwsHoneyTokenCredentials = ({ secretsMapping, credentials }: Props)
     <div className="flex flex-col gap-4">
       {CREDENTIAL_FIELDS.map(({ key, label }) => {
         const secretName = secretsMapping[key];
-        const value = secretName ? credentials[secretName] : undefined;
+        const value = (secretName ? credentials[secretName] : undefined) ?? credentials[key];
 
         return <CredentialField key={key} label={label} value={value} />;
       })}

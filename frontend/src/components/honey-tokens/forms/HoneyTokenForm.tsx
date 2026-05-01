@@ -100,7 +100,7 @@ export const HoneyTokenForm = ({
         projectId: currentProject.id
       });
 
-      if (!stackDeployment.deployed) {
+      if (stackDeployment && !stackDeployment.deployed) {
         const isDeploying = stackDeployment.status?.endsWith("_IN_PROGRESS");
         createNotification({
           text: isDeploying

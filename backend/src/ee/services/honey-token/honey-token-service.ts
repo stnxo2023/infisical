@@ -1,81 +1,58 @@
-import crypto from "node:crypto";
-
-import { CloudFormationClient, DescribeStacksCommand } from "@aws-sdk/client-cloudformation";
-import {
-  CreateAccessKeyCommand,
-  CreateUserCommand,
-  DeleteAccessKeyCommand,
-  DeleteUserCommand,
-  IAMClient
-} from "@aws-sdk/client-iam";
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionHoneyTokenActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
-import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
-import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
-import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
-import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
-import { ActorType } from "@app/services/auth/auth-type";
-import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
-import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
-import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
-import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
-import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
-import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
-
-import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
-import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
-import { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
-import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
-import { AwsHoneyTokenConfigSchema } from "./honey-token-types";
 import {
-  parseAwsHoneyTokenDecryptedCredentials,
-  TAwsHoneyTokenCredentials
-} from "./honey-token-aws-types";
+  ProjectPermissionActions,
+  ProjectPermissionHoneyTokenActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
-const HONEY_TOKEN_IAM_USER_PREFIX = "inf_ht_";
-const CF_COMPLETE_STATUSES = new Set(["CREATE_COMPLETE", "UPDATE_COMPLETE", "IMPORT_COMPLETE"]);
+import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { THoneyTokenDeploymentStatus, THoneyTokenProviderHooks } from "./honey-token-provider-hook-types";
+import { THoneyTokenByIdInput, THoneyTokenCreateInput } from "./honey-token-provider-types";
+import {
+  getHoneyTokenProviderDefinition,
+  getHoneyTokenServiceHooksByType,
+  HONEY_TOKEN_PROVIDER_MAP
+} from "./honey-token-provider-registry";
+import { THoneyTokenServiceFactoryDep } from "./honey-token-service-types";
 
-type THoneyTokenServiceFactoryDep = {
-  honeyTokenDAL: THoneyTokenDALFactory;
-  honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
-  honeyTokenEventDAL: Pick<THoneyTokenEventDALFactory, "find" | "countByHoneyTokenId" | "findByHoneyTokenId">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  folderDAL: Pick<
-    TSecretFolderDALFactory,
-    "findBySecretPath" | "findBySecretPathMultiEnv" | "findSecretPathByFolderIds"
-  >;
-  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  secretDAL: Pick<
-    TSecretV2BridgeDALFactory,
-    "insertMany" | "upsertSecretReferences" | "find" | "deleteMany" | "invalidateSecretCacheByProjectId"
-  >;
-  secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
-  secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "find">;
-  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
-  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
-  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
+const assertSupportedHoneyTokenType = (type: string): HoneyTokenType => {
+  if (Object.prototype.hasOwnProperty.call(HONEY_TOKEN_PROVIDER_MAP, type)) {
+    return type as HoneyTokenType;
+  }
+  throw new BadRequestError({ message: "Unsupported honey token type" });
+};
+
+const assertHoneyTokenConnectionType = (type: HoneyTokenType, app: string) => {
+  const provider = getHoneyTokenProviderDefinition(type);
+  if (app !== provider.connectionApp) {
+    throw new BadRequestError({
+      message: `Honey Token is not configured for ${provider.name}`
+    });
+  }
 };
 
 export type THoneyTokenServiceFactory = ReturnType<typeof honeyTokenServiceFactory>;
+interface THoneyTokenCreateResult {
+  honeyToken: {
+    id: string;
+    name: string;
+    description?: string | null;
+    type: string;
+    status: string;
+    projectId: string;
+    secretsMapping: unknown;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  stackDeployment?: THoneyTokenDeploymentStatus;
+}
 
 export const honeyTokenServiceFactory = ({
   honeyTokenDAL,
@@ -96,70 +73,86 @@ export const honeyTokenServiceFactory = ({
   snapshotService,
   secretQueueService
 }: THoneyTokenServiceFactoryDep) => {
-  const verifyStackDeployment = async ({
-    connectionId,
-    stackName
-  }: {
-    connectionId: string;
-    stackName: string;
-  }): Promise<{ deployed: boolean; status: string | null }> => {
-    try {
-      const appConnection = await appConnectionDAL.findById(connectionId);
-      if (!appConnection) return { deployed: false, status: null };
+  const honeyTokenProviderHooksByType: Record<HoneyTokenType, THoneyTokenProviderHooks> =
+    getHoneyTokenServiceHooksByType({
+      honeyTokenDAL,
+      honeyTokenConfigDAL,
+      honeyTokenEventDAL,
+      permissionService,
+      licenseService,
+      kmsService,
+      appConnectionDAL,
+      folderDAL,
+      projectBotService,
+      secretDAL,
+      secretVersionDAL,
+      secretVersionTagDAL,
+      secretTagDAL,
+      folderCommitService,
+      resourceMetadataDAL,
+      snapshotService,
+      secretQueueService
+    });
 
-      const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
-      const awsConfig = decryptedConnection as unknown as TAwsConnectionConfig;
-      const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
-
-      const cfn = new CloudFormationClient({ credentials: awsCredentials, region: "us-east-1" });
-      const res = await cfn.send(new DescribeStacksCommand({ StackName: stackName }));
-      const stack = res.Stacks?.[0];
-
-      if (!stack) return { deployed: false, status: null };
-
-      return {
-        deployed: CF_COMPLETE_STATUSES.has(stack.StackStatus ?? ""),
-        status: stack.StackStatus ?? null
-      };
-    } catch (err) {
-      const awsCode = (err as { code?: string }).code;
-
-      if (awsCode === "ValidationError") {
-        return { deployed: false, status: null };
-      }
-
-      logger.warn({ err, connectionId, stackName }, "Failed to verify honey token CloudFormation stack deployment");
-      return { deployed: false, status: null };
+  const ensurePlanSupportsHoneyTokens = async (orgId: string, action: string) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.honeyTokens) {
+      throw new BadRequestError({
+        message: `Failed to ${action} due to plan restriction. Upgrade plan to use honey tokens.`
+      });
     }
+    return plan;
+  };
+
+  const getProjectPermission = async (projectId: string, actor: OrgServiceActor) =>
+    permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+  const assertProjectPermission = async ({
+    projectId,
+    actor,
+    action
+  }: {
+    projectId: string;
+    actor: OrgServiceActor;
+    action: ProjectPermissionHoneyTokenActions;
+  }) => {
+    const { permission } = await getProjectPermission(projectId, actor);
+    if (permission.can(action, ProjectPermissionSub.HoneyTokens)) {
+      return permission;
+    }
+
+    // Backwards compatibility: older roles may not yet include the new honey-token subject.
+    // Fall back to the equivalent secret/folder permission actions.
+    const legacyAction = action as ProjectPermissionActions;
+    if (
+      permission.can(legacyAction, ProjectPermissionSub.Secrets) ||
+      permission.can(legacyAction, ProjectPermissionSub.SecretFolders)
+    ) {
+      return permission;
+    }
+
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.HoneyTokens);
+    return permission;
   };
 
   const create = async (
-    {
-      projectId,
-      type,
-      name,
-      description,
-      secretsMapping,
-      environment,
-      secretPath
-    }: {
-      projectId: string;
-      type: HoneyTokenType;
-      name: string;
-      description?: string | null;
-      secretsMapping: Record<string, string>;
-      environment: string;
-      secretPath: string;
-    },
+    { projectId, type, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.honeyTokens) {
-      throw new BadRequestError({
-        message: "Failed to create honey token due to plan restriction. Upgrade plan to use honey tokens."
-      });
+    const providerType = assertSupportedHoneyTokenType(type);
+    const providerHooks = honeyTokenProviderHooksByType[providerType];
+    if (!providerHooks) {
+      throw new BadRequestError({ message: "Unsupported honey token type" });
     }
+
+    const plan = await ensurePlanSupportsHoneyTokens(actor.orgId, "create honey token");
 
     if (plan.honeyTokenLimit !== null) {
       const honeyTokensCreated = await honeyTokenDAL.countByOrgId(actor.orgId);
@@ -170,19 +163,7 @@ export const honeyTokenServiceFactory = ({
       }
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Create,
-      ProjectPermissionSub.HoneyTokens
-    );
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Create });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -194,7 +175,7 @@ export const honeyTokenServiceFactory = ({
 
     const orgConfig = await honeyTokenConfigDAL.findOne({
       orgId: actor.orgId,
-      type
+      type: providerType
     });
 
     if (!orgConfig?.connectionId) {
@@ -203,16 +184,6 @@ export const honeyTokenServiceFactory = ({
           "No honey token configuration found for this organization. Configure it in Organization Settings first."
       });
     }
-
-    const { decryptor: configDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: actor.orgId
-    });
-    const stackName = orgConfig.encryptedConfig
-      ? AwsHoneyTokenConfigSchema.parse(
-          JSON.parse(configDecryptor({ cipherTextBlob: orgConfig.encryptedConfig }).toString()) as unknown
-        ).stackName
-      : "infisical-honey-tokens";
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 
@@ -261,28 +232,8 @@ export const honeyTokenServiceFactory = ({
         message: `Could not find App Connection with ID ${orgConfig.connectionId}`
       });
     }
-
-    const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
-    const awsConfig = decryptedConnection as unknown as TAwsConnectionConfig;
-
-    const iamUserName = `${HONEY_TOKEN_IAM_USER_PREFIX}${crypto.randomBytes(8).toString("hex")}`;
-
-    const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
-    const iam = new IAMClient({ credentials: awsCredentials, region });
-
-    await iam.send(new CreateUserCommand({ UserName: iamUserName }));
-
-    const createKeyRes = await iam.send(new CreateAccessKeyCommand({ UserName: iamUserName }));
-
-    if (!createKeyRes.AccessKey?.AccessKeyId || !createKeyRes.AccessKey?.SecretAccessKey) {
-      throw new BadRequestError({ message: "Failed to create AWS access key for honey token" });
-    }
-
-    const honeyTokenCredentials = {
-      accessKeyId: createKeyRes.AccessKey.AccessKeyId,
-      secretAccessKey: createKeyRes.AccessKey.SecretAccessKey,
-      iamUserName
-    };
+    assertHoneyTokenConnectionType(providerType, appConnection.app);
+    const { credentials: honeyTokenCredentials, tokenIdentifier } = await providerHooks.createCredentials(appConnection);
 
     const { encryptor: credentialEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -296,14 +247,14 @@ export const honeyTokenServiceFactory = ({
     const honeyToken = await honeyTokenDAL.create({
       name,
       description,
-      type,
+      type: providerType,
       status: HoneyTokenStatus.Active,
       projectId,
       folderId: folder.id,
       connectionId: orgConfig.connectionId,
       encryptedCredentials,
       secretsMapping,
-      tokenIdentifier: createKeyRes.AccessKey.AccessKeyId,
+      tokenIdentifier,
       createdByUserId: actor.id
     });
 
@@ -312,10 +263,16 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    const secretEntries = [
-      { key: secretsMapping.accessKeyId, value: createKeyRes.AccessKey.AccessKeyId },
-      { key: secretsMapping.secretAccessKey, value: createKeyRes.AccessKey.SecretAccessKey }
-    ];
+    const secretEntries = Object.entries(secretsMapping).map(([credentialField, secretKey]) => {
+      const credentialValue = honeyTokenCredentials[credentialField];
+      if (credentialValue === undefined) {
+        throw new BadRequestError({
+          message: `Secrets mapping key "${credentialField}" does not exist in generated credentials for this honey token type`
+        });
+      }
+
+      return { key: secretKey, value: credentialValue };
+    });
 
     await fnSecretBulkInsert({
       folderId: folder.id,
@@ -350,10 +307,14 @@ export const honeyTokenServiceFactory = ({
       excludeReplication: true
     });
 
-    const stackDeployment = await verifyStackDeployment({
-      connectionId: orgConfig.connectionId,
-      stackName
-    });
+    const stackDeployment = providerHooks.verifyDeployment
+      ? await providerHooks.verifyDeployment({
+          appConnection,
+          connectionId: orgConfig.connectionId,
+          orgId: actor.orgId,
+          encryptedConfig: orgConfig.encryptedConfig
+        })
+      : undefined;
 
     return {
       honeyToken: {
@@ -367,7 +328,7 @@ export const honeyTokenServiceFactory = ({
         createdAt: honeyToken.createdAt,
         updatedAt: honeyToken.updatedAt
       },
-      stackDeployment
+      ...(stackDeployment ? { stackDeployment } : {})
     };
   };
 
@@ -387,24 +348,8 @@ export const honeyTokenServiceFactory = ({
     },
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.honeyTokens) {
-      throw new BadRequestError({
-        message: "Failed to update honey token due to plan restriction. Upgrade plan to use honey tokens."
-      });
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Edit, ProjectPermissionSub.HoneyTokens);
+    await ensurePlanSupportsHoneyTokens(actor.orgId, "update honey token");
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Edit });
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -471,17 +416,23 @@ export const honeyTokenServiceFactory = ({
 
       const decryptedCredentials = JSON.parse(
         decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
-      ) as { accessKeyId: string; secretAccessKey: string; iamUserName: string };
+      ) as Record<string, string>;
 
       const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
 
-      const secretEntries = [
-        { key: secretsMapping.accessKeyId, value: decryptedCredentials.accessKeyId },
-        { key: secretsMapping.secretAccessKey, value: decryptedCredentials.secretAccessKey }
-      ];
+      const secretEntries = Object.entries(secretsMapping).map(([credentialField, secretKey]) => {
+        const credentialValue = decryptedCredentials[credentialField];
+        if (credentialValue === undefined) {
+          throw new BadRequestError({
+            message: `Secrets mapping key "${credentialField}" does not exist in stored credentials for this honey token type`
+          });
+        }
+
+        return { key: secretKey, value: credentialValue };
+      });
 
       await fnSecretBulkInsert({
         folderId: honeyToken.folderId,
@@ -546,27 +497,8 @@ export const honeyTokenServiceFactory = ({
     { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.honeyTokens) {
-      throw new BadRequestError({
-        message: "Failed to revoke honey token due to plan restriction. Upgrade plan to use honey tokens."
-      });
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Delete,
-      ProjectPermissionSub.HoneyTokens
-    );
+    await ensurePlanSupportsHoneyTokens(actor.orgId, "revoke honey token");
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Delete });
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -577,6 +509,7 @@ export const honeyTokenServiceFactory = ({
     if (honeyToken.status === HoneyTokenStatus.Revoked) {
       throw new BadRequestError({ message: "Honey token is already revoked" });
     }
+    const type = assertSupportedHoneyTokenType(honeyToken.type);
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -585,32 +518,18 @@ export const honeyTokenServiceFactory = ({
 
     const decryptedCredentials = JSON.parse(
       decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
-    ) as { accessKeyId: string; secretAccessKey: string; iamUserName: string };
+    ) as Record<string, string>;
 
     const appConnection = await appConnectionDAL.findById(honeyToken.connectionId);
 
     if (appConnection) {
-      const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
-      const awsConfig = decryptedConnection as unknown as TAwsConnectionConfig;
-      const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
-      const iam = new IAMClient({ credentials: awsCredentials, region });
-
-      try {
-        await iam.send(
-          new DeleteAccessKeyCommand({
-            UserName: decryptedCredentials.iamUserName,
-            AccessKeyId: decryptedCredentials.accessKeyId
-          })
-        );
-      } catch {
-        // Access key may already be deleted
-      }
-
-      try {
-        await iam.send(new DeleteUserCommand({ UserName: decryptedCredentials.iamUserName }));
-      } catch {
-        // IAM user may already be deleted
-      }
+      assertHoneyTokenConnectionType(type, appConnection.app);
+      const providerHooks = honeyTokenProviderHooksByType[type];
+      if (!providerHooks) throw new BadRequestError({ message: "Unsupported honey token type" });
+      await providerHooks.revokeCredentials({
+        appConnection,
+        credentials: decryptedCredentials
+      });
     }
 
     const secretKeys = Object.values(honeyToken.secretsMapping as Record<string, string>);
@@ -653,22 +572,14 @@ export const honeyTokenServiceFactory = ({
     { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
     actor: OrgServiceActor
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Edit, ProjectPermissionSub.HoneyTokens);
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Edit });
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
     if (!honeyToken || honeyToken.projectId !== projectId) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
+    assertSupportedHoneyTokenType(honeyToken.type);
 
     if (honeyToken.status !== HoneyTokenStatus.Triggered) {
       throw new BadRequestError({ message: "Only triggered honey tokens can be reset" });
@@ -698,14 +609,7 @@ export const honeyTokenServiceFactory = ({
     },
     actor: OrgServiceActor
   ) => {
-    await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    await getProjectPermission(projectId, actor);
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return 0;
@@ -715,21 +619,9 @@ export const honeyTokenServiceFactory = ({
   };
 
   const getOrgHoneyTokenLimit = async ({ projectId }: { projectId: string }, actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Create });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Create,
-      ProjectPermissionSub.HoneyTokens
-    );
-
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await ensurePlanSupportsHoneyTokens(actor.orgId, "access honey token limits");
     const used = await honeyTokenDAL.countByOrgId(actor.orgId);
 
     return {
@@ -760,14 +652,7 @@ export const honeyTokenServiceFactory = ({
     },
     actor: OrgServiceActor
   ) => {
-    await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    await getProjectPermission(projectId, actor);
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return [];
@@ -793,20 +678,8 @@ export const honeyTokenServiceFactory = ({
     return honeyTokens;
   };
 
-  const getCredentials = async (
-    { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
-    actor: OrgServiceActor
-  ): Promise<{ credentials: TAwsHoneyTokenCredentials }> => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
+  const getCredentials = async ({ honeyTokenId, projectId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Read });
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -814,20 +687,16 @@ export const honeyTokenServiceFactory = ({
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: actor.orgId
-    });
-
-    const decryptedCredentials = parseAwsHoneyTokenDecryptedCredentials(
-      JSON.parse(decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()) as unknown
-    );
+    const type = assertSupportedHoneyTokenType(honeyToken.type);
+    const providerHooks = honeyTokenProviderHooksByType[type];
+    if (!providerHooks) throw new BadRequestError({ message: "Unsupported honey token type" });
 
     return {
-      credentials: {
-        accessKeyId: decryptedCredentials.accessKeyId,
-        secretAccessKey: decryptedCredentials.secretAccessKey
-      }
+      type,
+      credentials: await providerHooks.getCredentialsForDisplay({
+        encryptedCredentials: honeyToken.encryptedCredentials,
+        orgId: actor.orgId
+      })
     };
   };
 
@@ -835,16 +704,7 @@ export const honeyTokenServiceFactory = ({
     { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
     actor: OrgServiceActor
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Read });
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -891,16 +751,7 @@ export const honeyTokenServiceFactory = ({
     }: { honeyTokenId: string; projectId: string; offset?: number; limit?: number },
     actor: OrgServiceActor
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
+    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Read });
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 

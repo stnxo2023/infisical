@@ -63,8 +63,10 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       void query.where(`${TableName.HoneyToken}.name`, "ilike", `%${search}%`);
     }
 
-    const [result] = await query.countDistinct(`${TableName.HoneyToken}.name`);
-    return Number((result as unknown as { count: number }).count || 0);
+    const [result] = await query.countDistinct<{ count: string | number }>({
+      count: `${TableName.HoneyToken}.name`
+    });
+    return Number(result?.count ?? 0);
   };
 
   const findOneByTokenIdentifierAndOrgId = async (
@@ -87,9 +89,11 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.Project}.orgId`, orgId)
       .whereNot(`${TableName.HoneyToken}.status`, "revoked")
-      .count(`${TableName.HoneyToken}.id`);
+      .count<{ count: string | number }>({
+        count: `${TableName.HoneyToken}.id`
+      });
 
-    return Number((result as unknown as { count: number }).count || 0);
+    return Number(result?.count ?? 0);
   };
 
   const tryMarkTriggered = async (

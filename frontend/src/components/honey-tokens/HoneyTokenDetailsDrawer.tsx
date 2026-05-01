@@ -235,7 +235,7 @@ const DrawerContent = ({
                         ({ key, label }) => {
                           const mapping = honeyToken.secretsMapping as Record<string, string>;
                           const secretName = mapping[key];
-                          const value = secretName ? credentials[secretName] : undefined;
+                          const value = (secretName ? credentials[secretName] : undefined) ?? credentials[key];
                           return <CredentialField key={key} label={label} value={value} />;
                         }
                       )}

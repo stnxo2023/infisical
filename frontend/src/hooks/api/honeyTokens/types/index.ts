@@ -35,7 +35,7 @@ export type TCreateHoneyTokenDTO = {
 
 export type TCreateHoneyTokenResponse = {
   honeyToken: THoneyToken;
-  stackDeployment: {
+  stackDeployment?: {
     deployed: boolean;
     status: string | null;
   };

@@ -24,7 +24,7 @@ export const useGetHoneyTokenConfig = (
     queryKey: honeyTokenKeys.config(type),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ config: THoneyTokenConfig }>(
-        `/api/v1/honey-tokens/configs/${type}`
+        `/api/v1/honey-tokens/${type}/configs`
       );
       return data.config;
     },
