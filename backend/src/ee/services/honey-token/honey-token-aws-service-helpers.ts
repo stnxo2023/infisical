@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import { crypto } from "@app/lib/crypto/cryptography";
 
 import { CloudFormationClient, DescribeStacksCommand } from "@aws-sdk/client-cloudformation";
 import {

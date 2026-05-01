@@ -960,15 +960,10 @@ export const registerRoutes = async (
 
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
     honeyTokenConfigDAL,
-    honeyTokenDAL,
-    honeyTokenEventDAL,
     permissionService,
     kmsService,
     licenseService,
-    appConnectionDAL,
-    orgDAL,
-    projectDAL,
-    smtpService
+    appConnectionDAL
   });
 
   // ldapService is created after loginService (below) due to dependency on processProviderCallback
@@ -1653,6 +1648,9 @@ export const registerRoutes = async (
     licenseService,
     kmsService,
     appConnectionDAL,
+    orgDAL,
+    projectDAL,
+    smtpService,
     folderDAL,
     projectBotService,
     secretDAL: secretV2BridgeDAL,

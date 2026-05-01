@@ -136,7 +136,7 @@ export const registerHoneyTokenEndpoints = <TConfig extends z.ZodTypeAny>({
         `Honey token trigger received [orgId=${req.params.orgId}] [type=${type}]`
       );
 
-      const { acknowledged } = await server.services.honeyTokenConfig.handleTrigger({
+      const { acknowledged } = await server.services.honeyToken.handleTrigger({
         type,
         orgId: req.params.orgId,
         signature: req.headers["x-infisical-signature"] as string | undefined,

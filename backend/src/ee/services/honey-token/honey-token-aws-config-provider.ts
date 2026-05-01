@@ -1,12 +1,10 @@
-import crypto from "node:crypto";
+import { crypto } from "@app/lib/crypto/cryptography";
 
 import { CloudFormationClient, DescribeStacksCommand } from "@aws-sdk/client-cloudformation";
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import { getConfig as getAppConfig } from "@app/lib/config/env";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { OrganizationActionScope } from "@app/db/schemas";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -16,26 +14,15 @@ import { AwsConnectionSchema } from "@app/services/app-connection/aws/aws-connec
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
-import { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
-import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
-import {
-  AwsHoneyTokenConfigSchema,
-  AwsHoneyTokenEventMetadataSchema,
-  TAwsHoneyTokenEventMetadata
-} from "./honey-token-types";
+import { HoneyTokenType } from "./honey-token-enums";
+import { AwsHoneyTokenConfigSchema } from "./honey-token-types";
 
-const TRIGGER_NOTIFICATION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const CF_COMPLETE_STATUSES = new Set(["CREATE_COMPLETE", "UPDATE_COMPLETE", "IMPORT_COMPLETE"]);
-const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
 
 export interface THoneyTokenConfigRecord {
   id: string;
@@ -59,18 +46,10 @@ export interface THoneyTokenConfigWithDecrypted {
 
 type TProviderDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
-  honeyTokenDAL: Pick<
-    THoneyTokenDALFactory,
-    "findOne" | "updateById" | "tryMarkTriggered" | "findOneByTokenIdentifierAndOrgId"
-  >;
-  honeyTokenEventDAL: Pick<THoneyTokenEventDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
-  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 const parseAwsConnectionConfig = (decryptedConnection: unknown): TAwsConnectionConfig => {
@@ -86,15 +65,10 @@ const parseAwsConnectionConfig = (decryptedConnection: unknown): TAwsConnectionC
 
 export const honeyTokenAwsConfigProviderFactory = ({
   honeyTokenConfigDAL,
-  honeyTokenDAL,
-  honeyTokenEventDAL,
   permissionService,
   kmsService,
   licenseService,
-  appConnectionDAL,
-  orgDAL,
-  projectDAL,
-  smtpService
+  appConnectionDAL
 }: TProviderDep) => {
   const verifyStackDeployment = async ({
     connectionId: connId,
@@ -278,125 +252,5 @@ export const honeyTokenAwsConfigProviderFactory = ({
     return { ...config, decryptedConfig };
   };
 
-  const sendTriggerNotification = async ({
-    orgId,
-    honeyToken,
-    eventMetadata
-  }: {
-    orgId: string;
-    honeyToken: { id: string; name: string; projectId: string };
-    eventMetadata: TAwsHoneyTokenEventMetadata;
-  }) => {
-    try {
-      const [project, orgAdmins] = await Promise.all([
-        projectDAL.findById(honeyToken.projectId),
-        orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)
-      ]);
-      const adminEmails = orgAdmins.map((admin) => admin.user.email).filter(Boolean) as string[];
-      if (adminEmails.length === 0 || !project) return;
-
-      const cfg = getAppConfig();
-      const siteUrl = removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com");
-      await smtpService.sendMail({
-        recipients: adminEmails,
-        subjectLine: `Security Alert: Honey Token "${honeyToken.name}" Triggered`,
-        template: SmtpTemplates.HoneyTokenTriggered,
-        substitutions: {
-          honeyTokenName: honeyToken.name,
-          projectName: project.name,
-          eventName: eventMetadata.eventName,
-          eventTime: eventMetadata.eventTime,
-          sourceIp: eventMetadata.sourceIp || "Unknown",
-          awsRegion: eventMetadata.awsRegion,
-          projectUrl: `${siteUrl}/organizations/${orgId}/projects/secret-management/${project.id}/overview?honeyTokenId=${honeyToken.id}`
-        }
-      });
-    } catch (err) {
-      logger.error(
-        { err, orgId, honeyTokenId: honeyToken.id },
-        `Failed to send honey token trigger notification [orgId=${orgId}] [honeyTokenId=${honeyToken.id}]`
-      );
-    }
-  };
-
-  const handleTrigger = async ({
-    orgId,
-    signature,
-    payload
-  }: {
-    orgId: string;
-    signature: string | undefined;
-    payload: unknown;
-  }) => {
-    if (!signature) throw new UnauthorizedError({ message: "Missing X-Infisical-Signature header" });
-
-    const parts = Object.fromEntries(signature.split(",").map((p) => p.split("="))) as Record<string, string>;
-    const timestamp = parts.t;
-    const signatureHash = parts.v1;
-    if (!timestamp || !signatureHash) {
-      throw new UnauthorizedError({
-        message: "Invalid X-Infisical-Signature format. Expected t=<timestamp>,v1=<signature>"
-      });
-    }
-
-    const timestampMs = Number(timestamp) * 1000;
-    if (Number.isNaN(timestampMs) || Math.abs(Date.now() - timestampMs) > SIGNATURE_TOLERANCE_MS) {
-      throw new UnauthorizedError({ message: "Request timestamp is too old or invalid" });
-    }
-
-    const config = await honeyTokenConfigDAL.findOne({ orgId, type: HoneyTokenType.AWS });
-    if (!config?.encryptedConfig) {
-      throw new NotFoundError({ message: "No honey token configuration found for this organization" });
-    }
-
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
-    const decrypted = decryptor({ cipherTextBlob: config.encryptedConfig });
-    const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
-
-    const bodyString = JSON.stringify(payload);
-    const expectedSignature = crypto
-      .createHmac("sha256", storedConfig.webhookSigningKey)
-      .update(`${timestamp}.${bodyString}`)
-      .digest("hex");
-    const expectedBuf = Buffer.from(expectedSignature, "hex");
-    const receivedBuf = Buffer.from(signatureHash, "hex");
-    if (expectedBuf.byteLength !== receivedBuf.byteLength || !crypto.timingSafeEqual(expectedBuf, receivedBuf)) {
-      throw new UnauthorizedError({ message: "Invalid webhook signature" });
-    }
-
-    const rawEvents = Array.isArray(payload) ? (payload as unknown[]) : [payload];
-    /* eslint-disable no-await-in-loop, no-continue */
-    for (const rawEvent of rawEvents) {
-      const wrapped = rawEvent as { event?: unknown };
-      const parsed = AwsHoneyTokenEventMetadataSchema.safeParse(wrapped.event ?? rawEvent);
-      if (!parsed.success) {
-        logger.warn(
-          { orgId, event: rawEvent, error: parsed.error },
-          `Failed to parse honey token event [orgId=${orgId}]`
-        );
-        continue;
-      }
-      const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(parsed.data.accessKeyId, orgId);
-      if (!honeyToken) continue;
-      if (honeyToken.status === HoneyTokenStatus.Revoked) continue;
-
-      await honeyTokenEventDAL.create({
-        honeyTokenId: honeyToken.id,
-        eventType: HoneyTokenEventType.AWS,
-        metadata: parsed.data
-      });
-      const updatedToken = await honeyTokenDAL.tryMarkTriggered(
-        parsed.data.accessKeyId,
-        TRIGGER_NOTIFICATION_COOLDOWN_MS
-      );
-      if (updatedToken) {
-        void sendTriggerNotification({ orgId, honeyToken, eventMetadata: parsed.data });
-      }
-    }
-    /* eslint-enable no-await-in-loop, no-continue */
-
-    return { acknowledged: true };
-  };
-
-  return { upsertConfig, testConnection, getConfig, handleTrigger };
+  return { upsertConfig, testConnection, getConfig };
 };

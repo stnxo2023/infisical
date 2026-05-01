@@ -1,25 +1,34 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
+import { ActionProjectType, OrgMembershipRole, SecretType, TableName } from "@app/db/schemas";
 import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { crypto } from "@app/lib/crypto/cryptography";
+import { getConfig as getAppConfig } from "@app/lib/config/env";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
+import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
-import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenDeploymentStatus, THoneyTokenProviderHooks } from "./honey-token-provider-hook-types";
 import { THoneyTokenByIdInput, THoneyTokenCreateInput } from "./honey-token-provider-types";
+import { AwsHoneyTokenConfigSchema, AwsHoneyTokenEventMetadataSchema } from "./honey-token-types";
 import {
   getHoneyTokenProviderDefinition,
   getHoneyTokenServiceHooksByType,
   HONEY_TOKEN_PROVIDER_MAP
 } from "./honey-token-provider-registry";
 import { THoneyTokenServiceFactoryDep } from "./honey-token-service-types";
+
+const TRIGGER_NOTIFICATION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
 
 const assertSupportedHoneyTokenType = (type: string): HoneyTokenType => {
   if (Object.prototype.hasOwnProperty.call(HONEY_TOKEN_PROVIDER_MAP, type)) {
@@ -61,6 +70,9 @@ export const honeyTokenServiceFactory = ({
   licenseService,
   kmsService,
   appConnectionDAL,
+  orgDAL,
+  projectDAL,
+  smtpService,
   folderDAL,
   projectBotService,
   secretDAL,
@@ -81,6 +93,9 @@ export const honeyTokenServiceFactory = ({
       licenseService,
       kmsService,
       appConnectionDAL,
+      orgDAL,
+      projectDAL,
+      smtpService,
       folderDAL,
       projectBotService,
       secretDAL,
@@ -689,6 +704,141 @@ export const honeyTokenServiceFactory = ({
     };
   };
 
+  const sendTriggerNotification = async ({
+    orgId,
+    honeyToken,
+    eventMetadata
+  }: {
+    orgId: string;
+    honeyToken: { id: string; name: string; projectId: string };
+    eventMetadata: {
+      eventName: string;
+      eventTime: string;
+      sourceIp?: string;
+      awsRegion: string;
+    };
+  }) => {
+    try {
+      const [project, orgAdmins] = await Promise.all([
+        projectDAL.findById(honeyToken.projectId),
+        orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)
+      ]);
+      const adminEmails = orgAdmins.map((admin) => admin.user.email).filter(Boolean) as string[];
+      if (adminEmails.length === 0 || !project) return;
+
+      const cfg = getAppConfig();
+      const siteUrl = removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com");
+      await smtpService.sendMail({
+        recipients: adminEmails,
+        subjectLine: `Security Alert: Honey Token "${honeyToken.name}" Triggered`,
+        template: SmtpTemplates.HoneyTokenTriggered,
+        substitutions: {
+          honeyTokenName: honeyToken.name,
+          projectName: project.name,
+          eventName: eventMetadata.eventName,
+          eventTime: eventMetadata.eventTime,
+          sourceIp: eventMetadata.sourceIp || "Unknown",
+          awsRegion: eventMetadata.awsRegion,
+          projectUrl: `${siteUrl}/organizations/${orgId}/projects/secret-management/${project.id}/overview?honeyTokenId=${honeyToken.id}`
+        }
+      });
+    } catch (err) {
+      logger.error(
+        { err, orgId, honeyTokenId: honeyToken.id },
+        `Failed to send honey token trigger notification [orgId=${orgId}] [honeyTokenId=${honeyToken.id}]`
+      );
+    }
+  };
+
+  const handleTrigger = async ({
+    type,
+    orgId,
+    signature,
+    payload
+  }: {
+    type: HoneyTokenType;
+    orgId: string;
+    signature: string | undefined;
+    payload: unknown;
+  }) => {
+    const providerType = assertSupportedHoneyTokenType(type);
+    if (providerType !== HoneyTokenType.AWS) {
+      throw new BadRequestError({ message: "Unsupported honey token type" });
+    }
+
+    if (!signature) throw new UnauthorizedError({ message: "Missing X-Infisical-Signature header" });
+
+    const parts = Object.fromEntries(signature.split(",").map((p) => p.split("="))) as Record<string, string>;
+    const timestamp = parts.t;
+    const signatureHash = parts.v1;
+    if (!timestamp || !signatureHash) {
+      throw new UnauthorizedError({
+        message: "Invalid X-Infisical-Signature format. Expected t=<timestamp>,v1=<signature>"
+      });
+    }
+
+    const timestampMs = Number(timestamp) * 1000;
+    if (Number.isNaN(timestampMs) || Math.abs(Date.now() - timestampMs) > SIGNATURE_TOLERANCE_MS) {
+      throw new UnauthorizedError({ message: "Request timestamp is too old or invalid" });
+    }
+
+    const config = await honeyTokenConfigDAL.findOne({ orgId, type: HoneyTokenType.AWS });
+    if (!config?.encryptedConfig) {
+      throw new NotFoundError({ message: "No honey token configuration found for this organization" });
+    }
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+    const decrypted = decryptor({ cipherTextBlob: config.encryptedConfig });
+    const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
+
+    const bodyString = JSON.stringify(payload);
+    const expectedSignature = crypto.nativeCrypto
+      .createHmac("sha256", storedConfig.webhookSigningKey)
+      .update(`${timestamp}.${bodyString}`)
+      .digest("hex");
+    const expectedBuf = Buffer.from(expectedSignature, "hex");
+    const receivedBuf = Buffer.from(signatureHash, "hex");
+    if (
+      expectedBuf.byteLength !== receivedBuf.byteLength ||
+      !crypto.nativeCrypto.timingSafeEqual(expectedBuf, receivedBuf)
+    ) {
+      throw new UnauthorizedError({ message: "Invalid webhook signature" });
+    }
+
+    const rawEvents = Array.isArray(payload) ? (payload as unknown[]) : [payload];
+    /* eslint-disable no-await-in-loop, no-continue */
+    for (const rawEvent of rawEvents) {
+      const wrapped = rawEvent as { event?: unknown };
+      const parsed = AwsHoneyTokenEventMetadataSchema.safeParse(wrapped.event ?? rawEvent);
+      if (!parsed.success) {
+        logger.warn(
+          { orgId, event: rawEvent, error: parsed.error },
+          `Failed to parse honey token event [orgId=${orgId}]`
+        );
+        continue;
+      }
+      const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(parsed.data.accessKeyId, orgId);
+      if (!honeyToken) continue;
+      if (honeyToken.status === HoneyTokenStatus.Revoked) continue;
+
+      await honeyTokenEventDAL.create({
+        honeyTokenId: honeyToken.id,
+        eventType: HoneyTokenEventType.AWS,
+        metadata: parsed.data
+      });
+      const updatedToken = await honeyTokenDAL.tryMarkTriggered(
+        parsed.data.accessKeyId,
+        TRIGGER_NOTIFICATION_COOLDOWN_MS
+      );
+      if (updatedToken) {
+        void sendTriggerNotification({ orgId, honeyToken, eventMetadata: parsed.data });
+      }
+    }
+    /* eslint-enable no-await-in-loop, no-continue */
+
+    return { acknowledged: true };
+  };
+
   const getHoneyTokenById = async (
     { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
     actor: OrgServiceActor
@@ -768,6 +918,7 @@ export const honeyTokenServiceFactory = ({
     getHoneyTokenEvents,
     getDashboardHoneyTokenCount,
     getOrgHoneyTokenLimit,
-    getDashboardHoneyTokens
+    getDashboardHoneyTokens,
+    handleTrigger
   };
 };
