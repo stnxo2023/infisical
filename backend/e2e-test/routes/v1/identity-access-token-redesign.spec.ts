@@ -352,10 +352,10 @@ describe("Identity Access Token — redesigned JWT flow", () => {
   });
 
   // -------------------------------------------------------------------------
-  // 8. Per-token revocation survives Redis loss through PG hydration
+  // 8. Per-token revocation survives Redis loss via PG lookup
   // -------------------------------------------------------------------------
-  test("zero-TTL revocation survives Redis loss through PG hydration", async () => {
-    const { identityId, clientId, clientSecret } = await createUaIdentity("test-revoke-hydrate", {
+  test("zero-TTL revocation survives Redis loss via PG lookup", async () => {
+    const { identityId, clientId, clientSecret } = await createUaIdentity("test-revoke-pg-lookup", {
       accessTokenTTL: 0,
       accessTokenMaxTTL: 0
     });
@@ -380,7 +380,6 @@ describe("Identity Access Token — redesigned JWT flow", () => {
       expect(Math.abs(revocation.expiresAt.getTime() - expectedExpiresAtMs)).toBeLessThanOrEqual(2_000);
 
       await testRedis.flushdb("SYNC");
-      await (globalThis as any).testServices.identityAccessToken.hydrateRedisFromPg();
 
       expect((await callDetailsEndpoint(accessToken)).statusCode).toBe(401);
     } finally {
