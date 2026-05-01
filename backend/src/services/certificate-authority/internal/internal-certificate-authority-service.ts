@@ -62,8 +62,8 @@ import {
   createDistinguishedName,
   createSerialNumber,
   expandInternalCa,
-  getCaCertChain, // TODO: consider rename
   extractDnParts,
+  getCaCertChain, // TODO: consider rename
   getCaCertChains,
   getCaCredentials,
   keyAlgorithmToAlgCfg,
