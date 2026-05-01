@@ -371,8 +371,8 @@ declare module "fastify" {
       gatewayV2: TGatewayV2ServiceFactory;
       gatewayPool: TGatewayPoolServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
-      honeyToken: THoneyTokenConfigServiceFactory;
-      honeyTokenCrud: THoneyTokenServiceFactory;
+      honeyTokenConfig: THoneyTokenConfigServiceFactory;
+      honeyToken: THoneyTokenServiceFactory;
       folderCommit: TFolderCommitServiceFactory;
       pit: TPitServiceFactory;
       secretScanningV2: TSecretScanningV2ServiceFactory;

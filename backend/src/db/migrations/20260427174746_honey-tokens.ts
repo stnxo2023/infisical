@@ -14,12 +14,10 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("connectionId").references("id").inTable(TableName.AppConnection);
       t.binary("encryptedConfig");
       t.timestamps(true, true, true);
+      t.unique(["orgId", "type"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.HoneyTokenConfig);
-    await knex.schema.alterTable(TableName.HoneyTokenConfig, (t) => {
-      t.unique(["orgId", "type"]);
-    });
   }
 
   if (!(await knex.schema.hasTable(TableName.HoneyToken))) {
@@ -49,12 +47,10 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("revokedByUserId").nullable();
       t.foreign("revokedByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
       t.timestamps(true, true, true);
+      t.unique(["name", "folderId"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.HoneyToken);
-    await knex.schema.alterTable(TableName.HoneyToken, (t) => {
-      t.unique(["name", "folderId"]);
-    });
   }
 
   if (!(await knex.schema.hasTable(TableName.HoneyTokenEvent))) {
@@ -65,12 +61,10 @@ export async function up(knex: Knex): Promise<void> {
       t.string("eventType").notNullable();
       t.jsonb("metadata");
       t.timestamps(true, true, true);
+      t.index(["honeyTokenId", "createdAt"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.HoneyTokenEvent);
-    await knex.schema.alterTable(TableName.HoneyTokenEvent, (t) => {
-      t.index(["honeyTokenId", "createdAt"]);
-    });
   }
 }
 

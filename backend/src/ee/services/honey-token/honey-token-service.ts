@@ -13,7 +13,7 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionHoneyTokenActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
@@ -175,7 +175,10 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Create, ProjectPermissionSub.Secrets);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionHoneyTokenActions.Create,
+      ProjectPermissionSub.HoneyTokens
+    );
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -397,7 +400,7 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Edit, ProjectPermissionSub.HoneyTokens);
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -556,7 +559,10 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Delete, ProjectPermissionSub.Secrets);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionHoneyTokenActions.Delete,
+      ProjectPermissionSub.HoneyTokens
+    );
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -652,7 +658,7 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Edit, ProjectPermissionSub.HoneyTokens);
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -714,7 +720,10 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Create, ProjectPermissionSub.Secrets);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionHoneyTokenActions.Create,
+      ProjectPermissionSub.HoneyTokens
+    );
 
     const plan = await licenseService.getPlan(actor.orgId);
     const used = await honeyTokenDAL.countByOrgId(actor.orgId);
@@ -793,10 +802,7 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.DescribeAndReadValue,
-      ProjectPermissionSub.Secrets
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -836,10 +842,7 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSub.Secrets
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 
@@ -895,10 +898,7 @@ export const honeyTokenServiceFactory = ({
       projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSub.Secrets
-    );
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
 
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
 

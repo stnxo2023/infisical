@@ -38,7 +38,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      return server.services.honeyTokenCrud.getOrgHoneyTokenLimit({ projectId: req.query.projectId }, req.permission);
+      return server.services.honeyToken.getOrgHoneyTokenLimit({ projectId: req.query.projectId }, req.permission);
     }
   });
 
@@ -80,7 +80,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { honeyToken, stackDeployment } = await server.services.honeyTokenCrud.create(req.body, req.permission);
+      const { honeyToken, stackDeployment } = await server.services.honeyToken.create(req.body, req.permission);
       return { honeyToken, stackDeployment };
     }
   });
@@ -130,7 +130,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { honeyToken } = await server.services.honeyTokenCrud.getHoneyTokenById(
+      const { honeyToken } = await server.services.honeyToken.getHoneyTokenById(
         {
           honeyTokenId: req.params.honeyTokenId,
           projectId: req.query.projectId
@@ -176,7 +176,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { projectId, name, description, secretsMapping } = req.body;
-      const { honeyToken } = await server.services.honeyTokenCrud.updateHoneyToken(
+      const { honeyToken } = await server.services.honeyToken.updateHoneyToken(
         {
           honeyTokenId: req.params.honeyTokenId,
           projectId,
@@ -215,7 +215,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { honeyToken } = await server.services.honeyTokenCrud.resetHoneyToken(
+      const { honeyToken } = await server.services.honeyToken.resetHoneyToken(
         {
           honeyTokenId: req.params.honeyTokenId,
           projectId: req.body.projectId
@@ -253,7 +253,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { honeyTokenId } = await server.services.honeyTokenCrud.revokeHoneyToken(
+      const { honeyTokenId } = await server.services.honeyToken.revokeHoneyToken(
         {
           honeyTokenId: req.params.honeyTokenId,
           projectId: req.body.projectId
@@ -285,7 +285,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { credentials } = await server.services.honeyTokenCrud.getCredentials(
+      const { credentials } = await server.services.honeyToken.getCredentials(
         {
           honeyTokenId: req.params.honeyTokenId,
           projectId: req.query.projectId
@@ -329,7 +329,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { events, totalCount } = await server.services.honeyTokenCrud.getHoneyTokenEvents(
+      const { events, totalCount } = await server.services.honeyToken.getHoneyTokenEvents(
         {
           honeyTokenId: req.params.honeyTokenId,
           projectId: req.query.projectId,
@@ -362,7 +362,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const config = await server.services.honeyToken.upsertConfig({
+      const config = await server.services.honeyTokenConfig.upsertConfig({
         orgPermission: req.permission,
         type: req.body.type,
         connectionId: req.body.connectionId,
@@ -393,7 +393,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      return server.services.honeyToken.testConnection({
+      return server.services.honeyTokenConfig.testConnection({
         orgPermission: req.permission,
         type: req.params.type
       });
@@ -424,7 +424,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const config = await server.services.honeyToken.getConfig({
+      const config = await server.services.honeyTokenConfig.getConfig({
         orgPermission: req.permission,
         type: req.params.type
       });
@@ -456,7 +456,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
         `Honey token trigger received [orgId=${req.params.orgId}]`
       );
 
-      const { acknowledged } = await server.services.honeyToken.handleTrigger({
+      const { acknowledged } = await server.services.honeyTokenConfig.handleTrigger({
         orgId: req.params.orgId,
         signature: req.headers["x-infisical-signature"] as string | undefined,
         payload: req.body

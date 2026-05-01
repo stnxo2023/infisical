@@ -21,6 +21,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
+  ProjectPermissionHoneyTokenActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMcpEndpointActions,
@@ -691,6 +692,7 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Integrations]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Webhooks]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ServiceTokens]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.HoneyTokens]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
@@ -2418,6 +2420,32 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Remove", value: "delete", description: "Revoke service tokens" }
     ]
   },
+  [ProjectPermissionSub.HoneyTokens]: {
+    title: "Honey Tokens",
+    description: "Create and manage honey tokens and triggered events",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionHoneyTokenActions.Read,
+        description: "View honey tokens, events, and credentials"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionHoneyTokenActions.Create,
+        description: "Create new honey tokens"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionHoneyTokenActions.Edit,
+        description: "Update or reset honey tokens"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionHoneyTokenActions.Delete,
+        description: "Revoke honey tokens"
+      }
+    ]
+  },
   [ProjectPermissionSub.Settings]: {
     title: "Settings",
     description: "Configure project-level settings and preferences",
@@ -3442,6 +3470,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRollback]: enabled,
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
+  [ProjectPermissionSub.HoneyTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
   [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,

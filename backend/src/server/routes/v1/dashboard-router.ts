@@ -273,7 +273,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let secretRotations:
         | Awaited<ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>>
         | undefined;
-      let honeyTokens: Awaited<ReturnType<typeof server.services.honeyTokenCrud.getDashboardHoneyTokens>> | undefined;
+      let honeyTokens: Awaited<ReturnType<typeof server.services.honeyToken.getDashboardHoneyTokens>> | undefined;
 
       let totalFolderCount: number | undefined;
       let totalDynamicSecretCount: number | undefined;
@@ -488,7 +488,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       if (includeHoneyTokens) {
-        totalHoneyTokenCount = await server.services.honeyTokenCrud.getDashboardHoneyTokenCount(
+        totalHoneyTokenCount = await server.services.honeyToken.getDashboardHoneyTokenCount(
           {
             projectId,
             search,
@@ -499,7 +499,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         );
 
         if (remainingLimit > 0 && totalHoneyTokenCount > adjustedOffset) {
-          honeyTokens = await server.services.honeyTokenCrud.getDashboardHoneyTokens(
+          honeyTokens = await server.services.honeyToken.getDashboardHoneyTokens(
             {
               projectId,
               search,
@@ -904,7 +904,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             > | null)[];
           })[]
         | undefined;
-      let honeyTokens: Awaited<ReturnType<typeof server.services.honeyTokenCrud.getDashboardHoneyTokens>> | undefined;
+      let honeyTokens: Awaited<ReturnType<typeof server.services.honeyToken.getDashboardHoneyTokens>> | undefined;
 
       let totalImportCount: number | undefined;
       let totalFolderCount: number | undefined;
@@ -1065,7 +1065,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       if (includeHoneyTokens) {
-        totalHoneyTokenCount = await server.services.honeyTokenCrud.getDashboardHoneyTokenCount(
+        totalHoneyTokenCount = await server.services.honeyToken.getDashboardHoneyTokenCount(
           {
             projectId,
             search,
@@ -1076,7 +1076,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         );
 
         if (remainingLimit > 0 && totalHoneyTokenCount > adjustedOffset) {
-          honeyTokens = await server.services.honeyTokenCrud.getDashboardHoneyTokens(
+          honeyTokens = await server.services.honeyToken.getDashboardHoneyTokens(
             {
               projectId,
               search,
