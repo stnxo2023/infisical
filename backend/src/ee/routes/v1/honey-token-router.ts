@@ -99,7 +99,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         projectId: z.string().trim(),
         type: z.nativeEnum(HoneyTokenType),
-        name: slugSchema({ field: "Name" }),
+        name: slugSchema({ field: "name" }),
         description: z.string().trim().max(256).nullish(),
         secretsMapping: z.record(z.string(), z.string().min(1)),
         environment: z.string().trim(),
@@ -166,7 +166,7 @@ export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         projectId: z.string().trim(),
-        name: slugSchema({ field: "Name" }).optional(),
+        name: slugSchema({ field: "name" }).optional(),
         description: z.string().trim().max(256).nullish(),
         secretsMapping: z.record(z.string(), z.string().min(1)).optional()
       }),
