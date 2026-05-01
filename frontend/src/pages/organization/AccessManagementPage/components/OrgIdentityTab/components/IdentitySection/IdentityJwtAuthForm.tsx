@@ -124,8 +124,10 @@ export const IdentityJwtAuthForm = ({
     enabled: isUpdate
   });
 
-  const schema = useMemo(() => buildSchema(maxAccessTokenTTL), [maxAccessTokenTTL]);
-  const resolver = useMemo(() => zodResolver(schema), [schema]);
+  const resolver = useMemo(
+    () => zodResolver(buildSchema(maxAccessTokenTTL)),
+    [maxAccessTokenTTL]
+  );
 
   const {
     watch,

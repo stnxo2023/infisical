@@ -175,8 +175,10 @@ export const IdentityKubernetesAuthForm = ({
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
-  const schema = useMemo(() => buildSchema(maxAccessTokenTTL), [maxAccessTokenTTL]);
-  const resolver = useMemo(() => zodResolver(schema), [schema]);
+  const resolver = useMemo(
+    () => zodResolver(buildSchema(maxAccessTokenTTL)),
+    [maxAccessTokenTTL]
+  );
 
   const {
     control,
