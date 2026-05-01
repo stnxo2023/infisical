@@ -54,16 +54,17 @@ const createService = ({
   const orgDAL = {
     findEffectiveOrgMembership: vi.fn().mockResolvedValue(membership)
   };
+  const identityAccessTokenDAL = { findOne: vi.fn().mockResolvedValue(tokenRow) };
 
   const service = identityAccessTokenServiceFactory({
-    identityAccessTokenDAL: { findOne: vi.fn().mockResolvedValue(tokenRow) } as never,
+    identityAccessTokenDAL: identityAccessTokenDAL as never,
     identityAccessTokenRevocationDAL: identityAccessTokenRevocationDAL as never,
     identityDAL: identityDAL as never,
     orgDAL: orgDAL as never,
     keyStore: keyStore as never
   });
 
-  return { service, keyStore, identityDAL, orgDAL, identityAccessTokenRevocationDAL };
+  return { service, keyStore, identityDAL, orgDAL, identityAccessTokenDAL, identityAccessTokenRevocationDAL };
 };
 
 const createTokenClaims = (
@@ -90,23 +91,39 @@ const createTokenClaims = (
   ...overrides
 });
 
-const signLegacyAccessToken = (overrides: Partial<TIdentityAccessTokenJwtPayload> = {}) =>
+const signLegacyUniversalAuthAccessToken = (
+  overrides: Partial<TIdentityAccessTokenJwtPayload> = {},
+  options: { expiresIn?: number } = { expiresIn: MAX_AGE }
+) => {
+  const payload = {
+    identityId: "identity-id",
+    clientSecretId: "",
+    identityAccessTokenId: "legacy-token-id",
+    authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+    ...overrides
+  };
+  const signOptions = options.expiresIn === undefined ? undefined : { expiresIn: options.expiresIn };
+
+  return crypto.jwt().sign(payload, AUTH_SECRET, signOptions);
+};
+
+const signLegacyOidcAccessToken = (overrides: Partial<TIdentityAccessTokenJwtPayload> = {}) =>
   crypto.jwt().sign(
     {
       identityId: "identity-id",
-      identityName: "identity-name",
-      orgId: "org-id",
-      rootOrgId: "root-org-id",
-      parentOrgId: "parent-org-id",
-      clientSecretId: "",
       identityAccessTokenId: "legacy-token-id",
       authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
-      identityAuth: {},
+      identityAuth: {
+        oidc: {
+          claims: {
+            sub: "legacy-sub"
+          }
+        }
+      },
       ...overrides
     },
     AUTH_SECRET,
     {
-      jwtid: "legacy-token-id",
       expiresIn: MAX_AGE
     }
   );
@@ -191,6 +208,19 @@ describe("identityAccessTokenServiceFactory", () => {
       id: "identity-id",
       identityId: "identity-id",
       revokedAt: new Date(NOW_SECONDS * 1000),
+      expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
+    });
+  });
+
+  test("writes per-token revocation to PG for exact legacy tokens", async () => {
+    const { service, identityAccessTokenRevocationDAL } = createService();
+    const legacyToken = signLegacyUniversalAuthAccessToken();
+
+    await service.revokeAccessToken(legacyToken);
+
+    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith({
+      id: "legacy-token-id",
+      identityId: "identity-id",
       expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
     });
   });
@@ -411,20 +441,59 @@ describe("identityAccessTokenServiceFactory", () => {
     await expect(service.renewAccessToken({ accessToken })).rejects.toThrow("Cannot renew exhausted access token");
   });
 
-  test("authenticates legacy tokens with fast-path claims", async () => {
-    const { service } = createService();
-    const legacyToken = signLegacyAccessToken();
+  test("authenticates exact legacy Universal Auth tokens from their PG row", async () => {
+    const { service, identityAccessTokenDAL, orgDAL } = createService({ tokenRow: createLegacyTokenRow() });
+    const legacyToken = signLegacyUniversalAuthAccessToken();
     const legacyClaims = verifyAccessTokenJwt(legacyToken);
 
+    expect(legacyClaims.jti).toBeUndefined();
+    expect(legacyClaims.orgId).toBeUndefined();
     await expect(service.fnValidateIdentityAccessTokenFast(legacyClaims, "10.0.0.1")).resolves.toMatchObject({
       identityId: "identity-id",
-      orgId: "org-id"
+      orgId: "org-id",
+      rootOrgId: "org-id",
+      parentOrgId: "org-id"
     });
+    expect(identityAccessTokenDAL.findOne).toHaveBeenCalledWith({ id: "legacy-token-id" });
+    expect(orgDAL.findEffectiveOrgMembership).toHaveBeenCalledWith({
+      actorType: "identity",
+      actorId: "identity-id",
+      orgId: "org-id",
+      status: "accepted"
+    });
+  });
+
+  test("preserves legacy method-specific auth details during renewal", async () => {
+    const { service } = createService({
+      tokenRow: createLegacyTokenRow({ authMethod: IdentityAuthMethod.OIDC_AUTH })
+    });
+    const legacyToken = signLegacyOidcAccessToken();
+
+    const renewed = await service.renewAccessToken({ accessToken: legacyToken });
+    const renewedClaims = verifyAccessTokenJwt(renewed.accessToken);
+
+    expect(renewedClaims.identityAuth).toEqual({
+      oidc: {
+        claims: {
+          sub: "legacy-sub"
+        }
+      }
+    });
+  });
+
+  test("rejects legacy auth when org claims are missing and the PG row is missing", async () => {
+    const { service } = createService({ tokenRow: null });
+    const legacyToken = signLegacyUniversalAuthAccessToken();
+    const legacyClaims = verifyAccessTokenJwt(legacyToken);
+
+    await expect(service.fnValidateIdentityAccessTokenFast(legacyClaims, "10.0.0.1")).rejects.toThrow(
+      "Cannot renew revoked or unknown access token"
+    );
   });
 
   test("renews legacy tokens from their PG row into new-format tokens", async () => {
     const { service } = createService({ tokenRow: createLegacyTokenRow() });
-    const legacyToken = signLegacyAccessToken();
+    const legacyToken = signLegacyUniversalAuthAccessToken();
 
     const renewed = await service.renewAccessToken({ accessToken: legacyToken });
     const renewedClaims = verifyAccessTokenJwt(renewed.accessToken);
@@ -443,7 +512,7 @@ describe("identityAccessTokenServiceFactory", () => {
 
   test("rejects legacy renewal when the PG row is missing", async () => {
     const { service } = createService({ tokenRow: null });
-    const legacyToken = signLegacyAccessToken();
+    const legacyToken = signLegacyUniversalAuthAccessToken();
 
     await expect(service.renewAccessToken({ accessToken: legacyToken })).rejects.toThrow(
       "Cannot renew revoked or unknown access token"
@@ -454,7 +523,7 @@ describe("identityAccessTokenServiceFactory", () => {
     const { service } = createService({
       tokenRow: createLegacyTokenRow({ isAccessTokenRevoked: true })
     });
-    const legacyToken = signLegacyAccessToken();
+    const legacyToken = signLegacyUniversalAuthAccessToken();
 
     await expect(service.renewAccessToken({ accessToken: legacyToken })).rejects.toThrow(
       "Cannot renew revoked or unknown access token"
@@ -469,7 +538,7 @@ describe("identityAccessTokenServiceFactory", () => {
         createdAt: new Date((NOW_SECONDS - 3600) * 1000)
       })
     });
-    const legacyToken = signLegacyAccessToken();
+    const legacyToken = signLegacyUniversalAuthAccessToken();
 
     await expect(service.renewAccessToken({ accessToken: legacyToken })).rejects.toThrow("has reached its max TTL");
   });

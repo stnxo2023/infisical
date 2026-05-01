@@ -10,9 +10,11 @@
  * depend on or mutate the seeded machine identity.
  */
 
+import { randomUUID } from "node:crypto";
+
 import jwt from "jsonwebtoken";
 
-import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 
@@ -122,8 +124,8 @@ const deleteOrgIdentityMembership = async (identityId: string) => {
 
   expect(membership).toBeDefined();
 
-  await testDb(TableName.MembershipRole).where({ membershipId: membership!.id }).delete();
-  await testDb(TableName.Membership).where({ id: membership!.id }).delete();
+  await testDb(TableName.MembershipRole).where({ membershipId: membership.id }).delete();
+  await testDb(TableName.Membership).where({ id: membership.id }).delete();
 };
 
 const waitForRevocationRow = async (tokenId: string) => {
@@ -172,6 +174,33 @@ const getMaxIdentityAccessTokenTTL = async () => {
   expect(typeof maxIdentityAccessTokenTTL).toBe("number");
 
   return maxIdentityAccessTokenTTL;
+};
+
+const createLegacyAccessTokenWithoutOrgClaims = async (identityId: string) => {
+  const tokenId = randomUUID();
+
+  await testDb(TableName.IdentityAccessToken).insert({
+    id: tokenId,
+    identityId,
+    accessTokenTTL: 3600,
+    accessTokenMaxTTL: 7200,
+    accessTokenNumUses: 0,
+    accessTokenNumUsesLimit: 0,
+    isAccessTokenRevoked: false,
+    authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+    accessTokenPeriod: 0
+  } as never);
+
+  return jwt.sign(
+    {
+      authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+      identityId,
+      identityAccessTokenId: tokenId,
+      clientSecretId: ""
+    },
+    process.env.AUTH_SECRET ?? "something-random",
+    { expiresIn: 3600 }
+  );
 };
 
 // ---------------------------------------------------------------------------
@@ -226,6 +255,42 @@ describe("Identity Access Token — redesigned JWT flow", () => {
 
     const res = await callDetailsEndpoint(legacyToken);
     expect(res.statusCode).toBe(401);
+  });
+
+  test("legacy JWT missing org claims authenticates and renews from its token row", async () => {
+    const { identityId } = await createUaIdentity("test-legacy-token-no-org-claims");
+
+    try {
+      const legacyToken = await createLegacyAccessTokenWithoutOrgClaims(identityId);
+      const legacyDecoded = jwt.decode(legacyToken) as { jti?: string; orgId?: string } | null;
+      expect(legacyDecoded).not.toBeNull();
+      expect(legacyDecoded!.jti).toBeUndefined();
+      expect(legacyDecoded!.orgId).toBeUndefined();
+
+      const authRes = await callDetailsEndpoint(legacyToken);
+      expect(authRes.statusCode).toBe(200);
+
+      const renewRes = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/auth/token/renew",
+        body: { accessToken: legacyToken }
+      });
+      expect(renewRes.statusCode).toBe(200);
+
+      const renewedAccessToken = renewRes.json().accessToken as string;
+      const renewedDecoded = jwt.decode(renewedAccessToken) as {
+        orgId?: string;
+        rootOrgId?: string;
+        parentOrgId?: string;
+      } | null;
+      expect(renewedDecoded).not.toBeNull();
+      expect(renewedDecoded!.orgId).toBe(seedData1.organization.id);
+      expect(renewedDecoded!.rootOrgId).toBe(seedData1.organization.id);
+      expect(renewedDecoded!.parentOrgId).toBe(seedData1.organization.id);
+      expect((await callDetailsEndpoint(renewedAccessToken)).statusCode).toBe(200);
+    } finally {
+      await cleanupIdentityDirect(identityId);
+    }
   });
 
   // -------------------------------------------------------------------------

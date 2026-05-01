@@ -63,40 +63,37 @@ export type TIdentityAccessTokenJwtPayload = {
   };
 };
 
-// Claims shared by every validated JWT path — the common core all three assert
-// helpers require before they check their own additional fields.
+// Claims present on every JWT we accept (legacy + new format). Pre-redesign
+// JWTs lacked `jti` but always carried `identityAccessTokenId`, so that's the
+// stable token id across both formats.
 export type TCoreTokenClaims = TIdentityAccessTokenJwtPayload & {
-  jti: string;
   iat: number;
   identityId: string;
-};
-
-// Always present on legacy and new-format renewable JWTs. Renewals fall back
-// to PG when the new-format claims (TRenewableClaims) aren't all present.
-export type TMinimalRenewClaims = TCoreTokenClaims & {
   identityAccessTokenId: string;
 };
 
-// New-format JWTs carry these in addition to TMinimalRenewClaims, letting renew
-// run without a PG read. `creationEpoch` anchors the maxTTL budget across renewals.
+// Same shape as core; named here for call-site clarity in the renew flow.
+export type TMinimalRenewClaims = TCoreTokenClaims;
+
+// Same shape as core; named here for call-site clarity in the revoke flow.
+export type TRevocableClaims = TCoreTokenClaims;
+
+// New-format JWTs carry every claim needed to auth/renew without a PG read.
+// `creationEpoch` anchors the maxTTL budget across renewals.
 export type TRenewableClaims = TMinimalRenewClaims & {
+  jti: string;
   authMethod: IdentityAuthMethod;
+  orgId: string;
+  rootOrgId: string;
+  parentOrgId: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenPeriod: number;
   creationEpoch: number;
 };
 
-// Claims required by the hot-path validator (fnValidateIdentityAccessTokenFast).
-export type TFastPathClaims = TCoreTokenClaims & {
-  orgId: string;
-  rootOrgId: string;
-  parentOrgId: string;
-};
-
-// Resolved renewal source — either parsed from new-format claims or loaded from
-// PG for legacy upgrade. Same shape regardless of origin so the rest of renew
-// is path-agnostic.
+// Resolved auth/renew context — parsed from new-format claims or loaded from
+// PG for legacy tokens. Auth uses a subset; renew uses every field.
 export type TRenewSource = {
   authMethod: IdentityAuthMethod;
   accessTokenTTL: number;
@@ -108,12 +105,8 @@ export type TRenewSource = {
   rootOrgId: string;
   parentOrgId: string;
   clientSecretId: string;
+  numUsesLimit: number;
   identityAuth?: TIdentityAccessTokenJwtPayload["identityAuth"];
-};
-
-export type TRevocableClaims = TCoreTokenClaims & {
-  authMethod: IdentityAuthMethod;
-  accessTokenTTL: number;
 };
 
 export type TComputeIssuedTtlInput = {

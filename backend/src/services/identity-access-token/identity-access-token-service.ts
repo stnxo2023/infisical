@@ -12,7 +12,6 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import {
-  assertFastPathClaims,
   assertMinimalRenewClaims,
   assertRevocableClaims,
   computeIssuedTtl,
@@ -28,6 +27,7 @@ import {
   TAWSAuthDetails,
   TIdentityAccessTokenJwtPayload,
   TKubernetesAuthDetails,
+  TMinimalRenewClaims,
   TOidcAuthDetails,
   TRenewAccessTokenDTO,
   TRenewSource
@@ -204,98 +204,10 @@ export const identityAccessTokenServiceFactory = ({
     return { accessToken, identityAccessToken };
   };
 
-  const fnValidateIdentityAccessTokenFast = async (rawToken: TIdentityAccessTokenJwtPayload, ipAddress?: string) => {
-    const appCfg = getConfig();
-    const token = assertFastPathClaims(rawToken);
-
-    // Legacy tokens (pre-redesign) were signed without `expiresIn` so the JWT
-    // has no `exp`. For those, enforce the `iat + MAX_AGE` ceiling here.
-    // New tokens always have `exp`; jwt.verify already rejected expired ones.
-    const issuedAtMs = token.iat * 1000;
-    if (typeof token.exp !== "number" && Date.now() > issuedAtMs + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000) {
-      throw new UnauthorizedError({ message: "Identity access token exceeded max age, please re-authenticate" });
-    }
-
-    const [, usesRemainingRaw] = await Promise.all([
-      assertTokenIsNotRevoked({
-        tokenId: token.jti,
-        identityId: token.identityId,
-        issuedAtMs
-      }),
-      keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, token.jti))
-    ]);
-
-    // null means unlimited or the Redis counter was lost; <= 0 means exhausted.
-    const remainingFromState = parseUsesRemaining(usesRemainingRaw);
-    if (remainingFromState !== null && remainingFromState <= 0) {
-      throw new UnauthorizedError({ message: "Failed to authorize: token usage limit reached" });
-    }
-
-    if (token.numUsesLimit && token.numUsesLimit > 0) {
-      if (remainingFromState === null) {
-        // Counter was lost (Redis flush). Re-seed from the JWT's numUsesLimit claim
-        // and allow this request; subsequent requests decrement the live counter.
-        await setUsesRemaining(
-          token.identityId,
-          token.jti,
-          token.numUsesLimit - 1,
-          appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
-        );
-      } else {
-        const remaining = await keyStore.incrementBy(
-          KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, token.jti),
-          -1
-        );
-        if (remaining < 0) {
-          throw new UnauthorizedError({ message: "Failed to authorize: token usage limit reached" });
-        }
-      }
-    }
-
-    if (ipAddress && token.authMethod) {
-      const trustedIps = await identityDAL.getTrustedIpsByAuthMethod(
-        token.identityId,
-        token.authMethod as IdentityAuthMethod
-      );
-      if (hasNonWildcardTrustedIps(trustedIps as TIp[] | null | undefined)) {
-        checkIPAgainstBlocklist({
-          ipAddress,
-          trustedIps: trustedIps as TIp[]
-        });
-      }
-    }
-
-    const orgMembership = await orgDAL.findEffectiveOrgMembership({
-      actorType: ActorType.IDENTITY,
-      actorId: token.identityId,
-      orgId: token.orgId,
-      status: OrgMembershipStatus.Accepted
-    });
-    if (!orgMembership) {
-      throw new UnauthorizedError({ message: "Identity is not a member of the organization" });
-    }
-    if (!orgMembership.isActive) {
-      throw new UnauthorizedError({ message: "Identity organization membership is inactive" });
-    }
-
-    return {
-      identityId: token.identityId,
-      identityName: token.identityName ?? "",
-      name: token.identityName ?? "",
-      orgId: token.orgId,
-      rootOrgId: token.rootOrgId,
-      parentOrgId: token.parentOrgId,
-      orgName: undefined as string | undefined,
-      authMethod: (token.authMethod ?? "") as string
-    };
-  };
-
-  // Loads the renewal source for a legacy JWT from PG. Legacy tokens predate
+  // Loads the auth/renew context for a legacy JWT from PG. Legacy tokens predate
   // the lazy-insert model and always have a row; revoked or missing rows mean
-  // the token can't be safely upgraded.
-  const loadLegacyRenewSource = async (
-    decoded: TIdentityAccessTokenJwtPayload & { identityAccessTokenId: string }
-  ): Promise<TRenewSource> => {
+  // the token can't be safely upgraded. Auth uses a subset of these fields.
+  const loadLegacyTokenSource = async (decoded: TMinimalRenewClaims): Promise<TRenewSource> => {
     const row = await identityAccessTokenDAL.findOne({ id: decoded.identityAccessTokenId });
     if (!row || row.isAccessTokenRevoked) {
       throw new UnauthorizedError({ message: "Cannot renew revoked or unknown access token" });
@@ -314,7 +226,105 @@ export const identityAccessTokenServiceFactory = ({
       rootOrgId: decoded.rootOrgId ?? fallbackOrgId,
       parentOrgId: decoded.parentOrgId ?? fallbackOrgId,
       clientSecretId: decoded.clientSecretId ?? "",
+      numUsesLimit: row.accessTokenNumUsesLimit,
       identityAuth: decoded.identityAuth
+    };
+  };
+
+  const fnValidateIdentityAccessTokenFast = async (rawToken: TIdentityAccessTokenJwtPayload, ipAddress?: string) => {
+    const appCfg = getConfig();
+    const token = assertMinimalRenewClaims(rawToken);
+    const tokenId = token.jti ?? token.identityAccessTokenId;
+    const source: TRenewSource = hasFullRenewClaims(token)
+      ? {
+          authMethod: token.authMethod,
+          accessTokenTTL: token.accessTokenTTL,
+          accessTokenMaxTTL: token.accessTokenMaxTTL,
+          accessTokenPeriod: token.accessTokenPeriod,
+          creationEpoch: token.creationEpoch,
+          identityName: token.identityName ?? "",
+          orgId: token.orgId,
+          rootOrgId: token.rootOrgId,
+          parentOrgId: token.parentOrgId,
+          clientSecretId: token.clientSecretId,
+          numUsesLimit: token.numUsesLimit ?? 0,
+          identityAuth: token.identityAuth
+        }
+      : await loadLegacyTokenSource(token);
+
+    // Legacy tokens (pre-redesign) were signed without `expiresIn` so the JWT
+    // has no `exp`. For those, enforce the `iat + MAX_AGE` ceiling here.
+    // New tokens always have `exp`; jwt.verify already rejected expired ones.
+    const issuedAtMs = token.iat * 1000;
+    if (typeof token.exp !== "number" && Date.now() > issuedAtMs + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000) {
+      throw new UnauthorizedError({ message: "Identity access token exceeded max age, please re-authenticate" });
+    }
+
+    const [, usesRemainingRaw] = await Promise.all([
+      assertTokenIsNotRevoked({
+        tokenId,
+        identityId: token.identityId,
+        issuedAtMs
+      }),
+      keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, tokenId))
+    ]);
+
+    // null means unlimited or the Redis counter was lost; <= 0 means exhausted.
+    const remainingFromState = parseUsesRemaining(usesRemainingRaw);
+    if (remainingFromState !== null && remainingFromState <= 0) {
+      throw new UnauthorizedError({ message: "Failed to authorize: token usage limit reached" });
+    }
+
+    const numUsesLimit = token.numUsesLimit ?? source.numUsesLimit;
+
+    if (numUsesLimit > 0) {
+      if (remainingFromState === null) {
+        // Counter was lost (Redis flush). Re-seed from the JWT's numUsesLimit claim
+        // and allow this request; subsequent requests decrement the live counter.
+        await setUsesRemaining(token.identityId, tokenId, numUsesLimit - 1, appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE);
+      } else {
+        const remaining = await keyStore.incrementBy(
+          KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, tokenId),
+          -1
+        );
+        if (remaining < 0) {
+          throw new UnauthorizedError({ message: "Failed to authorize: token usage limit reached" });
+        }
+      }
+    }
+
+    if (ipAddress) {
+      const trustedIps = await identityDAL.getTrustedIpsByAuthMethod(token.identityId, source.authMethod);
+      if (hasNonWildcardTrustedIps(trustedIps as TIp[] | null | undefined)) {
+        checkIPAgainstBlocklist({
+          ipAddress,
+          trustedIps: trustedIps as TIp[]
+        });
+      }
+    }
+
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.IDENTITY,
+      actorId: token.identityId,
+      orgId: source.orgId,
+      status: OrgMembershipStatus.Accepted
+    });
+    if (!orgMembership) {
+      throw new UnauthorizedError({ message: "Identity is not a member of the organization" });
+    }
+    if (!orgMembership.isActive) {
+      throw new UnauthorizedError({ message: "Identity organization membership is inactive" });
+    }
+
+    return {
+      identityId: token.identityId,
+      identityName: source.identityName,
+      name: source.identityName,
+      orgId: source.orgId,
+      rootOrgId: source.rootOrgId,
+      parentOrgId: source.parentOrgId,
+      orgName: undefined as string | undefined,
+      authMethod: source.authMethod
     };
   };
 
@@ -337,24 +347,25 @@ export const identityAccessTokenServiceFactory = ({
           accessTokenPeriod: decodedToken.accessTokenPeriod,
           creationEpoch: decodedToken.creationEpoch,
           identityName: decodedToken.identityName ?? "",
-          orgId: decodedToken.orgId ?? "",
-          rootOrgId: decodedToken.rootOrgId ?? decodedToken.orgId ?? "",
-          parentOrgId: decodedToken.parentOrgId ?? decodedToken.orgId ?? "",
+          orgId: decodedToken.orgId,
+          rootOrgId: decodedToken.rootOrgId,
+          parentOrgId: decodedToken.parentOrgId,
           clientSecretId: decodedToken.clientSecretId,
+          numUsesLimit: decodedToken.numUsesLimit ?? 0,
           identityAuth: decodedToken.identityAuth
         }
-      : await loadLegacyRenewSource(decodedToken);
+      : await loadLegacyTokenSource(decodedToken);
 
-    const { jti } = decodedToken;
+    const tokenId = decodedToken.jti ?? decodedToken.identityAccessTokenId;
 
     const [, existingUsesRemainingRaw] = await Promise.all([
       assertTokenIsNotRevoked({
-        tokenId: jti,
+        tokenId,
         identityId: decodedToken.identityId,
         issuedAtMs: decodedToken.iat * 1000,
         messagePrefix: "Cannot renew"
       }),
-      keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(decodedToken.identityId, jti))
+      keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(decodedToken.identityId, tokenId))
     ]);
 
     const existingRemaining = parseUsesRemaining(existingUsesRemainingRaw);
@@ -378,7 +389,7 @@ export const identityAccessTokenServiceFactory = ({
       throw new UnauthorizedError({ message: "Cannot renew: identity access token has reached its max TTL" });
     }
 
-    const numUsesLimit = decodedToken.numUsesLimit ?? 0;
+    const numUsesLimit = decodedToken.numUsesLimit ?? source.numUsesLimit;
     const ipRestrictionEnabled = Boolean(decodedToken.ipRestrictionEnabled);
 
     const { accessToken: renewedToken } = signIdentityAccessToken({
@@ -400,11 +411,11 @@ export const identityAccessTokenServiceFactory = ({
       creationEpoch: source.creationEpoch
     });
 
-    // Renewed JWT keeps the same `jti`; PG revocation already applies. Reseed
+    // Renewed JWT keeps the same token id; PG revocation already applies. Reseed
     // the Redis counter to the current remaining budget.
     if (numUsesLimit > 0) {
       const remainingUses = existingRemaining === null ? numUsesLimit : Math.max(0, existingRemaining);
-      await setUsesRemaining(decodedToken.identityId, jti, remainingUses, appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE);
+      await setUsesRemaining(decodedToken.identityId, tokenId, remainingUses, appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE);
     }
 
     return {
@@ -418,11 +429,12 @@ export const identityAccessTokenServiceFactory = ({
     const appCfg = getConfig();
 
     const decodedToken = assertRevocableClaims(verifyAccessTokenJwt(accessToken));
-    const { jti, identityId } = decodedToken;
+    const { identityId } = decodedToken;
+    const tokenId = decodedToken.jti ?? decodedToken.identityAccessTokenId;
     const expiresAt = new Date((decodedToken.exp ?? decodedToken.iat + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE) * 1000);
 
     await identityAccessTokenRevocationDAL.insertRevocation({
-      id: jti,
+      id: tokenId,
       identityId,
       expiresAt
     });

@@ -7,7 +7,6 @@ import { AuthTokenType } from "../auth/auth-type";
 import {
   TComputeIssuedTtlInput,
   TCoreTokenClaims,
-  TFastPathClaims,
   TIdentityAccessTokenJwtPayload,
   TMinimalRenewClaims,
   TRenewableClaims,
@@ -53,43 +52,40 @@ export const verifyAccessTokenJwt = (accessToken: string): TIdentityAccessTokenJ
   return decoded;
 };
 
+// Pre-redesign JWTs were signed without `jti`, so `identityAccessTokenId` is the
+// stable id we can rely on across both formats. Callers that need the live token
+// id read `decoded.jti ?? decoded.identityAccessTokenId`.
 const hasCoreTokenClaims = (decoded: TIdentityAccessTokenJwtPayload): decoded is TCoreTokenClaims =>
-  !!decoded.jti && typeof decoded.iat === "number" && !!decoded.identityId;
+  typeof decoded.iat === "number" && !!decoded.identityId && !!decoded.identityAccessTokenId;
 
-// Claims required by EVERY renewable JWT (legacy + new format). Legacy tokens
-// don't carry the new-format claims; the renew flow loads those from PG instead.
+// Baseline assertion shared by every JWT-consuming entry point (auth, renew,
+// revoke). Per-flow predicates narrow further.
 export const assertMinimalRenewClaims = (decoded: TIdentityAccessTokenJwtPayload): TMinimalRenewClaims => {
-  if (!hasCoreTokenClaims(decoded) || !decoded.identityAccessTokenId) {
-    throw new UnauthorizedError({ message: "Cannot renew identity access token, please re-authenticate" });
-  }
-  return decoded as TMinimalRenewClaims;
-};
-
-// New-format JWTs carry these in addition to the minimal claims, letting renew
-// run without a PG lookup. False = legacy token, requires a DAL fallback.
-export const hasFullRenewClaims = (decoded: TMinimalRenewClaims): decoded is TRenewableClaims => {
-  return (
-    !!decoded.authMethod &&
-    typeof decoded.accessTokenTTL === "number" &&
-    typeof decoded.accessTokenMaxTTL === "number" &&
-    typeof decoded.accessTokenPeriod === "number" &&
-    typeof decoded.creationEpoch === "number"
-  );
-};
-
-export const assertRevocableClaims = (decoded: TIdentityAccessTokenJwtPayload): TRevocableClaims => {
-  if (!hasCoreTokenClaims(decoded) || !decoded.authMethod || typeof decoded.accessTokenTTL !== "number") {
-    throw new UnauthorizedError({ message: "Cannot revoke legacy identity access token" });
-  }
-  return decoded as TRevocableClaims;
-};
-
-export const assertFastPathClaims = (decoded: TIdentityAccessTokenJwtPayload): TFastPathClaims => {
-  if (!hasCoreTokenClaims(decoded) || !decoded.orgId || !decoded.rootOrgId || !decoded.parentOrgId) {
+  if (!hasCoreTokenClaims(decoded)) {
     throw new UnauthorizedError({ message: "Invalid identity access token claims, please re-authenticate" });
   }
-  return decoded as TFastPathClaims;
+  return decoded;
 };
+
+// True when the JWT carries every claim needed to auth/renew without a PG read:
+// jti + org claims + TTL/period/creationEpoch budget anchors. Legacy tokens fail
+// this and fall through to loadLegacyTokenSource.
+export const hasFullRenewClaims = (decoded: TMinimalRenewClaims): decoded is TRenewableClaims =>
+  !!decoded.jti &&
+  !!decoded.orgId &&
+  !!decoded.rootOrgId &&
+  !!decoded.parentOrgId &&
+  !!decoded.authMethod &&
+  typeof decoded.accessTokenTTL === "number" &&
+  typeof decoded.accessTokenMaxTTL === "number" &&
+  typeof decoded.accessTokenPeriod === "number" &&
+  typeof decoded.creationEpoch === "number";
+
+// Revoke only needs the core claims — `assertMinimalRenewClaims` is the same
+// check; this alias preserves intent at the call site.
+export const assertRevocableClaims = assertMinimalRenewClaims as (
+  decoded: TIdentityAccessTokenJwtPayload
+) => TRevocableClaims;
 
 // Compute the TTL (seconds) to sign the JWT with.
 //
