@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { ReleaseEvidenceBundle } from "./evidence.js";
 import { runGit } from "./git.js";
-import { ImpactEntry, ImpactEntrySchema } from "./schema.js";
+import { Evidence, ImpactEntry, ImpactEntrySchema } from "./schema.js";
 
 export const MODEL = "gpt-5.4";
 
@@ -27,7 +27,8 @@ const agenticLimits = {
   maxDiffCharsPerFile: 20000,
   maxFileChars: 20000,
   maxTotalToolResultChars: 220000,
-  maxCompletionTokens: 5000
+  maxCompletionTokens: 5000,
+  maxTurns: 20
 };
 
 const evidenceForFile = (file: string, description?: string) => ({
@@ -115,6 +116,9 @@ Write for a busy self-hosted operator deciding whether and how to upgrade:
 - Do not say "the release", "this release", "code changes indicate", "evidence bundle", "identified", or "detected".
 - Do not mention that no Docker, Helm, Kubernetes, or database changes exist unless that absence changes the upgrade action.
 - Do not duplicate the same risk across breakingChanges, configChanges, deploymentNotes, and knownIssues. Pick one category.
+- Do not include the same evidence item twice in one entry.
+- Do not repeat a release note or PR URL across multiple entries when a more specific file diff can support the claim.
+- Before finalizing, audit the JSON for duplicate titles, duplicate descriptions, and duplicate evidence.
 - Use breakingChanges for changes that can make existing auth, API, startup, database, or integrations fail after upgrade.
 - Use deploymentNotes only when deployment files, self-hosting docs, Docker, Helm, Kubernetes manifests, startup/runtime, or rollout behavior changed.
 - Use configChanges only for environment variables, config files, defaults, or settings that operators must update.
@@ -167,13 +171,40 @@ Evidence rules:
 `;
 
 const normalizeDraft = (draft: GeneratedDraft): GeneratedDraft => {
+  const evidenceKey = (evidence: Evidence) =>
+    [evidence.type, evidence.ref, evidence.path ?? "", evidence.url ?? ""].join("\u0000");
+
+  const dedupeEvidence = (evidenceItems: Evidence[]) => {
+    const seen = new Set<string>();
+
+    return evidenceItems.filter((evidence) => {
+      const key = evidenceKey(evidence);
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const entryKey = (entry: ImpactEntry) =>
+    [entry.title.trim().toLowerCase(), entry.description.trim().toLowerCase()].join("\u0000");
+
   const normalizeEntries = (entries: ImpactEntry[]) =>
-    entries.map((entry) => ({
-      ...entry,
-      evidence: entry.evidence.map((evidence) =>
-        evidence.type === "file" && evidence.path ? { ...evidence, ref: evidence.path } : evidence
-      )
-    }));
+    entries
+      .map((entry) => ({
+        ...entry,
+        evidence: dedupeEvidence(
+          entry.evidence.map((evidence) =>
+            evidence.type === "file" && evidence.path ? { ...evidence, ref: evidence.path } : evidence
+          )
+        )
+      }))
+      .filter((entry, index, normalizedEntries) => {
+        const key = entryKey(entry);
+        return normalizedEntries.findIndex((candidate) => entryKey(candidate) === key) === index;
+      });
 
   return {
     ...draft,
@@ -469,7 +500,7 @@ export const generateWithOpenAiAgentic = async (bundle: ReleaseEvidenceBundle): 
   });
 
   const result = await run(agent, "Generate the self-hosted upgrade impact JSON for this release.", {
-    maxTurns: 20
+    maxTurns: agenticLimits.maxTurns
   });
 
   if (!result.finalOutput) {
