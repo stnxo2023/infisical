@@ -81,7 +81,10 @@ const isDeploymentFile = (file: string) =>
     "docker-swarm/",
     "helm-charts/",
     "render.yaml",
-    "nginx/"
+    "nginx/",
+    ".nvmrc",
+    "backend/package.json",
+    "frontend/package.json"
   ].some((pattern) => file === pattern || file.startsWith(pattern));
 
 const isConfigFile = (file: string) =>
