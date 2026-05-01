@@ -1,5 +1,6 @@
-import { AxiosError, isAxiosError } from "axios";
+import { AxiosError, AxiosRequestConfig, isAxiosError } from "axios";
 import https from "https";
+import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
@@ -7,7 +8,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { TKubernetesTokenRequest } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
 import {
@@ -48,6 +49,59 @@ export const KubernetesProvider = ({
     return providerInputs;
   };
 
+  /**
+   * Returns the right HTTP client for a Kubernetes API request:
+   *
+   * - Gateway-routed (`isGatewayProxied = true`, asserted by `$gatewayProxyWrapper`):
+   *   stays on the existing axios `request` so the gateway-supplied
+   *   `httpsAgent` (carrying the relay TLS context) is honored as before.
+   *   The gateway already enforces the originally configured target, so
+   *   SSRF/rebinding cannot land elsewhere.
+   * - Direct (`isGatewayProxied = false`): switches to `safeRequest`, which
+   *   validates the user-supplied URL and pins the connection to the
+   *   validated IP set to defeat DNS rebinding TOCTOU between validation
+   *   and connect. `httpsAgent` from caller is dropped because safeRequest
+   *   builds its own pinned agent; CA / rejectUnauthorized are forwarded
+   *   through safeRequest options instead.
+   *
+   */
+  const k8sHttpClient = (providerInputs: z.infer<typeof DynamicSecretKubernetesSchema>, isGatewayProxied: boolean) => {
+    type K8sRequestConfig = AxiosRequestConfig & { httpsAgent?: https.Agent };
+
+    if (isGatewayProxied) {
+      return {
+        get: <T = unknown>(url: string, config: K8sRequestConfig) => request.get<T>(url, config),
+        post: <T = unknown>(url: string, body: unknown, config: K8sRequestConfig) => request.post<T>(url, body, config),
+        delete: <T = unknown>(url: string, config: K8sRequestConfig) => request.delete<T>(url, config)
+      };
+    }
+
+    // safeRequest builds its own pinned agent — drop the caller's httpsAgent
+    // and propagate ca / rejectUnauthorized via safeRequest's own options.
+    const toSafeOpts = (config: K8sRequestConfig) => {
+      const rest: AxiosRequestConfig = { ...config };
+      delete (rest as { httpsAgent?: https.Agent }).httpsAgent;
+      return {
+        ...rest,
+        // Only forward TLS overrides on direct API auth; Gateway auth method
+        // does not need a custom CA because traffic flows through the proxy.
+        ...(providerInputs.authMethod === KubernetesAuthMethod.Api && providerInputs.sslEnabled && providerInputs.ca
+          ? {
+              ca: providerInputs.ca,
+              rejectUnauthorized: providerInputs.sslRejectUnauthorized
+            }
+          : {})
+      };
+    };
+
+    return {
+      get: <T = unknown>(url: string, config: K8sRequestConfig) => safeRequest.get<T>(url, toSafeOpts(config)),
+      post: <T = unknown>(url: string, body: unknown, config: K8sRequestConfig) =>
+        safeRequest.post<T>(url, body, toSafeOpts(config)),
+      delete: <T = unknown>(url: string, config: K8sRequestConfig) => safeRequest.delete<T>(url, toSafeOpts(config))
+    };
+  };
+
   const $gatewayProxyWrapper = async <T>(
     inputs: {
       gatewayId: string;
@@ -56,7 +110,12 @@ export const KubernetesProvider = ({
       httpsAgent?: https.Agent;
       reviewTokenThroughGateway: boolean;
     },
-    gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
+    gatewayCallback: (
+      host: string,
+      port: number,
+      httpsAgent: https.Agent | undefined,
+      isGatewayProxied: boolean
+    ) => Promise<T>
   ): Promise<T> => {
     const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId: inputs.gatewayId,
@@ -69,7 +128,8 @@ export const KubernetesProvider = ({
           return gatewayCallback(
             inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
             port,
-            inputs.httpsAgent
+            inputs.httpsAgent,
+            true
           );
         },
         {
@@ -92,7 +152,8 @@ export const KubernetesProvider = ({
         const res = await gatewayCallback(
           inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
           port,
-          httpsAgent
+          httpsAgent,
+          true
         );
         return res;
       },
@@ -122,12 +183,18 @@ export const KubernetesProvider = ({
       usernamePrefix: "dynamic-secret-sa-"
     });
 
-    const serviceAccountDynamicCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
+    const serviceAccountDynamicCallback = async (
+      host: string,
+      port: number,
+      httpsAgent: https.Agent | undefined,
+      isGatewayProxied: boolean
+    ) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Dynamic) {
         throw new Error("invalid callback");
       }
 
       const baseUrl = port ? `${host}:${port}` : host;
+      const httpClient = k8sHttpClient(providerInputs, isGatewayProxied);
       const roleBindingName = `${serviceAccountName}-role-binding`;
 
       const namespaces = providerInputs.namespace.split(",").map((namespace) => namespace.trim());
@@ -136,7 +203,7 @@ export const KubernetesProvider = ({
       for await (const namespace of namespaces) {
         try {
           // 1. Create a test service account
-          await request.post(
+          await httpClient.post(
             `${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts`,
             {
               metadata: {
@@ -172,7 +239,7 @@ export const KubernetesProvider = ({
             ...(providerInputs.roleType !== KubernetesRoleType.ClusterRole && { namespace })
           };
 
-          await request.post(
+          await httpClient.post(
             roleBindingUrl,
             {
               metadata: roleBindingMetadata,
@@ -207,7 +274,7 @@ export const KubernetesProvider = ({
           );
 
           // 3. Request a token for the test service account
-          await request.post(
+          await httpClient.post(
             `${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${serviceAccountName}/token`,
             {
               spec: {
@@ -234,7 +301,7 @@ export const KubernetesProvider = ({
 
           // 4. Cleanup: delete role binding and service account
           if (providerInputs.roleType === KubernetesRoleType.Role) {
-            await request.delete(
+            await httpClient.delete(
               `${baseUrl}/apis/rbac.authorization.k8s.io/v1/namespaces/${namespace}/rolebindings/${roleBindingName}`,
               {
                 headers: {
@@ -253,7 +320,7 @@ export const KubernetesProvider = ({
               }
             );
           } else {
-            await request.delete(
+            await httpClient.delete(
               `${baseUrl}/apis/rbac.authorization.k8s.io/v1/clusterrolebindings/${roleBindingName}`,
               {
                 headers: {
@@ -273,7 +340,7 @@ export const KubernetesProvider = ({
             );
           }
 
-          await request.delete(`${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${serviceAccountName}`, {
+          await httpClient.delete(`${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${serviceAccountName}`, {
             headers: {
               "Content-Type": "application/json",
               ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
@@ -302,14 +369,20 @@ export const KubernetesProvider = ({
       }
     };
 
-    const serviceAccountStaticCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
+    const serviceAccountStaticCallback = async (
+      host: string,
+      port: number,
+      httpsAgent: https.Agent | undefined,
+      isGatewayProxied: boolean
+    ) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Static) {
         throw new Error("invalid callback");
       }
 
       const baseUrl = port ? `${host}:${port}` : host;
+      const httpClient = k8sHttpClient(providerInputs, isGatewayProxied);
 
-      await request.get(
+      await httpClient.get(
         `${baseUrl}/api/v1/namespaces/${providerInputs.namespace}/serviceaccounts/${providerInputs.serviceAccountName}`,
         {
           headers: {
@@ -374,9 +447,9 @@ export const KubernetesProvider = ({
           );
         }
       } else if (providerInputs.credentialType === KubernetesCredentialType.Static) {
-        await serviceAccountStaticCallback(k8sHost, k8sPort, httpsAgent);
+        await serviceAccountStaticCallback(k8sHost, k8sPort, httpsAgent, false);
       } else {
-        await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent);
+        await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent, false);
       }
 
       return true;
@@ -433,12 +506,18 @@ export const KubernetesProvider = ({
       usernamePrefix: "dynamic-secret-sa-"
     });
 
-    const serviceAccountDynamicCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
+    const serviceAccountDynamicCallback = async (
+      host: string,
+      port: number,
+      httpsAgent: https.Agent | undefined,
+      isGatewayProxied: boolean
+    ) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Dynamic) {
         throw new Error("invalid callback");
       }
 
       const baseUrl = port ? `${host}:${port}` : host;
+      const httpClient = k8sHttpClient(providerInputs, isGatewayProxied);
       const roleBindingName = `${serviceAccountName}-role-binding`;
       const allowedNamespaces = providerInputs.namespace.split(",").map((namespace) => namespace.trim());
 
@@ -456,7 +535,7 @@ export const KubernetesProvider = ({
       }
 
       // 1. Create the service account
-      await request.post(
+      await httpClient.post(
         `${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts`,
         {
           metadata: {
@@ -492,7 +571,7 @@ export const KubernetesProvider = ({
         ...(providerInputs.roleType !== KubernetesRoleType.ClusterRole && { namespace })
       };
 
-      await request.post(
+      await httpClient.post(
         roleBindingUrl,
         {
           metadata: roleBindingMetadata,
@@ -527,7 +606,7 @@ export const KubernetesProvider = ({
       );
 
       // 3. Request a token for the service account
-      const res = await request.post<TKubernetesTokenRequest>(
+      const res = await httpClient.post<TKubernetesTokenRequest>(
         `${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${serviceAccountName}/token`,
         {
           spec: {
@@ -555,7 +634,12 @@ export const KubernetesProvider = ({
       return { ...res.data, serviceAccountName };
     };
 
-    const tokenRequestStaticCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
+    const tokenRequestStaticCallback = async (
+      host: string,
+      port: number,
+      httpsAgent: https.Agent | undefined,
+      isGatewayProxied: boolean
+    ) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Static) {
         throw new Error("invalid callback");
       }
@@ -567,8 +651,9 @@ export const KubernetesProvider = ({
       }
 
       const baseUrl = port ? `${host}:${port}` : host;
+      const httpClient = k8sHttpClient(providerInputs, isGatewayProxied);
 
-      const res = await request.post<TKubernetesTokenRequest>(
+      const res = await httpClient.post<TKubernetesTokenRequest>(
         `${baseUrl}/api/v1/namespaces/${providerInputs.namespace}/serviceaccounts/${providerInputs.serviceAccountName}/token`,
         {
           spec: {
@@ -645,8 +730,8 @@ export const KubernetesProvider = ({
       } else {
         tokenData =
           providerInputs.credentialType === KubernetesCredentialType.Static
-            ? await tokenRequestStaticCallback(k8sHost, k8sPort, httpsAgent)
-            : await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent);
+            ? await tokenRequestStaticCallback(k8sHost, k8sPort, httpsAgent, false)
+            : await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent, false);
       }
 
       return {
@@ -688,18 +773,24 @@ export const KubernetesProvider = ({
   ) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const serviceAccountDynamicCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
+    const serviceAccountDynamicCallback = async (
+      host: string,
+      port: number,
+      httpsAgent: https.Agent | undefined,
+      isGatewayProxied: boolean
+    ) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Dynamic) {
         throw new Error("invalid callback");
       }
 
       const baseUrl = port ? `${host}:${port}` : host;
+      const httpClient = k8sHttpClient(providerInputs, isGatewayProxied);
       const roleBindingName = `${entityId}-role-binding`;
 
       const namespace = config?.namespace ?? providerInputs.namespace.split(",")[0].trim();
 
       if (providerInputs.roleType === KubernetesRoleType.Role) {
-        await request.delete(
+        await httpClient.delete(
           `${baseUrl}/apis/rbac.authorization.k8s.io/v1/namespaces/${namespace}/rolebindings/${roleBindingName}`,
           {
             headers: {
@@ -718,7 +809,7 @@ export const KubernetesProvider = ({
           }
         );
       } else {
-        await request.delete(`${baseUrl}/apis/rbac.authorization.k8s.io/v1/clusterrolebindings/${roleBindingName}`, {
+        await httpClient.delete(`${baseUrl}/apis/rbac.authorization.k8s.io/v1/clusterrolebindings/${roleBindingName}`, {
           headers: {
             "Content-Type": "application/json",
             ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
@@ -736,7 +827,7 @@ export const KubernetesProvider = ({
       }
 
       // Delete the service account
-      await request.delete(`${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${entityId}`, {
+      await httpClient.delete(`${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${entityId}`, {
         headers: {
           "Content-Type": "application/json",
           ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
@@ -798,7 +889,7 @@ export const KubernetesProvider = ({
             );
           }
         } else {
-          await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent);
+          await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent, false);
         }
       } catch (error) {
         let errorMessage = error instanceof Error ? error.message : "Unknown error";

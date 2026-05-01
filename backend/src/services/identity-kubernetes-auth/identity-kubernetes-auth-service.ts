@@ -49,6 +49,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { safeRequest } from "@app/lib/validator";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -336,7 +337,8 @@ export const identityKubernetesAuthServiceFactory = ({
 
         const baseUrl = port ? `${host}:${port}` : host;
 
-        const res = await request
+        const isGatewayProxied = port !== undefined;
+        const res = await safeRequest
           .post<TCreateTokenReviewResponse>(
             `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
             {
@@ -356,11 +358,10 @@ export const identityKubernetesAuthServiceFactory = ({
               },
               signal: AbortSignal.timeout(10000),
               timeout: 10000,
-              httpsAgent: new https.Agent({
-                ca: caCert || undefined,
-                rejectUnauthorized: true,
-                servername
-              })
+              allowPrivateIps: isGatewayProxied,
+              ca: caCert || undefined,
+              rejectUnauthorized: true,
+              servername
             }
           )
           .catch((err) => {

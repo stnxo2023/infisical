@@ -35,6 +35,8 @@ import {
   THCVaultMountResponse
 } from "./hc-vault-connection-types";
 
+export type THCVaultGatewayRequestConfig = AxiosRequestConfig & { url: string };
+
 // HashiCorp Vault stores JSON data, so values can be any valid JSON type
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
@@ -130,16 +132,16 @@ export const requestWithHCVaultGateway = async <T>(
   appConnection: { gatewayId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  requestConfig: AxiosRequestConfig,
+  requestConfig: THCVaultGatewayRequestConfig,
   gatewayDetails?: TGatewayDetails
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
-  const url = new URL(requestConfig.url as string);
+  const url = new URL(requestConfig.url);
 
   // If gateway isn't set up, don't proxy request
   if (!gatewayId) {
-    return safeRequest.request<T>({ ...requestConfig, url: requestConfig.url as string });
+    return safeRequest.request<T>(requestConfig);
   }
 
   let gatewayConnectionDetailsV2: TGatewayV2ConnectionDetails | undefined;
