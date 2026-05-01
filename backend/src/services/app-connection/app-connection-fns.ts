@@ -218,6 +218,7 @@ import {
   validateVenafiTppConnectionCredentials,
   VenafiTppConnectionMethod
 } from "./venafi-tpp";
+import { TVenafiTppConnectionConfig } from "./venafi-tpp/venafi-tpp-connection-types";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 import {
@@ -462,7 +463,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.VenafiTpp]: validateVenafiTppConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.VenafiTpp]: ((config: TAppConnectionConfig) =>
+      validateVenafiTppConnectionCredentials(
+        config as TVenafiTppConnectionConfig,
+        gatewayV2Service
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.NetScaler]: validateNetScalerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Ona]: validateOnaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TravisCI]: validateTravisCIConnectionCredentials as TAppConnectionCredentialsValidator,

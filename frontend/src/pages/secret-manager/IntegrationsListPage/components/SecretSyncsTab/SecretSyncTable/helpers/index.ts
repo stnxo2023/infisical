@@ -96,7 +96,13 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.Vercel:
       if (destinationConfig.scope === VercelSyncScope.Team) {
         primaryText = destinationConfig.teamName || destinationConfig.teamId;
-        secondaryText = destinationConfig.targetEnvironments.join(", ");
+        const envLabels = destinationConfig.targetEnvironments.map(
+          (env) => env.charAt(0).toUpperCase() + env.slice(1)
+        );
+        if (destinationConfig.applyToAllCustomEnvironments) {
+          envLabels.push("All Custom Environments");
+        }
+        secondaryText = envLabels.join(", ") || "All Custom Environments";
       } else {
         primaryText = destinationConfig.appName || destinationConfig.app;
         secondaryText = destinationConfig.env;

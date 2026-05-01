@@ -112,6 +112,60 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updated;
   };
 
+  const countDailyByProjectId = async (
+    projectId: string,
+    startDate: Date,
+    tx?: Knex
+  ): Promise<{ date: string; count: number }[]> => {
+    const rows = (await (tx || db.replicaNode())(TableName.PamSession)
+      .select(db.raw(`to_char(("createdAt" AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD') as date`))
+      .count("id as count")
+      .where("projectId", projectId)
+      .where("createdAt", ">=", startDate)
+      .groupByRaw(`("createdAt" AT TIME ZONE 'UTC')::date`)
+      .orderByRaw(`("createdAt" AT TIME ZONE 'UTC')::date asc`)) as unknown as {
+      date: string;
+      count: string | number;
+    }[];
+
+    return rows.map((row) => ({ date: String(row.date), count: Number(row.count) }));
+  };
+
+  const findTopActorsByProjectId = async (
+    projectId: string,
+    startDate: Date,
+    limit: number,
+    tx?: Knex
+  ): Promise<
+    {
+      actorName: string;
+      actorEmail: string;
+      userId: string | null;
+      sessionCount: number;
+    }[]
+  > => {
+    const rows = (await (tx || db.replicaNode())(TableName.PamSession)
+      .select("actorName", "actorEmail", "userId")
+      .count("id as count")
+      .where("projectId", projectId)
+      .where("createdAt", ">=", startDate)
+      .groupBy("actorName", "actorEmail", "userId")
+      .orderBy("count", "desc")
+      .limit(limit)) as unknown as {
+      actorName: string;
+      actorEmail: string;
+      userId: string | null;
+      count: string | number;
+    }[];
+
+    return rows.map((row) => ({
+      actorName: row.actorName,
+      actorEmail: row.actorEmail,
+      userId: row.userId,
+      sessionCount: Number(row.count)
+    }));
+  };
+
   return {
     ...orm,
     findById,
@@ -119,6 +173,8 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     expireSessionById,
     countActiveWebSessions,
     countActiveByProjectId,
+    countDailyByProjectId,
+    findTopActorsByProjectId,
     endSessionById,
     terminateSessionById,
     startSession

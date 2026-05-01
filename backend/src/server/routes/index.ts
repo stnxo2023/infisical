@@ -108,6 +108,7 @@ import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal"
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamProjectRecordingConfigDALFactory } from "@app/ee/services/pam-project-recording-config/pam-project-recording-config-dal";
 import { pamProjectRecordingConfigServiceFactory } from "@app/ee/services/pam-project-recording-config/pam-project-recording-config-service";
+import { pamInsightsServiceFactory } from "@app/ee/services/pam-insights/pam-insights-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { pamResourceFavoriteDALFactory } from "@app/ee/services/pam-resource/pam-resource-favorite-dal";
 import { pamResourceRotationRulesDALFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-dal";
@@ -2489,7 +2490,8 @@ export const registerRoutes = async (
     pkiSyncDAL,
     pkiSyncQueue,
     certificateRequestDAL,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    gatewayV2Service
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -2572,7 +2574,8 @@ export const registerRoutes = async (
     certificateRequestService,
     certificateRequestDAL,
     resourceMetadataDAL,
-    pkiAlertV2Queue
+    pkiAlertV2Queue,
+    gatewayV2Service
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
@@ -2998,6 +3001,15 @@ export const registerRoutes = async (
     pamSessionAiSummaryService
   });
 
+  const pamInsightsService = pamInsightsServiceFactory({
+    permissionService,
+    pamSessionDAL,
+    pamResourceDAL,
+    pamAccountDAL,
+    pamResourceRotationRulesDAL,
+    keyStore
+  });
+
   const pamWebAccessService = pamWebAccessServiceFactory({
     pamAccountDAL,
     pamAccountPolicyDAL,
@@ -3273,6 +3285,7 @@ export const registerRoutes = async (
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
     insights: insightsService,
+    pamInsights: pamInsightsService,
     githubOrgSync: githubOrgSyncConfigService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
