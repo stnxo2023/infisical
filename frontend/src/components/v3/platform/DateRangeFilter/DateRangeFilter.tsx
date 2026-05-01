@@ -6,12 +6,18 @@ import ms from "ms";
 
 import { cn } from "@app/components/v3/utils";
 
-import { Button, type ButtonProps } from "../Button";
-import { Calendar, CalendarDayButton } from "../Calendar";
-import { Input } from "../Input";
-import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Select";
-import { Switch } from "../Switch";
+import { Button, type ButtonProps } from "../../generic/Button";
+import { Calendar, CalendarDayButton } from "../../generic/Calendar";
+import { Input } from "../../generic/Input";
+import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "../../generic/Select";
+import { Switch } from "../../generic/Switch";
 
 const MAX_RANGE_MONTHS = 3;
 

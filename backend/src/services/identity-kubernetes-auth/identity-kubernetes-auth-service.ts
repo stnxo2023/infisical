@@ -128,6 +128,7 @@ export const identityKubernetesAuthServiceFactory = ({
       targetHost?: string;
       targetPort?: number;
       caCert?: string;
+      verifyTlsCertificate?: boolean;
       reviewTokenThroughGateway: boolean;
     },
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
@@ -149,7 +150,7 @@ export const identityKubernetesAuthServiceFactory = ({
       if (!inputs.reviewTokenThroughGateway) {
         httpsAgent = new https.Agent({
           ca: inputs.caCert || undefined,
-          rejectUnauthorized: true,
+          rejectUnauthorized: inputs.verifyTlsCertificate ?? false,
           servername: inputs.targetHost
         });
       }
@@ -196,7 +197,7 @@ export const identityKubernetesAuthServiceFactory = ({
           ? {
               httpsAgent: new https.Agent({
                 ca: inputs.caCert || undefined,
-                rejectUnauthorized: true,
+                rejectUnauthorized: inputs.verifyTlsCertificate ?? false,
                 servername: inputs.targetHost
               })
             }
@@ -214,7 +215,7 @@ export const identityKubernetesAuthServiceFactory = ({
    */
   const $createGatewayValidationRequest = (
     gatewayId: string,
-    options?: { kubernetesHost?: string; caCert?: string }
+    options?: { kubernetesHost?: string; caCert?: string; verifyTlsCertificate?: boolean }
   ): GatewayRequestExecutor => {
     const useGatewayServiceAccount = !options?.kubernetesHost;
 
@@ -235,7 +236,8 @@ export const identityKubernetesAuthServiceFactory = ({
           reviewTokenThroughGateway: useGatewayServiceAccount,
           targetHost,
           targetPort,
-          caCert: options?.caCert
+          caCert: options?.caCert,
+          verifyTlsCertificate: options?.verifyTlsCertificate
         },
         async (host: string, port: number, httpsAgent?: https.Agent) => {
           const config: AxiosRequestConfig = {
@@ -271,6 +273,11 @@ export const identityKubernetesAuthServiceFactory = ({
     };
   };
 
+  const $resolveEffectiveVerifyTlsCertificate = (caCert: string, storedVerify: boolean | null | undefined): boolean => {
+    if (!caCert.length) return false;
+    return storedVerify ?? false;
+  };
+
   const login = async ({ identityId, jwt: serviceAccountJwt, organizationSlug }: TLoginKubernetesAuthDTO) => {
     const appCfg = getConfig();
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
@@ -280,7 +287,9 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityKubernetesAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityKubernetesAuth.identityId), () =>
+      identityDAL.findById(identityKubernetesAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"
@@ -360,7 +369,10 @@ export const identityKubernetesAuthServiceFactory = ({
               timeout: 10000,
               allowPrivateIps: isGatewayProxied,
               ca: caCert || undefined,
-              rejectUnauthorized: true,
+              rejectUnauthorized: $resolveEffectiveVerifyTlsCertificate(
+                caCert,
+                identityKubernetesAuth.verifyTlsCertificate
+              ),
               servername
             }
           )
@@ -477,6 +489,11 @@ export const identityKubernetesAuthServiceFactory = ({
               ? undefined
               : ((identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string),
             gatewayPoolId: identityKubernetesAuth.gatewayPoolId ?? undefined,
+            caCert: caCert || undefined,
+            verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(
+              caCert,
+              identityKubernetesAuth.verifyTlsCertificate
+            ),
             reviewTokenThroughGateway: true
           },
           tokenReviewCallbackThroughGateway
@@ -509,6 +526,11 @@ export const identityKubernetesAuthServiceFactory = ({
                 gatewayPoolId: identityKubernetesAuth.gatewayPoolId ?? undefined,
                 targetHost: k8sHost,
                 targetPort: k8sPort ? Number(k8sPort) : 443,
+                caCert: caCert || undefined,
+                verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(
+                  caCert,
+                  identityKubernetesAuth.verifyTlsCertificate
+                ),
                 reviewTokenThroughGateway: false
               },
               tokenReviewCallbackRaw
@@ -746,6 +768,7 @@ export const identityKubernetesAuthServiceFactory = ({
     gatewayPoolId,
     kubernetesHost,
     caCert,
+    verifyTlsCertificate,
     tokenReviewerJwt,
     tokenReviewMode,
     allowedNamespaces,
@@ -831,6 +854,20 @@ export const identityKubernetesAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (
+      caCert &&
+      caCert.length > 0 &&
+      verifyTlsCertificate === false &&
+      tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+    ) {
+      throw new BadRequestError({
+        message:
+          "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+      });
+    }
+
+    const resolvedVerifyTlsCertificate = verifyTlsCertificate ?? Boolean(caCert);
+
     let isGatewayV1 = true;
     if (gatewayId) {
       if (!plan.gateway) {
@@ -874,7 +911,8 @@ export const identityKubernetesAuthServiceFactory = ({
         // API mode through gateway: gateway proxies requests with user's JWT
         const gatewayExecutor = $createGatewayValidationRequest(gatewayId, {
           kubernetesHost,
-          caCert: caCert || undefined
+          caCert: caCert || undefined,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
         logger.info({ gatewayId, kubernetesHost }, "Validating Kubernetes connectivity through gateway");
         await validateKubernetesHostConnectivity({ gatewayExecutor });
@@ -916,7 +954,8 @@ export const identityKubernetesAuthServiceFactory = ({
       } else if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && kubernetesHost) {
         const gatewayExecutor = $createGatewayValidationRequest(validationGateway.id, {
           kubernetesHost,
-          caCert: caCert || undefined
+          caCert: caCert || undefined,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
         await validateKubernetesHostConnectivity({ gatewayExecutor });
         if (tokenReviewerJwt) {
@@ -927,7 +966,8 @@ export const identityKubernetesAuthServiceFactory = ({
       logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for new auth method");
       await validateKubernetesHostConnectivity({
         kubernetesHost,
-        caCert: caCert || undefined
+        caCert: caCert || undefined,
+        verifyTlsCertificate: resolvedVerifyTlsCertificate
       });
 
       if (tokenReviewerJwt) {
@@ -935,7 +975,8 @@ export const identityKubernetesAuthServiceFactory = ({
         await validateTokenReviewerPermissions({
           kubernetesHost,
           tokenReviewerJwt,
-          caCert: caCert || undefined
+          caCert: caCert || undefined,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate
         });
       }
     }
@@ -970,11 +1011,12 @@ export const identityKubernetesAuthServiceFactory = ({
           gatewayId: resolvedGatewayId,
           gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: gatewayPoolId ?? null,
+          verifyTlsCertificate: resolvedVerifyTlsCertificate,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
             ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
             : null,
-          encryptedKubernetesCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
+          encryptedKubernetesCaCertificate: caCert ? encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob : null
         },
         tx
       );
@@ -988,6 +1030,7 @@ export const identityKubernetesAuthServiceFactory = ({
     identityId,
     kubernetesHost,
     caCert,
+    verifyTlsCertificate,
     tokenReviewerJwt,
     tokenReviewMode,
     allowedNamespaces,
@@ -1186,6 +1229,42 @@ export const identityKubernetesAuthServiceFactory = ({
       effectiveCaCert = undefined;
     }
 
+    // Auto-promote verifyTlsCertificate when the caller is supplying a non-empty
+    // CA in this update without explicitly setting the toggle. Required for
+    // backwards compatibility.
+    let resolvedVerifyTlsCertificate: boolean | undefined;
+    if (verifyTlsCertificate !== undefined) {
+      resolvedVerifyTlsCertificate = verifyTlsCertificate;
+    } else if (caCert !== undefined && caCert.length > 0) {
+      resolvedVerifyTlsCertificate = true;
+    }
+    const effectiveVerifyTlsCertificate =
+      resolvedVerifyTlsCertificate ??
+      $resolveEffectiveVerifyTlsCertificate(effectiveCaCert ?? "", identityKubernetesAuth.verifyTlsCertificate);
+
+    if (
+      effectiveVerifyTlsCertificate &&
+      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !effectiveCaCert
+    ) {
+      throw new BadRequestError({
+        message:
+          "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
+      });
+    }
+
+    if (
+      effectiveVerifyTlsCertificate === false &&
+      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      effectiveCaCert &&
+      effectiveCaCert.length > 0
+    ) {
+      throw new BadRequestError({
+        message:
+          "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+      });
+    }
+
     let validationGatewayId: string | null = effectiveGatewayId ?? null;
     if (!validationGatewayId && effectiveGatewayPoolId) {
       const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolId);
@@ -1205,7 +1284,8 @@ export const identityKubernetesAuthServiceFactory = ({
       } else if (effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && effectiveKubernetesHost) {
         const gatewayExecutor = $createGatewayValidationRequest(validationGatewayId, {
           kubernetesHost: effectiveKubernetesHost,
-          caCert: effectiveCaCert
+          caCert: effectiveCaCert,
+          verifyTlsCertificate: effectiveVerifyTlsCertificate
         });
         logger.info(
           {
@@ -1226,7 +1306,8 @@ export const identityKubernetesAuthServiceFactory = ({
         logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for auth method update");
         await validateKubernetesHostConnectivity({
           kubernetesHost,
-          caCert: effectiveCaCert
+          caCert: effectiveCaCert,
+          verifyTlsCertificate: effectiveVerifyTlsCertificate
         });
       }
 
@@ -1238,7 +1319,8 @@ export const identityKubernetesAuthServiceFactory = ({
         await validateTokenReviewerPermissions({
           kubernetesHost: effectiveKubernetesHost,
           tokenReviewerJwt,
-          caCert: effectiveCaCert
+          caCert: effectiveCaCert,
+          verifyTlsCertificate: effectiveVerifyTlsCertificate
         });
       }
     }
@@ -1252,6 +1334,7 @@ export const identityKubernetesAuthServiceFactory = ({
       gatewayId: shouldUpdateGatewayId ? gatewayIdValue : undefined,
       gatewayV2Id: shouldUpdateGatewayId ? gatewayV2IdValue : undefined,
       gatewayPoolId: gatewayPoolIdValue,
+      verifyTlsCertificate: resolvedVerifyTlsCertificate,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,
@@ -1261,7 +1344,9 @@ export const identityKubernetesAuthServiceFactory = ({
     };
 
     if (caCert !== undefined) {
-      updateQuery.encryptedKubernetesCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
+      updateQuery.encryptedKubernetesCaCertificate = caCert
+        ? encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob
+        : null;
     }
 
     if (tokenReviewerJwt) {
@@ -1370,6 +1455,7 @@ export const identityKubernetesAuthServiceFactory = ({
       ...identityKubernetesAuth,
       caCert,
       tokenReviewerJwt,
+      verifyTlsCertificate: $resolveEffectiveVerifyTlsCertificate(caCert, identityKubernetesAuth.verifyTlsCertificate),
       orgId: identityMembershipOrg.scopeOrgId,
       gatewayId: identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id
     };
