@@ -31,7 +31,8 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   allowedNames: true,
   allowedAudience: true,
   gatewayId: true,
-  gatewayPoolId: true
+  gatewayPoolId: true,
+  verifyTlsCertificate: true
 }).extend({
   caCert: z.string(),
   tokenReviewerJwt: z.string().optional().nullable()
@@ -70,6 +71,13 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
+          actor: {
+            type: ActorType.IDENTITY,
+            metadata: {
+              identityId: identityKubernetesAuth.identityId,
+              name: identity.name
+            }
+          },
           orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH,
@@ -181,6 +189,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               }
             ),
           caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
+          verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.ATTACH.verifyTlsCertificate),
           tokenReviewerJwt: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
           tokenReviewMode: z
             .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
@@ -252,6 +261,30 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               path: ["accessTokenTTL"],
               code: z.ZodIssueCode.custom,
               message: "Access Token TTL cannot be greater than Access Token Max TTL."
+            });
+          }
+          if (
+            data.verifyTlsCertificate &&
+            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+            !data.caCert?.length
+          ) {
+            ctx.addIssue({
+              path: ["caCert"],
+              code: z.ZodIssueCode.custom,
+              message:
+                "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
+            });
+          }
+          if (
+            data.verifyTlsCertificate === false &&
+            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+            data.caCert?.length
+          ) {
+            ctx.addIssue({
+              path: ["verifyTlsCertificate"],
+              code: z.ZodIssueCode.custom,
+              message:
+                "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
             });
           }
         }),
@@ -357,6 +390,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               }
             ),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
+          verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.UPDATE.verifyTlsCertificate),
           tokenReviewerJwt: z.string().trim().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
           tokenReviewMode: z
             .nativeEnum(IdentityKubernetesAuthTokenReviewMode)

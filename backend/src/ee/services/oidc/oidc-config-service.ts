@@ -421,7 +421,7 @@ export const oidcConfigServiceFactory = ({
       await smtpService
         .sendMail({
           template: SmtpTemplates.EmailVerification,
-          subjectLine: "Infisical confirmation code",
+          subjectLine: `Infisical confirmation code: ${token}`,
           recipients: [user.email],
           substitutions: {
             code: token

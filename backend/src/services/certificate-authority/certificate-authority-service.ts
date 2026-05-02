@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -122,6 +123,7 @@ type TCertificateAuthorityServiceFactoryDep = {
     "findById" | "updateById" | "updateStatus" | "attachCertificate"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -143,7 +145,8 @@ export const certificateAuthorityServiceFactory = ({
   pkiSyncQueue,
   certificateProfileDAL,
   certificateRequestDAL,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  gatewayV2Service
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -187,7 +190,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateSecretDAL,
     kmsService,
     projectDAL,
-    certificateProfileDAL
+    certificateProfileDAL,
+    gatewayV2Service
   });
 
   const awsPcaFns = AwsPcaCertificateAuthorityFns({
@@ -590,11 +594,14 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
+      const internalConfig = configuration as { crlDistributionPointUrls?: string[] } | undefined;
+
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
         isInternal: true,
         caId: certificateAuthority.id,
         status,
-        name
+        name,
+        crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls
       });
 
       if (!updatedCa.internalCa) {
