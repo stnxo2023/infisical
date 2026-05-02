@@ -1312,6 +1312,7 @@ export const pamAccountServiceFactory = ({
         credentials: {
           ...rest,
           host: hostname,
+          accountName: account.name,
           ...decryptedAccount.credentials
         },
         policyRules,

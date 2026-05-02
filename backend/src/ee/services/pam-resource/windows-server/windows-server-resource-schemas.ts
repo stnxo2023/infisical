@@ -135,6 +135,10 @@ export const WindowsSessionCredentialsSchema = z
     useWinrmHttps: z.boolean(),
     winrmRejectUnauthorized: z.boolean(),
     winrmCaCert: z.string().optional(),
-    winrmTlsServerName: z.string().optional()
+    winrmTlsServerName: z.string().optional(),
+    // Account name from the CLI flag (e.g. --account test). The gateway's
+    // RDP MITM bridge expects the user to type this into their RDP client,
+    // distinct from the actual Windows username injected to the target.
+    accountName: z.string().trim().min(1).max(255)
   })
   .and(WindowsAccountCredentialsSchema);
