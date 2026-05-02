@@ -112,7 +112,19 @@ export const PamRecordingConfigTab = () => {
           {
             title: "Bucket CORS not configured",
             type: "warning",
-            text: "Session playback requires the bucket to allow GET requests from this origin. See the CORS setup guide in the docs."
+            text: (
+              <span>
+                Session playback requires the bucket to allow GET requests from this origin.{" "}
+                <a
+                  href="https://infisical.com/docs/documentation/platform/pam/product-reference/external-storage#cors-configuration"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:opacity-80"
+                >
+                  View CORS setup guide
+                </a>
+              </span>
+            )
           },
           { autoClose: 10000 }
         );
@@ -152,24 +164,6 @@ export const PamRecordingConfigTab = () => {
         </AlertDescription>
       </Alert>
 
-      <Alert variant="warning" className="mt-4">
-        <AlertTriangleIcon />
-        <AlertTitle>CORS policy required</AlertTitle>
-        <AlertDescription>
-          <span>
-            Your S3 bucket must have a CORS policy that allows GET requests from this origin for
-            session playback to work.{" "}
-            <a
-              href="https://infisical.com/docs/documentation/platform/pam/product-reference/external-storage#cors-configuration"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-warning/80"
-            >
-              View CORS setup guide
-            </a>
-          </span>
-        </AlertDescription>
-      </Alert>
 
       <form className="mt-6 space-y-4" onSubmit={onSave}>
         <Controller
