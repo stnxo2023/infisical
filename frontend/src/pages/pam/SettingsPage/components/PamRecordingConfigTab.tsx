@@ -164,7 +164,6 @@ export const PamRecordingConfigTab = () => {
         </AlertDescription>
       </Alert>
 
-
       <form className="mt-6 space-y-4" onSubmit={onSave}>
         <Controller
           control={control}
