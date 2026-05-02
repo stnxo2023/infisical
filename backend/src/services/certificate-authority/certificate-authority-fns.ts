@@ -26,35 +26,22 @@ export const createSerialNumber = () => {
 };
 
 /**
- * Escape special characters in a DN attribute value per RFC 4514.
- * Characters that must be escaped: , + " \ < > ;
- * Characters escaped at start/end: # (at start), space (at start or end)
+ * Create an RFC 4514 Distinguished Name string from parts.
+ * Uses x509 library's Name class to handle all escaping automatically.
  */
-const DN_SPECIAL_CHARS_REGEX = new RE2(/[,+"\\<>;]/g);
-
-const escapeDnValue = (value: string): string => {
-  // Escape special characters: , + " \ < > ;
-  let escaped = value.replace(DN_SPECIAL_CHARS_REGEX, (char) => `\\${char}`);
-  // Escape leading # or space
-  if (escaped.startsWith("#") || escaped.startsWith(" ")) {
-    escaped = `\\${escaped}`;
-  }
-  // Escape trailing space
-  if (escaped.endsWith(" ")) {
-    escaped = `${escaped.slice(0, -1)}\\ `;
-  }
-  return escaped;
-};
-
 export const createDistinguishedName = (parts: TDNParts) => {
-  const dnParts = [];
-  if (parts.country) dnParts.push(`C=${escapeDnValue(parts.country)}`);
-  if (parts.organization) dnParts.push(`O=${escapeDnValue(parts.organization)}`);
-  if (parts.ou) dnParts.push(`OU=${escapeDnValue(parts.ou)}`);
-  if (parts.province) dnParts.push(`ST=${escapeDnValue(parts.province)}`);
-  if (parts.commonName) dnParts.push(`CN=${escapeDnValue(parts.commonName)}`);
-  if (parts.locality) dnParts.push(`L=${escapeDnValue(parts.locality)}`);
-  return dnParts.join(", ");
+  // Build JSON array for x509.Name - the library handles all RFC 4514 escaping
+  const jsonName: Array<{ [type: string]: string[] }> = [];
+  if (parts.country) jsonName.push({ C: [parts.country] });
+  if (parts.organization) jsonName.push({ O: [parts.organization] });
+  if (parts.ou) jsonName.push({ OU: [parts.ou] });
+  if (parts.province) jsonName.push({ ST: [parts.province] });
+  if (parts.commonName) jsonName.push({ CN: [parts.commonName] });
+  if (parts.locality) jsonName.push({ L: [parts.locality] });
+
+  // Create Name object from JSON and convert to properly escaped string
+  const name = new x509.Name(jsonName);
+  return name.toString();
 };
 
 /**
