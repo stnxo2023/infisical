@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import slugify from "@sindresorhus/slugify";
-import { AlertTriangleIcon, InfoIcon, UploadIcon } from "lucide-react";
+import { AlertTriangleIcon, CircleXIcon, InfoIcon, UploadIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -9,6 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   Alert,
+  AlertDescription,
   AlertTitle,
   Button,
   Dialog,
@@ -207,6 +208,10 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
           setParseError("File must contain a JSON array.");
           return;
         }
+        if (raw.length === 0) {
+          setParseError("File contains no keys.");
+          return;
+        }
         if (raw.length > 100) {
           setParseError(
             `File contains ${raw.length} keys. A maximum of 100 keys can be imported at once.`
@@ -259,32 +264,28 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
 
   const renderContent = () => {
     if (importResult) {
-      const total = importResult.succeeded.length + importResult.failed.length;
       return (
         <div className="space-y-4">
-          <p className="text-sm text-mineshaft-300">
-            <span className="font-medium text-mineshaft-100">
-              {importResult.succeeded.length} of {total} keys imported
-            </span>
-            {importResult.failed.length > 0 && (
-              <span className="ml-1 text-red">— {importResult.failed.length} failed</span>
-            )}
-          </p>
-
           {importResult.failed.length > 0 && (
-            <div className="rounded-md border border-red/30 bg-red/5 px-4 py-3">
-              <p className="mb-2 text-sm font-medium text-red">Failed imports</p>
-              <ul className="max-h-[50vh] thin-scrollbar space-y-1 overflow-y-auto pr-2">
-                {importResult.failed.map((err, idx) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <li key={`${err.name}-${idx}`} className="text-xs text-red/80">
-                    <span className="font-medium">{err.name}</span>
-                    {" — "}
-                    {err.message}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <Alert variant="danger">
+              <CircleXIcon />
+              <AlertTitle>
+                {importResult.failed.length} key{importResult.failed.length !== 1 ? "s" : ""} failed
+                to import
+              </AlertTitle>
+              <AlertDescription>
+                <ul className="max-h-[50vh] thin-scrollbar w-full space-y-1 overflow-y-auto pr-2">
+                  {importResult.failed.map((err, idx) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <li key={`${err.name}-${idx}`}>
+                      <span className="font-medium">{err.name}</span>
+                      {" — "}
+                      {err.message}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
           )}
 
           <DialogFooter>
