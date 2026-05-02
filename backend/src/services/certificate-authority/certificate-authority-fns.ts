@@ -25,14 +25,35 @@ export const createSerialNumber = () => {
   return randomBytes.toString("hex");
 };
 
+/**
+ * Escape special characters in a DN attribute value per RFC 4514.
+ * Characters that must be escaped: , + " \ < > ;
+ * Characters escaped at start/end: # (at start), space (at start or end)
+ */
+const DN_SPECIAL_CHARS_REGEX = new RE2(/[,+"\\<>;]/g);
+
+const escapeDnValue = (value: string): string => {
+  // Escape special characters: , + " \ < > ;
+  let escaped = value.replace(DN_SPECIAL_CHARS_REGEX, (char) => `\\${char}`);
+  // Escape leading # or space
+  if (escaped.startsWith("#") || escaped.startsWith(" ")) {
+    escaped = `\\${escaped}`;
+  }
+  // Escape trailing space
+  if (escaped.endsWith(" ")) {
+    escaped = `${escaped.slice(0, -1)}\\ `;
+  }
+  return escaped;
+};
+
 export const createDistinguishedName = (parts: TDNParts) => {
   const dnParts = [];
-  if (parts.country) dnParts.push(`C=${parts.country}`);
-  if (parts.organization) dnParts.push(`O=${parts.organization}`);
-  if (parts.ou) dnParts.push(`OU=${parts.ou}`);
-  if (parts.province) dnParts.push(`ST=${parts.province}`);
-  if (parts.commonName) dnParts.push(`CN=${parts.commonName}`);
-  if (parts.locality) dnParts.push(`L=${parts.locality}`);
+  if (parts.country) dnParts.push(`C=${escapeDnValue(parts.country)}`);
+  if (parts.organization) dnParts.push(`O=${escapeDnValue(parts.organization)}`);
+  if (parts.ou) dnParts.push(`OU=${escapeDnValue(parts.ou)}`);
+  if (parts.province) dnParts.push(`ST=${escapeDnValue(parts.province)}`);
+  if (parts.commonName) dnParts.push(`CN=${escapeDnValue(parts.commonName)}`);
+  if (parts.locality) dnParts.push(`L=${escapeDnValue(parts.locality)}`);
   return dnParts.join(", ");
 };
 
