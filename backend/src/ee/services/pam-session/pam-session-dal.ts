@@ -37,6 +37,16 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return Number((result as { count?: string | number })?.count ?? 0);
   };
 
+  const countActiveByProjectId = async (projectId: string, tx?: Knex): Promise<number> => {
+    const result = await (tx || db.replicaNode())(TableName.PamSession)
+      .where("projectId", projectId)
+      .whereIn("status", [PamSessionStatus.Starting, PamSessionStatus.Active])
+      .count("id as count")
+      .first();
+
+    return Number((result as { count?: string | number })?.count ?? 0);
+  };
+
   const expireSessionById = async (sessionId: string, tx?: Knex) => {
     const now = new Date();
 
@@ -82,17 +92,27 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updated;
   };
 
-  const countActiveByProject = async (projectId: string, tx?: Knex): Promise<number> => {
-    const result = await (tx || db.replicaNode())(TableName.PamSession)
-      .where("projectId", projectId)
-      .whereIn("status", [PamSessionStatus.Starting, PamSessionStatus.Active])
-      .count("id as count")
-      .first();
-
-    return Number((result as { count?: string | number })?.count ?? 0);
+  const startSession = async (
+    sessionId: string,
+    patch: {
+      encryptedSessionKey: Buffer;
+      gatewayUploadTokenHash: Buffer;
+    },
+    tx?: Knex
+  ) => {
+    const [updated] = await (tx || db)(TableName.PamSession)
+      .where("id", sessionId)
+      .where("status", PamSessionStatus.Starting)
+      .update({
+        status: PamSessionStatus.Active,
+        startedAt: new Date(),
+        ...patch
+      })
+      .returning("*");
+    return updated;
   };
 
-  const countDailyByProject = async (
+  const countDailyByProjectId = async (
     projectId: string,
     startDate: Date,
     tx?: Knex
@@ -111,7 +131,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return rows.map((row) => ({ date: String(row.date), count: Number(row.count) }));
   };
 
-  const findTopActorsByProject = async (
+  const findTopActorsByProjectId = async (
     projectId: string,
     startDate: Date,
     limit: number,
@@ -152,10 +172,11 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     findByProjectId,
     expireSessionById,
     countActiveWebSessions,
-    countActiveByProject,
-    countDailyByProject,
-    findTopActorsByProject,
+    countActiveByProjectId,
+    countDailyByProjectId,
+    findTopActorsByProjectId,
     endSessionById,
-    terminateSessionById
+    terminateSessionById,
+    startSession
   };
 };

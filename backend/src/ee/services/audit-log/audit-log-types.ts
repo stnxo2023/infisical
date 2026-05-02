@@ -624,6 +624,11 @@ export enum EventType {
   PAM_SESSION_GET = "pam-session-get",
   PAM_SESSION_LIST = "pam-session-list",
   PAM_SESSION_EVENT_BATCH_UPLOAD = "pam-session-event-batch-upload",
+  PAM_SESSION_CHUNK_UPLOAD = "pam-session-chunk-upload",
+  PAM_SESSION_UPLOAD_TOKEN_INVALID = "pam-session-upload-token-invalid",
+  PAM_RECORDING_CONFIG_UPDATE = "pam-recording-config-update",
+  PAM_RECORDING_CONFIG_DELETE = "pam-recording-config-delete",
+  PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED = "pam-recording-bucket-connection-test-failed",
   PAM_FOLDER_CREATE = "pam-folder-create",
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
@@ -4963,6 +4968,52 @@ interface PamSessionEventBatchUploadEvent {
   };
 }
 
+interface PamSessionChunkUploadEvent {
+  type: EventType.PAM_SESSION_CHUNK_UPLOAD;
+  metadata: {
+    sessionId: string;
+    chunkIndex: number;
+    storageBackend: string;
+    ciphertextBytes: number;
+  };
+}
+
+interface PamSessionUploadTokenInvalidEvent {
+  type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID;
+  metadata: {
+    sessionId: string;
+    chunkIndex?: number;
+  };
+}
+
+interface PamRecordingConfigUpsertEvent {
+  type: EventType.PAM_RECORDING_CONFIG_UPDATE;
+  metadata: {
+    projectId: string;
+    storageBackend: string;
+    bucket: string;
+    region: string;
+  };
+}
+
+interface PamRecordingConfigDeleteEvent {
+  type: EventType.PAM_RECORDING_CONFIG_DELETE;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface PamRecordingBucketConnectionTestFailedEvent {
+  type: EventType.PAM_RECORDING_BUCKET_CONNECTION_TEST_FAILED;
+  metadata: {
+    projectId: string;
+    storageBackend: string;
+    bucket: string;
+    region: string;
+    reason: string;
+  };
+}
+
 interface PamFolderCreateEvent {
   type: EventType.PAM_FOLDER_CREATE;
   metadata: {
@@ -6672,6 +6723,11 @@ export type Event =
   | PamSessionGetEvent
   | PamSessionListEvent
   | PamSessionEventBatchUploadEvent
+  | PamSessionChunkUploadEvent
+  | PamSessionUploadTokenInvalidEvent
+  | PamRecordingConfigUpsertEvent
+  | PamRecordingConfigDeleteEvent
+  | PamRecordingBucketConnectionTestFailedEvent
   | PamFolderCreateEvent
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
