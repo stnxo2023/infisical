@@ -24,6 +24,7 @@ import {
   CloudflareConnectionMethod,
   DatabricksConnectionMethod,
   DbtConnectionMethod,
+  DevinConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
@@ -75,6 +76,7 @@ import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-con
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
+import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -163,10 +165,12 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" },
   [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
   [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
+  [AppConnection.VenafiTpp]: { name: "Venafi TPP", image: "Venafi.png" },
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
   [AppConnection.Doppler]: { name: "Doppler", image: "Doppler.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
   [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" },
+  [AppConnection.Devin]: { name: "Devin", image: "Devin.png", size: 55 },
   [AppConnection.Ona]: { name: "Ona", image: "Ona.png", aliases: ["gitpod"] },
   [AppConnection.DigiCert]: { name: "DigiCert", image: "DigiCert.png" },
   [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" }
@@ -187,6 +191,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case GitHubConnectionMethod.OAuth:
     case HerokuConnectionMethod.OAuth:
     case GitLabConnectionMethod.OAuth:
+    case VenafiTppConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
@@ -251,6 +256,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:

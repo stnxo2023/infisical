@@ -1,6 +1,7 @@
 import acme from "acme-client";
 import { UnrecoverableError } from "bullmq";
 
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -32,6 +33,13 @@ import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../resource-metadata/resource-metadata-fns";
+import {
+  ACME_ORDER_TIMEOUT_MS,
+  AcmeOrderTimeoutError,
+  AcmeRateLimitError,
+  isAcmeRateLimitError,
+  runWithAcmeOrderTimeout
+} from "./acme/acme-certificate-authority-errors";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { AcmPendingError } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-errors";
 import { AwsAcmPublicCaCertificateAuthorityFns } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
@@ -42,6 +50,7 @@ import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
+import { VenafiTppCertificateAuthorityFns } from "./venafi-tpp/venafi-tpp-certificate-authority-fns";
 
 const base64UrlToBase64 = (base64url: string): string => {
   let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
@@ -120,6 +129,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   certificateRequestDAL?: Pick<TCertificateRequestDALFactory, "updateById">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -142,7 +152,8 @@ export const certificateIssuanceQueueFactory = ({
   certificateRequestService,
   certificateRequestDAL,
   resourceMetadataDAL,
-  pkiAlertV2Queue
+  pkiAlertV2Queue,
+  gatewayV2Service
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -200,6 +211,7 @@ export const certificateIssuanceQueueFactory = ({
     kmsService,
     projectDAL
   });
+
   const awsAcmPublicCaFns = AwsAcmPublicCaCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
@@ -211,6 +223,20 @@ export const certificateIssuanceQueueFactory = ({
     kmsService,
     projectDAL,
     certificateProfileDAL
+  });
+
+  const venafiTppFns = VenafiTppCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificateProfileDAL,
+    gatewayV2Service
   });
 
   /**
@@ -334,21 +360,35 @@ export const certificateIssuanceQueueFactory = ({
           certificateCsr = generatedCsr.toString();
         }
 
-        const acmeResult = await acmeFns.orderCertificateFromProfile({
-          caId,
-          profileId,
-          commonName: commonName || "",
-          altNames: altNames?.map((san) => san.value) || [],
-          csr: Buffer.from(certificateCsr),
-          csrPrivateKey: skLeaf,
-          keyUsages: keyUsages as CertKeyUsage[],
-          extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
-          ttl,
-          signatureAlgorithm,
-          keyAlgorithm,
-          isRenewal,
-          originalCertificateId
-        });
+        let acmeResult;
+        try {
+          acmeResult = await runWithAcmeOrderTimeout(
+            (signal) =>
+              acmeFns.orderCertificateFromProfile({
+                caId,
+                profileId,
+                commonName: commonName || "",
+                altNames: altNames?.map((san) => san.value) || [],
+                csr: Buffer.from(certificateCsr),
+                csrPrivateKey: skLeaf,
+                keyUsages: keyUsages as CertKeyUsage[],
+                extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
+                ttl,
+                signatureAlgorithm,
+                keyAlgorithm,
+                isRenewal,
+                originalCertificateId,
+                abortSignal: signal
+              }),
+            ACME_ORDER_TIMEOUT_MS
+          );
+        } catch (acmeError) {
+          if (isAcmeRateLimitError(acmeError)) {
+            const message = acmeError instanceof Error ? acmeError.message : String(acmeError);
+            throw new AcmeRateLimitError(`ACME CA rate-limited the order: ${message}`);
+          }
+          throw acmeError;
+        }
 
         if (certificateRequestId && certificateRequestService && acmeResult?.id) {
           try {
@@ -669,6 +709,61 @@ export const certificateIssuanceQueueFactory = ({
             `DigiCert order placed, awaiting validation [certificateRequestId=${certificateRequestId}] [orderId=${digicertResult.metadata.digicert.orderId}]`
           );
         }
+      } else if (ca.externalCa?.type === CaType.VENAFI_TPP) {
+        const venafiTppParams = {
+          caId,
+          profileId,
+          commonName: commonName || "",
+          altNames: (altNames || []) as Array<{ type: CertSubjectAlternativeNameType; value: string }>,
+          keyUsages: keyUsages as CertKeyUsage[],
+          extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
+          validity: { ttl },
+          signatureAlgorithm,
+          keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
+          isRenewal,
+          originalCertificateId,
+          ...(csr && { csr }),
+          organization,
+          organizationalUnit,
+          country,
+          state,
+          locality
+        };
+
+        const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(venafiTppParams);
+
+        if (certificateRequestId && certificateRequestService && venafiTppResult?.certificateId) {
+          try {
+            await certificateRequestService.attachCertificateToRequest({
+              certificateRequestId,
+              certificateId: venafiTppResult.certificateId
+            });
+
+            await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+              certificateRequestId,
+              certificateId: venafiTppResult.certificateId
+            });
+
+            logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
+          } catch (attachError) {
+            logger.error(
+              attachError,
+              `Failed to attach certificate to request [certificateRequestId=${certificateRequestId}]`
+            );
+            try {
+              await certificateRequestService.updateCertificateRequestStatus({
+                certificateRequestId,
+                status: CertificateRequestStatus.FAILED,
+                errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
+              });
+            } catch (statusUpdateError) {
+              logger.error(
+                statusUpdateError,
+                `Failed to update certificate request status [certificateRequestId=${certificateRequestId}]`
+              );
+            }
+          }
+        }
       }
 
       logger.info(
@@ -697,12 +792,15 @@ export const certificateIssuanceQueueFactory = ({
 
       logger.error(error, `Certificate issuance job failed for [certificateId=${certificateId}] [caId=${caId}]`);
 
+      const isAcmeTerminal = error instanceof AcmeOrderTimeoutError || error instanceof AcmeRateLimitError;
+
       if (certificateRequestId && certificateRequestService) {
         try {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           await certificateRequestService.updateCertificateRequestStatus({
             certificateRequestId,
             status: CertificateRequestStatus.FAILED,
-            errorMessage: `Certificate issuance failed: ${error instanceof Error ? error.message : String(error)}`
+            errorMessage: isAcmeTerminal ? errorMessage : `Certificate issuance failed: ${errorMessage}`
           });
           logger.info(`Updated certificate request ${certificateRequestId} status to failed due to issuance error`);
         } catch (statusUpdateError) {
@@ -715,7 +813,7 @@ export const certificateIssuanceQueueFactory = ({
 
       // For ACM's 30-attempt queue, wrap non-retryable errors so BullMQ stops retrying immediately.
       // Other CAs keep default retry behavior (3 attempts is short enough that running through them is fine).
-      if (data.caType === CaType.AWS_ACM_PUBLIC_CA) {
+      if (data.caType === CaType.AWS_ACM_PUBLIC_CA || isAcmeTerminal) {
         const message = error instanceof Error ? error.message : String(error);
         const wrapped = new UnrecoverableError(message);
         (wrapped as Error).cause = error;
