@@ -6,7 +6,7 @@ export async function up(knex: Knex): Promise<void> {
   const hasColumn = await knex.schema.hasColumn(TableName.IdentityAwsAuth, "allowedAccountIds");
   if (hasColumn) {
     await knex.schema.alterTable(TableName.IdentityAwsAuth, (t) => {
-      t.string("allowedAccountIds", 2048).notNullable().alter();
+      t.string("allowedAccountIds", 4096).notNullable().alter();
     });
   }
 }
