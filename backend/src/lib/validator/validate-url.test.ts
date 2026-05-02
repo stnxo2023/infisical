@@ -341,6 +341,40 @@ describe("validate-url SSRF helpers", () => {
       expect(lastRequestArgs().method).toBe("DELETE");
     });
 
+    it("safeRequest.delete preserves options.data (Axios DELETE-with-body)", async () => {
+      requestRequestMock.mockResolvedValue({ data: undefined, status: 200, headers: {} });
+      const body = { workspaceId: "w-1", environment: "prod", secretPath: "/", secrets: [{ secretKey: "K" }] };
+      await safeRequest.delete("https://example.com/v3/secrets/batch/raw", {
+        headers: { Authorization: "Bearer t" },
+        data: body
+      });
+      const args = lastRequestArgs();
+      expect(args.method).toBe("DELETE");
+      expect(args.data).toEqual(body);
+      expect(args.headers).toEqual({ Authorization: "Bearer t" });
+    });
+
+    it("safeRequest.get preserves options.data (Axios GET-with-body, unusual but legal)", async () => {
+      requestRequestMock.mockResolvedValue({ data: undefined, status: 200, headers: {} });
+      const body = { query: "x" };
+      await safeRequest.get("https://example.com/search", { data: body });
+      const args = lastRequestArgs();
+      expect(args.method).toBe("GET");
+      expect(args.data).toEqual(body);
+    });
+
+    it("positional body wins over options.data for post/put/patch (matches Axios)", async () => {
+      requestRequestMock.mockResolvedValue({ data: undefined, status: 200, headers: {} });
+      const positional = { positional: true };
+      const optionsData = { positional: false };
+      await safeRequest.post("https://example.com", positional, { data: optionsData } as any);
+      expect(lastRequestArgs().data).toEqual(positional);
+      await safeRequest.put("https://example.com", positional, { data: optionsData } as any);
+      expect(lastRequestArgs().data).toEqual(positional);
+      await safeRequest.patch("https://example.com", positional, { data: optionsData } as any);
+      expect(lastRequestArgs().data).toEqual(positional);
+    });
+
     it("safeRequest.request validates absolute `url` even when baseURL is set (Axios-compatible)", async () => {
       requestRequestMock.mockResolvedValueOnce({ data: undefined, status: 200, headers: {} });
       await safeRequest.request({

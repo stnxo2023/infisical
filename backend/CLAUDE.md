@@ -265,9 +265,9 @@ Migration tip: when refactoring code that built a custom `https.Agent`, drop the
 **Opt-outs that skip pinning** (in all three, `safeRequest` falls back to Axios's default agent and there is no rebinding protection):
 - `NODE_ENV=development` — validation is bypassed entirely.
 - Calling `blockLocalAndPrivateIpAddresses(url, isGateway = true)` — gateway-routed traffic doesn't go through Axios DNS, so pinning would do nothing.
-- `allowPrivateIps: true` option — caller skips the private-IP refusal but **still** pins DNS to the validated IPs (rebinding protection is preserved).
+- `allowPrivateIps: true` option — caller skips the private-IP refusal **and** DNS pinning **and** the Infisical internal-infrastructure blocklist (`verifyHostInputValidity`). `validateSsrfUrl` short-circuits when this flag is set, so no DNS resolution happens at validation time and Node's default resolver is used at connect time.
 
-**`allowPrivateIps: true` is only acceptable when there is a stronger runtime trust boundary than the IP class.** Existing legitimate callers:
+**`allowPrivateIps: true` is only acceptable when there is a stronger runtime trust boundary than the IP class** (e.g., TLS cert verification + cluster token, or save-time host validation). The flag does not preserve rebinding protection or the internal-infra blocklist on its own.
 
 **Gateway-aware patterns**
 

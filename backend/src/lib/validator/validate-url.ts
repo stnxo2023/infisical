@@ -432,7 +432,7 @@ const dispatch = async <T>(
     ...axiosOpts,
     method,
     url,
-    data,
+    ...(data !== undefined && { data }),
     maxRedirects: 0,
     httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
     httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
