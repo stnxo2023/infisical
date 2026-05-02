@@ -1,22 +1,23 @@
 import { useEffect, useState } from "react";
-import {
-  faCancel,
-  faCheck,
-  faCheckCircle,
-  faCopy,
-  faDownload,
-  faEdit,
-  faEllipsis,
-  faFileImport,
-  faFileSignature,
-  faLock,
-  faLockOpen,
-  faPlus,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
-import { ChevronDownIcon, InfoIcon, SearchIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  CircleCheckIcon,
+  CircleXIcon,
+  CopyIcon,
+  DownloadIcon,
+  EllipsisIcon,
+  FileSignatureIcon,
+  ImportIcon,
+  InfoIcon,
+  LockIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon,
+  UnlockIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -288,7 +289,7 @@ export const CmekTable = () => {
                       isDisabled={!isAllowed}
                       isPending={bulkExportMutation.isPending}
                     >
-                      <FontAwesomeIcon icon={faDownload} className="mr-1" />
+                      <DownloadIcon className="mr-1 size-4" />
                       Export
                     </Button>
                   </span>
@@ -326,7 +327,7 @@ export const CmekTable = () => {
                         onClick={() => handlePopUpOpen("upsertKey", null)}
                         isDisabled={!isAllowed}
                       >
-                        <FontAwesomeIcon icon={faPlus} className="mr-2" />
+                        <PlusIcon className="mr-2 size-4" />
                         Add Key
                       </Button>
                     </TooltipTrigger>
@@ -347,12 +348,12 @@ export const CmekTable = () => {
                   >
                     {(isAllowed) => (
                       <Tooltip open={!isAllowed ? undefined : false}>
-                        <TooltipTrigger asChild className="block w-full">
+                        <TooltipTrigger className="block w-full">
                           <DropdownMenuItem
                             onClick={() => handlePopUpOpen("importKeys")}
                             isDisabled={!isAllowed}
                           >
-                            <FontAwesomeIcon icon={faFileImport} />
+                            <ImportIcon className="size-4" />
                             Import Keys
                           </DropdownMenuItem>
                         </TooltipTrigger>
@@ -544,7 +545,11 @@ export const CmekTable = () => {
                                 setCopyCipherText("Copied");
                               }}
                             >
-                              <FontAwesomeIcon icon={isCopyingCiphertext ? faCheck : faCopy} />
+                              {isCopyingCiphertext ? (
+                                <CheckIcon className="size-4" />
+                              ) : (
+                                <CopyIcon className="size-4" />
+                              )}
                             </IconButton>
                           </div>
                         </TableCell>
@@ -571,7 +576,7 @@ export const CmekTable = () => {
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <IconButton variant="ghost" size="sm" aria-label="More options">
-                                  <FontAwesomeIcon icon={faEllipsis} />
+                                  <EllipsisIcon className="size-4" />
                                 </IconButton>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="min-w-[160px]">
@@ -581,14 +586,14 @@ export const CmekTable = () => {
                                       onClick={() => handlePopUpOpen("encryptData", cmek)}
                                       isDisabled={cannotEncryptData || isDisabled}
                                     >
-                                      <FontAwesomeIcon icon={faLock} className="mr-2" />
+                                      <LockIcon className="mr-2 size-4" />
                                       Encrypt Data
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handlePopUpOpen("decryptData", cmek)}
                                       isDisabled={cannotDecryptData || isDisabled}
                                     >
-                                      <FontAwesomeIcon icon={faLockOpen} className="mr-2" />
+                                      <UnlockIcon className="mr-2 size-4" />
                                       Decrypt Data
                                     </DropdownMenuItem>
                                   </>
@@ -599,14 +604,14 @@ export const CmekTable = () => {
                                       onClick={() => handlePopUpOpen("signData", cmek)}
                                       isDisabled={cannotSignData || isDisabled}
                                     >
-                                      <FontAwesomeIcon icon={faFileSignature} className="mr-2" />
+                                      <FileSignatureIcon className="mr-2 size-4" />
                                       Sign Data
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handlePopUpOpen("verifyData", cmek)}
                                       isDisabled={cannotVerifyData || isDisabled}
                                     >
-                                      <FontAwesomeIcon icon={faCheckCircle} className="mr-2" />
+                                      <CircleCheckIcon className="mr-2 size-4" />
                                       Verify Data
                                     </DropdownMenuItem>
                                   </>
@@ -615,24 +620,25 @@ export const CmekTable = () => {
                                   onClick={() => handlePopUpOpen("exportKey", cmek)}
                                   isDisabled={cannotExportKey || isDisabled}
                                 >
-                                  <FontAwesomeIcon icon={faDownload} className="mr-2" />
+                                  <DownloadIcon className="mr-2 size-4" />
                                   Export Key
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handlePopUpOpen("upsertKey", cmek)}
                                   isDisabled={cannotEditKey}
                                 >
-                                  <FontAwesomeIcon icon={faEdit} className="mr-2" />
+                                  <PencilIcon className="mr-2 size-4" />
                                   Edit Key
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleDisableCmek(cmek)}
                                   isDisabled={cannotEditKey}
                                 >
-                                  <FontAwesomeIcon
-                                    icon={isDisabled ? faCheckCircle : faCancel}
-                                    className="mr-2"
-                                  />
+                                  {isDisabled ? (
+                                    <CircleCheckIcon className="mr-2 size-4" />
+                                  ) : (
+                                    <CircleXIcon className="mr-2 size-4" />
+                                  )}
                                   {isDisabled ? "Enable" : "Disable"} Key
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
@@ -640,7 +646,7 @@ export const CmekTable = () => {
                                   isDisabled={cannotDeleteKey}
                                   variant="danger"
                                 >
-                                  <FontAwesomeIcon icon={faTrash} className="mr-2" />
+                                  <TrashIcon className="mr-2 size-4" />
                                   Delete Key
                                 </DropdownMenuItem>
                               </DropdownMenuContent>

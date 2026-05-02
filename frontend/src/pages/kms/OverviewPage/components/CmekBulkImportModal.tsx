@@ -377,9 +377,6 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
         >
           <TableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
             <TableRow className="relative h-9">
-              <TableHead className="w-16 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                #
-              </TableHead>
               <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 Name
               </TableHead>
@@ -398,25 +395,24 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
                 <TableRow
                   // eslint-disable-next-line react/no-array-index-key
                   key={i}
-                  className={errorMsg ? "border-danger/20 bg-danger/[0.075]" : ""}
+                  className={
+                    errorMsg
+                      ? "border-danger/20 bg-danger/[0.075] hover:bg-danger/[0.075]"
+                      : "hover:bg-transparent"
+                  }
                 >
-                  <TableCell className={`w-16 ${errorMsg ? "text-danger" : "text-mineshaft-400"}`}>
+                  <TableCell isTruncatable className="w-1/2 max-w-0 font-mono text-xs">
                     <div className="flex items-center gap-1.5">
-                      <span className="inline-block w-5 text-right tabular-nums">{i + 1}</span>
                       {errorMsg ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <AlertTriangleIcon className="size-3.5 text-danger" />
+                            <AlertTriangleIcon className="size-3.5 shrink-0 text-danger" />
                           </TooltipTrigger>
                           <TooltipContent>{errorMsg}</TooltipContent>
                         </Tooltip>
-                      ) : (
-                        <span className="size-3.5" />
-                      )}
+                      ) : null}
+                      <p className="truncate">{String(key.name ?? "")}</p>
                     </div>
-                  </TableCell>
-                  <TableCell isTruncatable className="w-1/2 max-w-0 font-mono text-xs">
-                    <p className="truncate">{String(key.name ?? "")}</p>
                   </TableCell>
                   <TableCell isTruncatable className="w-1/4 max-w-0">
                     <p className="truncate">
