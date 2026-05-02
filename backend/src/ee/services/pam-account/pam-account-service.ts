@@ -4,8 +4,9 @@ import picomatch from "picomatch";
 import { ActionProjectType, OrganizationActionScope, TableName, TPamAccounts, TPamResources } from "@app/db/schemas";
 import { decryptDomainConnectionDetails } from "@app/ee/services/pam-domain/pam-domain-fns";
 import {
+  exchangeCredentialsForConsoleUrl,
   extractAwsAccountIdFromArn,
-  generateConsoleFederationUrl,
+  generateAwsIamSessionCredentials,
   TAwsIamAccountCredentials
 } from "@app/ee/services/pam-resource/aws-iam";
 import { parseMongoConnectionString } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-factory";
@@ -24,6 +25,7 @@ import {
 import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import {
   BadRequestError,
@@ -63,6 +65,8 @@ import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-
 import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
 import { PamDomainType } from "../pam-domain/pam-domain-enums";
 import { PAM_DOMAIN_FACTORY_MAP } from "../pam-domain/pam-domain-factory";
+import { TPamProjectRecordingConfigDALFactory } from "../pam-project-recording-config/pam-project-recording-config-dal";
+import { TPamProjectRecordingConfigServiceFactory } from "../pam-project-recording-config/pam-project-recording-config-service";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamResourceRotationRulesDALFactory } from "../pam-resource/pam-resource-rotation-rules-dal";
@@ -72,6 +76,8 @@ import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-re
 import { TSSHAccountCredentials, TSSHResourceInternalMetadata } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
+import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session/pam-session-recording-secrets";
+import { PamRecordingStorageBackend } from "../pam-session-recording-storage/pam-session-recording-storage-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import { PamAccountRotationStatus } from "./pam-account-enums";
@@ -119,6 +125,9 @@ type TPamAccountServiceFactoryDep = {
     TPamAccountDependenciesDALFactory,
     "findByAccountId" | "updateById" | "countByAccountIds"
   >;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
+  pamProjectRecordingConfigDAL: Pick<TPamProjectRecordingConfigDALFactory, "findByProjectId">;
+  pamProjectRecordingConfigService: Pick<TPamProjectRecordingConfigServiceFactory, "resolveConfigForProject">;
 };
 
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
@@ -144,7 +153,10 @@ export const pamAccountServiceFactory = ({
   approvalRequestGrantsDAL,
   pamSessionExpirationService,
   resourceMetadataDAL,
-  pamAccountDependenciesDAL
+  pamAccountDependenciesDAL,
+  keyStore,
+  pamProjectRecordingConfigDAL,
+  pamProjectRecordingConfigService
 }: TPamAccountServiceFactoryDep) => {
   // Helper to resolve account parent (resource or domain)
   const resolveAccountParent = async ({
@@ -814,7 +826,9 @@ export const pamAccountServiceFactory = ({
         projectDAL.findById(account.projectId)
       );
       if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
-      const org = await orgDAL.findOrgById(project.orgId);
+      const org = await requestMemoize(requestMemoKeys.orgFindOrgById(project.orgId), () =>
+        orgDAL.findOrgById(project.orgId)
+      );
       if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
 
       // Determine which MFA method to use
@@ -881,9 +895,15 @@ export const pamAccountServiceFactory = ({
       kmsService
     );
 
-    // Temporarily disable access to Windows Server
-    if (resourceType === PamResource.Windows)
-      throw new BadRequestError({ message: `Windows resources cannot be accessed at this time` });
+    if (resourceType === PamResource.Windows) {
+      const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(account.projectId);
+      if (!recordingConfig) {
+        throw new BadRequestError({
+          message:
+            "Windows resources require an external session recording configuration. Configure session recording in project settings before accessing Windows accounts."
+        });
+      }
+    }
 
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
@@ -895,7 +915,7 @@ export const pamAccountServiceFactory = ({
         projectId: account.projectId
       })) as TAwsIamAccountCredentials;
 
-      const { consoleUrl, expiresAt } = await generateConsoleFederationUrl({
+      const credentials = await generateAwsIamSessionCredentials({
         connectionDetails,
         targetRoleArn: awsCredentials.targetRoleArn,
         roleSessionName: actorEmail,
@@ -916,29 +936,43 @@ export const pamAccountServiceFactory = ({
         accountId: account.id,
         resourceId: resource.id,
         userId: actor.id,
-        expiresAt,
+        expiresAt: credentials.expiresAt,
         startedAt: new Date(),
         reason: trimmedReason
       });
 
+      // Cache the AccessKeyId so /aws-console-url can verify the caller is
+      // submitting credentials that actually belong to this session
+      const ttlSeconds = Math.max(1, Math.floor((credentials.expiresAt.getTime() - Date.now()) / 1000));
+      await keyStore.setItemWithExpiry(
+        KeyStorePrefixes.PamAwsIamAccessKeyId(session.id),
+        ttlSeconds,
+        credentials.accessKeyId
+      );
+
       // Schedule session expiration job to run at expiresAt
-      await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
+      await pamSessionExpirationService.scheduleSessionExpiration(session.id, credentials.expiresAt);
 
       return {
         sessionId: session.id,
         resourceType,
         account,
-        consoleUrl,
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+        sessionToken: credentials.sessionToken,
+        expiresAt: credentials.expiresAt.toISOString(),
         metadata: {
           awsAccountId: extractAwsAccountIdFromArn(connectionDetails.roleArn),
           targetRoleArn: awsCredentials.targetRoleArn,
-          federatedUsername: actorEmail,
-          expiresAt: expiresAt.toISOString()
+          federatedUsername: actorEmail
         }
       };
     }
 
     // For gateway-based resources (Postgres, MySQL, SSH), create session first
+    //
+    // Recording secrets are generated lazily at credential fetch time so the raw
+    // upload token can be returned exactly once to the gateway without persisting it
     const session = await pamSessionDAL.create({
       accountName: account.name,
       actorEmail,
@@ -1080,6 +1114,69 @@ export const pamAccountServiceFactory = ({
     };
   };
 
+  const getAwsIamConsoleUrl = async (
+    {
+      sessionId,
+      projectId,
+      accessKeyId,
+      secretAccessKey,
+      sessionToken
+    }: {
+      sessionId: string;
+      projectId: string;
+      accessKeyId: string;
+      secretAccessKey: string;
+      sessionToken: string;
+    },
+    actor: OrgServiceActor
+  ) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+
+    if (session.projectId !== projectId) {
+      throw new ForbiddenRequestError({ message: "Session does not belong to the specified project" });
+    }
+
+    if (session.userId !== actor.id) {
+      throw new ForbiddenRequestError({ message: "Session does not belong to the current user" });
+    }
+
+    if (session.resourceType !== PamResource.AwsIam) {
+      throw new BadRequestError({ message: "Session is not an AWS IAM session" });
+    }
+
+    if (session.endedAt || (session.expiresAt && session.expiresAt < new Date())) {
+      throw new BadRequestError({ message: "Session has ended or expired" });
+    }
+
+    // Confirm the submitted creds actually belong to this session by comparing
+    // against the AccessKeyId we stashed at /access time
+    const expectedAccessKeyId = await keyStore.getItem(KeyStorePrefixes.PamAwsIamAccessKeyId(sessionId));
+    if (!expectedAccessKeyId) {
+      throw new BadRequestError({
+        message: "Session credentials are no longer available. Please re-access the account."
+      });
+    }
+    if (expectedAccessKeyId !== accessKeyId) {
+      throw new ForbiddenRequestError({
+        message: "Submitted credentials do not match the session"
+      });
+    }
+
+    const consoleUrl = await exchangeCredentialsForConsoleUrl({
+      accessKeyId,
+      secretAccessKey,
+      sessionToken
+    });
+
+    return {
+      consoleUrl,
+      accountId: session.accountId,
+      accountName: session.accountName,
+      resourceName: session.resourceName
+    };
+  };
+
   const getSessionCredentials = async (sessionId: string, actor: OrgServiceActor) => {
     // To be hit by gateways only (identity-based or enrollment-flow)
     if (actor.type !== ActorType.IDENTITY && actor.type !== ActorType.GATEWAY) {
@@ -1165,13 +1262,51 @@ export const pamAccountServiceFactory = ({
 
     let sessionStarted = false;
 
-    // Mark session as started
+    // Recording secrets are lazily generated on the first /credentials call (status=Starting)
+    // The upload token is returned exactly once; the gateway persists it to disk
+    // On subsequent calls (status=Active), the session key and storage backend are re-derived so the gateway can resume chunk creation after a restart
+    let sessionRecordingSecrets: {
+      sessionKeyBase64: string;
+      uploadTokenBase64: string;
+      storageBackend: PamRecordingStorageBackend;
+    } | null = null;
     if (session.status === PamSessionStatus.Starting) {
-      await pamSessionDAL.updateById(sessionId, {
-        status: PamSessionStatus.Active,
-        startedAt: new Date()
+      const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
+      const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
+
+      const { sessionKey, uploadToken, encryptedSessionKey, uploadTokenHash } = await generateSessionRecordingSecrets({
+        projectId: session.projectId,
+        sessionId,
+        kmsService
       });
-      sessionStarted = true;
+
+      const started = await pamSessionDAL.startSession(sessionId, {
+        encryptedSessionKey,
+        gatewayUploadTokenHash: uploadTokenHash
+      });
+
+      if (started) {
+        sessionStarted = true;
+        sessionRecordingSecrets = {
+          sessionKeyBase64: sessionKey.toString("base64"),
+          uploadTokenBase64: uploadToken.toString("base64"),
+          storageBackend
+        };
+      }
+    } else if (session.status === PamSessionStatus.Active && session.encryptedSessionKey) {
+      const projectRecordingConfig = await pamProjectRecordingConfigService.resolveConfigForProject(session.projectId);
+      const storageBackend = projectRecordingConfig?.backend ?? PamRecordingStorageBackend.Postgres;
+      const sessionKey = await decryptSessionKey({
+        projectId: session.projectId,
+        sessionId,
+        encryptedSessionKey: session.encryptedSessionKey,
+        kmsService
+      });
+      sessionRecordingSecrets = {
+        sessionKeyBase64: sessionKey.toString("base64"),
+        uploadTokenBase64: "",
+        storageBackend
+      };
     }
 
     // Handle SSH certificate-based authentication
@@ -1221,7 +1356,8 @@ export const pamAccountServiceFactory = ({
           policyRules,
           projectId: project.id,
           account,
-          sessionStarted
+          sessionStarted,
+          recording: sessionRecordingSecrets
         };
       }
     }
@@ -1234,7 +1370,8 @@ export const pamAccountServiceFactory = ({
       policyRules,
       projectId: project.id,
       account,
-      sessionStarted
+      sessionStarted,
+      recording: sessionRecordingSecrets
     };
   };
 
@@ -1625,7 +1762,9 @@ export const pamAccountServiceFactory = ({
       const actorUser = await userDAL.findById(actorId);
       if (!actorUser) throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
 
-      const org = await orgDAL.findOrgById(actorOrgId);
+      const org = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>
+        orgDAL.findOrgById(actorOrgId)
+      );
       if (!org) throw new NotFoundError({ message: `Organization with ID '${actorOrgId}' not found` });
 
       const orgMfaMethod = org.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;
@@ -1699,6 +1838,7 @@ export const pamAccountServiceFactory = ({
     list,
     getById,
     access,
+    getAwsIamConsoleUrl,
     viewCredentials,
     getSessionCredentials,
     rotateAllDueAccounts,

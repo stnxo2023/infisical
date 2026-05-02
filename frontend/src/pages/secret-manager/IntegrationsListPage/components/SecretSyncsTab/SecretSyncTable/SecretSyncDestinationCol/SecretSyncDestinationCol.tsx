@@ -30,11 +30,13 @@ import { NetlifySyncDestinationCol } from "./NetlifySyncDestinationCol";
 import { NorthflankSyncDestinationCol } from "./NorthflankSyncDestinationCol";
 import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { OctopusDeploySyncDestinationCol } from "./OctopusDeploySyncDestinationCol";
+import { OnaSyncDestinationCol } from "./OnaSyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
 import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
+import { TravisCISyncDestinationCol } from "./TravisCISyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
 import { WindmillSyncDestinationCol } from "./WindmillSyncDestinationCol";
 import { ZabbixSyncDestinationCol } from "./ZabbixSyncDestinationCol";
@@ -121,6 +123,10 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <ExternalInfisicalSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Devin:
       return <DevinSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Ona:
+      return <OnaSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.TravisCI:
+      return <TravisCISyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

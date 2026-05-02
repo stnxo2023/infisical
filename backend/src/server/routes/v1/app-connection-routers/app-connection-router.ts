@@ -76,6 +76,10 @@ import {
 import { DbtConnectionListItemSchema, SanitizedDbtConnectionSchema } from "@app/services/app-connection/dbt";
 import { DevinConnectionListItemSchema, SanitizedDevinConnectionSchema } from "@app/services/app-connection/devin";
 import {
+  DigiCertConnectionListItemSchema,
+  SanitizedDigiCertConnectionSchema
+} from "@app/services/app-connection/digicert";
+import {
   DigitalOceanConnectionListItemSchema,
   SanitizedDigitalOceanConnectionSchema
 } from "@app/services/app-connection/digital-ocean";
@@ -136,6 +140,7 @@ import {
   SanitizedOctopusDeployConnectionSchema
 } from "@app/services/app-connection/octopus-deploy";
 import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
+import { OnaConnectionListItemSchema, SanitizedOnaConnectionSchema } from "@app/services/app-connection/ona";
 import {
   OpenRouterConnectionListItemSchema,
   SanitizedOpenRouterConnectionSchema
@@ -167,7 +172,15 @@ import {
   SanitizedTerraformCloudConnectionSchema,
   TerraformCloudConnectionListItemSchema
 } from "@app/services/app-connection/terraform-cloud";
+import {
+  SanitizedTravisCIConnectionSchema,
+  TravisCIConnectionListItemSchema
+} from "@app/services/app-connection/travis-ci";
 import { SanitizedVenafiConnectionSchema, VenafiConnectionListItemSchema } from "@app/services/app-connection/venafi";
+import {
+  SanitizedVenafiTppConnectionSchema,
+  VenafiTppConnectionListItemSchema
+} from "@app/services/app-connection/venafi-tpp";
 import { SanitizedVercelConnectionSchema, VercelConnectionListItemSchema } from "@app/services/app-connection/vercel";
 import {
   SanitizedWindmillConnectionSchema,
@@ -233,9 +246,13 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDevinConnectionSchema.options,
   ...SanitizedAzureEntraIdConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
+  ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
+  ...SanitizedNetScalerConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
-  ...SanitizedNetScalerConnectionSchema.options
+  ...SanitizedOnaConnectionSchema.options,
+  ...SanitizedDigiCertConnectionSchema.options,
+  ...SanitizedTravisCIConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -292,11 +309,15 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OpenRouterConnectionListItemSchema,
   AzureEntraIdConnectionListItemSchema,
   VenafiConnectionListItemSchema,
+  VenafiTppConnectionListItemSchema,
   ExternalInfisicalConnectionListItemSchema,
   DopplerConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
-  DevinConnectionListItemSchema
+  DevinConnectionListItemSchema,
+  OnaConnectionListItemSchema,
+  DigiCertConnectionListItemSchema,
+  TravisCIConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

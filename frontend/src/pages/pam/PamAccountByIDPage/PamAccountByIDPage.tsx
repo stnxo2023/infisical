@@ -46,7 +46,6 @@ import { PamAwsIamAccessReasonModal } from "../PamAccountsPage/components/PamAws
 import { PamDeleteAccountModal } from "../PamAccountsPage/components/PamDeleteAccountModal";
 import { PamRequestAccountAccessModal } from "../PamAccountsPage/components/PamRequestAccountAccessModal";
 import { PamUpdateAccountModal } from "../PamAccountsPage/components/PamUpdateAccountModal";
-import { useAccessAwsIamAccount } from "../PamAccountsPage/components/useAccessAwsIamAccount";
 import {
   PamAccountCredentialsSection,
   PamAccountDependenciesSection,
@@ -75,6 +74,7 @@ const PageContent = () => {
   const isDomainAccount = !!domainId;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [accessReason, setAccessReason] = useState<string | undefined>(undefined);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "accessAccount",
@@ -85,7 +85,6 @@ const PageContent = () => {
   ] as const);
 
   const queryClient = useQueryClient();
-  const { accessAwsIam, isPending: isAwsAccessPending } = useAccessAwsIamAccount();
   const { mutateAsync: checkPolicyMatch } = useCheckPolicyMatch();
   const rotateAccount = useManualRotateAccount();
 
@@ -150,7 +149,7 @@ const PageContent = () => {
       return;
     }
 
-    const { requiresApproval } = await checkPolicyMatch({
+    const { requiresApproval, constraints } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
@@ -163,7 +162,8 @@ const PageContent = () => {
       handlePopUpOpen("requestAccount", {
         resourceName: account.resource?.name ?? "",
         accountName: account.name,
-        accountAccessed: true
+        accountAccessed: true,
+        accessDurationMax: constraints?.accessDuration.max
       });
       return;
     }
@@ -239,7 +239,7 @@ const PageContent = () => {
               I={ProjectPermissionPamAccountActions.Access}
               a={ProjectPermissionSub.PamAccounts}
             >
-              <Button variant="neutral" onClick={handleAccess} isPending={isAwsAccessPending}>
+              <Button variant="neutral" onClick={handleAccess}>
                 <LogInIcon />
                 Access
               </Button>
@@ -326,21 +326,25 @@ const PageContent = () => {
 
       <PamAccessAccountModal
         isOpen={popUp.accessAccount.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("accessAccount", isOpen);
+          if (!isOpen) setAccessReason(undefined);
+        }}
         account={popUp.accessAccount.data?.account}
         projectId={projectId!}
+        reason={accessReason}
       />
 
       <PamAwsIamAccessReasonModal
         isOpen={popUp.awsIamReason.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("awsIamReason", isOpen)}
         account={popUp.awsIamReason.data?.account}
-        isPending={isAwsAccessPending}
-        onSubmit={async (reason) => {
+        onSubmit={(reason) => {
           const targetAccount = popUp.awsIamReason.data?.account;
           if (!targetAccount) return;
           handlePopUpClose("awsIamReason");
-          await accessAwsIam(targetAccount, reason);
+          setAccessReason(reason || undefined);
+          handlePopUpOpen("accessAccount", { account: targetAccount });
         }}
       />
 
@@ -350,6 +354,7 @@ const PageContent = () => {
         resourceName={popUp.requestAccount.data?.resourceName}
         accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
+        accessDurationMax={popUp.requestAccount.data?.accessDurationMax}
       />
 
       <PamDeleteAccountModal

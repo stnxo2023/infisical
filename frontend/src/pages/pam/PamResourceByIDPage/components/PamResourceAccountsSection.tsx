@@ -70,7 +70,6 @@ import { PamAwsIamAccessReasonModal } from "../../PamAccountsPage/components/Pam
 import { PamDeleteAccountModal } from "../../PamAccountsPage/components/PamDeleteAccountModal";
 import { PamRequestAccountAccessModal } from "../../PamAccountsPage/components/PamRequestAccountAccessModal";
 import { PamUpdateAccountModal } from "../../PamAccountsPage/components/PamUpdateAccountModal";
-import { useAccessAwsIamAccount } from "../../PamAccountsPage/components/useAccessAwsIamAccount";
 
 type Props = {
   resource: TPamResource;
@@ -94,13 +93,13 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   const params = useParams({ strict: false }) as { projectId?: string };
   const { projectId } = params;
 
-  const { accessAwsIam, loadingAccountId } = useAccessAwsIamAccount();
   const { mutateAsync: checkPolicyMatch } = useCheckPolicyMatch();
   const manualRotate = useManualRotateAccount();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [rotatingAccountIds, setRotatingAccountIds] = useState<Set<string>>(new Set());
+  const [accessReason, setAccessReason] = useState<string | undefined>(undefined);
 
   const [pendingMetadataEntries, setPendingMetadataEntries] = useState<MetadataFilterEntry[]>([]);
   const [appliedMetadataEntries, setAppliedMetadataEntries] = useState<MetadataFilterEntry[]>([]);
@@ -255,7 +254,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   };
 
   const accessAccount = async (account: TPamAccount) => {
-    const { requiresApproval } = await checkPolicyMatch({
+    const { requiresApproval, constraints } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
@@ -268,7 +267,8 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
       handlePopUpOpen("requestAccount", {
         resourceName: resource.name,
         accountName: account.name,
-        accountAccessed: true
+        accountAccessed: true,
+        accessDurationMax: constraints?.accessDuration.max
       });
       return;
     }
@@ -542,8 +542,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                               e.stopPropagation();
                               accessAccount(account);
                             }}
-                            isPending={loadingAccountId === account.id}
-                            isDisabled={loadingAccountId === account.id}
                           >
                             <LogInIcon />
                             Connect
@@ -647,21 +645,25 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
 
       <PamAccessAccountModal
         isOpen={popUp.accessAccount.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("accessAccount", isOpen);
+          if (!isOpen) setAccessReason(undefined);
+        }}
         account={popUp.accessAccount.data?.account}
         projectId={projectId!}
+        reason={accessReason}
       />
 
       <PamAwsIamAccessReasonModal
         isOpen={popUp.awsIamReason.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("awsIamReason", isOpen)}
         account={popUp.awsIamReason.data?.account}
-        isPending={Boolean(loadingAccountId)}
-        onSubmit={async (reason) => {
+        onSubmit={(reason) => {
           const account = popUp.awsIamReason.data?.account;
           if (!account) return;
           handlePopUpClose("awsIamReason");
-          await accessAwsIam(account, reason);
+          setAccessReason(reason || undefined);
+          handlePopUpOpen("accessAccount", { account });
         }}
       />
 
@@ -671,6 +673,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         resourceName={popUp.requestAccount.data?.resourceName}
         accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
+        accessDurationMax={popUp.requestAccount.data?.accessDurationMax}
       />
 
       <PamUpdateAccountModal

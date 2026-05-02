@@ -31,11 +31,13 @@ import { TNetlifySync } from "./netlify-sync";
 import { TNorthflankSync } from "./northflank-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TOctopusDeploySync } from "./octopus-deploy-sync";
+import { TOnaSync } from "./ona-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
 import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
+import { TTravisCISync } from "./travis-ci-sync";
 import { TVercelSync } from "./vercel-sync";
 import { TWindmillSync } from "./windmill-sync";
 import { TZabbixSync } from "./zabbix-sync";
@@ -88,7 +90,9 @@ export type TSecretSync =
   | TCircleCISync
   | TAzureEntraIdScimSync
   | TExternalInfisicalSync
-  | TDevinSync;
+  | TDevinSync
+  | TOnaSync
+  | TTravisCISync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

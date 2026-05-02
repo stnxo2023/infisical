@@ -20,6 +20,7 @@ import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDbtConnection } from "./dbt-connection";
 import { TDevinConnection } from "./devin-connection";
+import { TDigiCertConnection } from "./digicert-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
 import { TDopplerConnection } from "./doppler-connection";
@@ -43,6 +44,7 @@ import { TNorthflankConnection } from "./northflank-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOctopusDeployConnection } from "./octopus-deploy-connection";
 import { TOktaConnection } from "./okta-connection";
+import { TOnaConnection } from "./ona-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
@@ -54,7 +56,9 @@ import { TSshConnection } from "./ssh-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
+import { TTravisCIConnection } from "./travis-ci-connection";
 import { TVenafiConnection } from "./venafi-connection";
+import { TVenafiTppConnection } from "./venafi-tpp-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
 import { TZabbixConnection } from "./zabbix-connection";
@@ -78,6 +82,7 @@ export * from "./cloudflare-connection";
 export * from "./databricks-connection";
 export * from "./dbt-connection";
 export * from "./devin-connection";
+export * from "./digicert-connection";
 export * from "./dns-made-easy-connection";
 export * from "./doppler-connection";
 export * from "./external-infisical-connection";
@@ -100,6 +105,7 @@ export * from "./northflank-connection";
 export * from "./oci-connection";
 export * from "./octopus-deploy-connection";
 export * from "./okta-connection";
+export * from "./ona-connection";
 export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./postgres-connection";
@@ -111,7 +117,9 @@ export * from "./ssh-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
+export * from "./travis-ci-connection";
 export * from "./venafi-connection";
+export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
 export * from "./zabbix-connection";
@@ -171,10 +179,14 @@ export type TAppConnection =
   | TCircleCIConnection
   | TAzureEntraIdConnection
   | TVenafiConnection
+  | TVenafiTppConnection
   | TExternalInfisicalConnection
-  | TDopplerConnection
   | TNetScalerConnection
-  | TDevinConnection;
+  | TDopplerConnection
+  | TDevinConnection
+  | TOnaConnection
+  | TDigiCertConnection
+  | TTravisCIConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
