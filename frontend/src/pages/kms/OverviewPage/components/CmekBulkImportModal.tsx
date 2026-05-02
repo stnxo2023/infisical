@@ -275,8 +275,9 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
             <div className="rounded-md border border-red/30 bg-red/5 px-4 py-3">
               <p className="mb-2 text-sm font-medium text-red">Failed imports</p>
               <ul className="max-h-[50vh] thin-scrollbar space-y-1 overflow-y-auto pr-2">
-                {importResult.failed.map((err) => (
-                  <li key={err.name} className="text-xs text-red/80">
+                {importResult.failed.map((err, idx) => (
+                  // eslint-disable-next-line react/no-array-index-key
+                  <li key={`${err.name}-${idx}`} className="text-xs text-red/80">
                     <span className="font-medium">{err.name}</span>
                     {" — "}
                     {err.message}

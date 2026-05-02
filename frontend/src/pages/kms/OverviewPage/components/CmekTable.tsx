@@ -337,7 +337,7 @@ export const CmekTable = () => {
               </ProjectPermissionCan>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <IconButton variant="project">
+                  <IconButton variant="project" aria-label="More key options">
                     <ChevronDownIcon />
                   </IconButton>
                 </DropdownMenuTrigger>
