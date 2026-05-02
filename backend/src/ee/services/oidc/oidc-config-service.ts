@@ -692,7 +692,10 @@ export const oidcConfigServiceFactory = ({
       // SSRF-validated and DNS-pinned. We then construct the Issuer manually
       // instead of letting openid-client do its own (unpinned) HTTP via
       // `Issuer.discover()`.
-      const discoveryUrl = `${oidcCfg.discoveryURL.replace(/\/+$/, "")}/.well-known/openid-configuration`;
+      //
+      // The configured value is the full Discovery Document URL (e.g.
+      // `https://idp.example.com/.well-known/openid-configuration`) — see the
+      // SSO UI placeholder and provider setup docs.
       const { data: meta } = await safeRequest.get<{
         issuer: string;
         authorization_endpoint?: string;
@@ -700,7 +703,7 @@ export const oidcConfigServiceFactory = ({
         userinfo_endpoint?: string;
         jwks_uri?: string;
         code_challenge_methods_supported?: string[];
-      }>(discoveryUrl);
+      }>(oidcCfg.discoveryURL);
       issuer = new OpenIdIssuer(meta);
     } else {
       if (
