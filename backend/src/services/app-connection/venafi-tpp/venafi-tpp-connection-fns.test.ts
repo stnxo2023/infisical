@@ -13,7 +13,10 @@ const { safeRequestMock, httpRequestMock, withGatewayV2ProxyMock, verifyHostInpu
     vi.fn<(...args: any[]) => Promise<{ data: unknown; status: number; headers: Record<string, unknown> }>>(),
   httpRequestMock:
     vi.fn<(...args: any[]) => Promise<{ data: unknown; status: number; headers: Record<string, unknown> }>>(),
-  withGatewayV2ProxyMock: vi.fn(async (cb: (port: number) => Promise<unknown>) => cb(5678)),
+  withGatewayV2ProxyMock: vi.fn(async (...args: any[]) => {
+    const cb = args[0] as (port: number) => Promise<unknown>;
+    return cb(5678);
+  }),
   verifyHostInputValidityMock: vi.fn(async ({ host }: { host: string }) => [host] as string[])
 }));
 

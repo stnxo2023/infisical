@@ -82,6 +82,9 @@ const STATIC_INPUT_BASE = {
   sslRejectUnauthorized: true
 };
 
+/** `TDynamicProviderFns.validateConnection` always receives project metadata; K8s ignores it in this test. */
+const VALIDATE_METADATA = { projectId: "00000000-0000-0000-0000-000000000000" };
+
 describe("KubernetesProvider — k8sHttpClient dispatch", () => {
   beforeEach(() => {
     for (const m of [safeGetMock, safePostMock, safeDeleteMock, rawGetMock, rawPostMock, rawDeleteMock]) {
@@ -100,7 +103,7 @@ describe("KubernetesProvider — k8sHttpClient dispatch", () => {
       gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() } as any
     });
 
-    await provider.validateConnection({ ...STATIC_INPUT_BASE });
+    await provider.validateConnection({ ...STATIC_INPUT_BASE }, VALIDATE_METADATA);
 
     expect(safeGetMock).toHaveBeenCalledTimes(1);
     expect(rawGetMock).not.toHaveBeenCalled();
@@ -123,10 +126,13 @@ describe("KubernetesProvider — k8sHttpClient dispatch", () => {
       } as any
     });
 
-    await provider.validateConnection({
-      ...STATIC_INPUT_BASE,
-      gatewayId: "gw-k8s"
-    });
+    await provider.validateConnection(
+      {
+        ...STATIC_INPUT_BASE,
+        gatewayId: "gw-k8s"
+      },
+      VALIDATE_METADATA
+    );
 
     expect(rawGetMock).toHaveBeenCalledTimes(1);
     expect(safeGetMock).not.toHaveBeenCalled();
@@ -147,11 +153,14 @@ describe("KubernetesProvider — k8sHttpClient dispatch", () => {
       gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() } as any
     });
 
-    await provider.validateConnection({
-      ...STATIC_INPUT_BASE,
-      sslEnabled: false,
-      ca: undefined
-    });
+    await provider.validateConnection(
+      {
+        ...STATIC_INPUT_BASE,
+        sslEnabled: false,
+        ca: undefined
+      },
+      VALIDATE_METADATA
+    );
 
     expect(safeGetMock).toHaveBeenCalledTimes(1);
     const [, opts] = safeGetMock.mock.calls[0];

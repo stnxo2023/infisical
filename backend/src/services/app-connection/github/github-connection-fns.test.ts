@@ -15,8 +15,8 @@ const { safeRequestMock, httpRequestMock, withGatewayProxyMock, withGatewayV2Pro
       vi.fn<(...args: any[]) => Promise<{ data: unknown; status: number; headers: Record<string, unknown> }>>(),
     httpRequestMock:
       vi.fn<(...args: any[]) => Promise<{ data: unknown; status: number; headers: Record<string, unknown> }>>(),
-    // withGatewayProxy({ callback }, options) -> invoke callback(1234) and return its result
-    withGatewayProxyMock: vi.fn(async (cb: (port: number) => Promise<unknown>) => cb(1234)),
+    // withGatewayProxy(cb, options) -> invoke cb(1234); track only cb on the spy (see vi.mock wrappers)
+    withGatewayProxyMock: vi.fn(async (cb: (port: number, httpsAgent?: unknown) => Promise<unknown>) => cb(1234)),
     withGatewayV2ProxyMock: vi.fn(async (cb: (port: number) => Promise<unknown>) => cb(5678)),
     verifyHostInputValidityMock: vi.fn(async ({ host }: { host: string }) => [host] as string[])
   }));
@@ -40,11 +40,17 @@ vi.mock("@app/lib/config/request", () => ({
 
 vi.mock("@app/lib/gateway", () => ({
   GatewayProxyProtocol: { Tcp: "tcp", Http: "http" },
-  withGatewayProxy: (cb: (port: number) => Promise<unknown>, options: unknown) => withGatewayProxyMock(cb, options)
+  withGatewayProxy: (cb: (port: number, httpsAgent?: unknown) => Promise<unknown>, options: unknown) => {
+    void options;
+    return withGatewayProxyMock(cb);
+  }
 }));
 
 vi.mock("@app/lib/gateway-v2/gateway-v2", () => ({
-  withGatewayV2Proxy: (cb: (port: number) => Promise<unknown>, options: unknown) => withGatewayV2ProxyMock(cb, options)
+  withGatewayV2Proxy: (cb: (port: number) => Promise<unknown>, options: unknown) => {
+    void options;
+    return withGatewayV2ProxyMock(cb);
+  }
 }));
 
 vi.mock("@app/ee/services/dynamic-secret/dynamic-secret-fns", () => ({
