@@ -435,7 +435,29 @@ export const identityAccessTokenServiceFactory = ({
     const decodedToken = assertRevocableClaims(verifyAccessTokenJwt(accessToken));
     const { identityId } = decodedToken;
     const tokenId = decodedToken.jti ?? decodedToken.identityAccessTokenId;
-    const expiresAt = new Date((decodedToken.exp ?? decodedToken.iat + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE) * 1000);
+
+    const source: TRenewSource = hasFullRenewClaims(decodedToken)
+      ? {
+          authMethod: decodedToken.authMethod,
+          accessTokenTTL: decodedToken.accessTokenTTL,
+          accessTokenMaxTTL: decodedToken.accessTokenMaxTTL,
+          accessTokenPeriod: decodedToken.accessTokenPeriod,
+          creationEpoch: decodedToken.creationEpoch,
+          identityName: decodedToken.identityName ?? "",
+          orgId: decodedToken.orgId,
+          rootOrgId: decodedToken.rootOrgId,
+          parentOrgId: decodedToken.parentOrgId,
+          clientSecretId: decodedToken.clientSecretId,
+          numUsesLimit: decodedToken.numUsesLimit ?? 0,
+          identityAuth: decodedToken.identityAuth
+        }
+      : await loadLegacyTokenSource(decodedToken);
+
+    const maxLifetimeSeconds =
+      source.accessTokenMaxTTL > 0
+        ? source.creationEpoch + source.accessTokenMaxTTL
+        : Math.floor(Date.now() / 1000) + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE;
+    const expiresAt = new Date(maxLifetimeSeconds * 1000);
 
     await identityAccessTokenRevocationDAL.insertRevocation({
       id: tokenId,
@@ -450,6 +472,7 @@ export const identityAccessTokenServiceFactory = ({
   // admin "revoke this token by id" flow). Caller computes the latest possible
   // exp and passes it as `expiresAt`; we skip the PG insert if it's already
   // in the past since no future JWT could be blocked by such a marker.
+  // DON'T USE IT WITHOUT VALIDATION
   const markPerTokenRevocation = async ({
     tokenId,
     identityId,

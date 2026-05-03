@@ -56,7 +56,7 @@ export const verifyAccessTokenJwt = (accessToken: string): TIdentityAccessTokenJ
 // stable id we can rely on across both formats. Callers that need the live token
 // id read `decoded.jti ?? decoded.identityAccessTokenId`.
 const hasCoreTokenClaims = (decoded: TIdentityAccessTokenJwtPayload): decoded is TCoreTokenClaims =>
-  typeof decoded.iat === "number" && !!decoded.identityId && !!decoded.identityAccessTokenId;
+  typeof decoded.iat === "number" && Boolean(decoded.identityId) && Boolean(decoded.identityAccessTokenId);
 
 // Baseline assertion shared by every JWT-consuming entry point (auth, renew,
 // revoke). Per-flow predicates narrow further.
@@ -71,11 +71,11 @@ export const assertMinimalRenewClaims = (decoded: TIdentityAccessTokenJwtPayload
 // jti + org claims + TTL/period/creationEpoch budget anchors. Legacy tokens fail
 // this and fall through to loadLegacyTokenSource.
 export const hasFullRenewClaims = (decoded: TMinimalRenewClaims): decoded is TRenewableClaims =>
-  !!decoded.jti &&
-  !!decoded.orgId &&
-  !!decoded.rootOrgId &&
-  !!decoded.parentOrgId &&
-  !!decoded.authMethod &&
+  Boolean(decoded.jti) &&
+  Boolean(decoded.orgId) &&
+  Boolean(decoded.rootOrgId) &&
+  Boolean(decoded.parentOrgId) &&
+  Boolean(decoded.authMethod) &&
   typeof decoded.accessTokenTTL === "number" &&
   typeof decoded.accessTokenMaxTTL === "number" &&
   typeof decoded.accessTokenPeriod === "number" &&
