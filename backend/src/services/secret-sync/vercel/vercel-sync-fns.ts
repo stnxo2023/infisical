@@ -401,13 +401,17 @@ const isSubset = (a: readonly string[] | undefined, b: readonly string[] | undef
   return (a ?? []).every((v) => bSet.has(v));
 };
 
-// Ownership is by exact (target, projectId) scope match.
+// Ownership is by exact (target, projectId, applyToAllCustomEnvironments) scope match.
 const isTeamSharedEnvVarOwnedByThisSync = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
   const effectiveTargets = destinationConfig.sensitive
     ? destinationConfig.targetEnvironments?.filter((env) => env !== VercelEnvironmentType.Development)
     : destinationConfig.targetEnvironments;
 
-  return setsEqual(envVar.target, effectiveTargets) && setsEqual(envVar.projectId, destinationConfig.targetProjects);
+  return (
+    setsEqual(envVar.target, effectiveTargets) &&
+    setsEqual(envVar.projectId, destinationConfig.targetProjects) &&
+    Boolean(envVar.applyToAllCustomEnvironments) === Boolean(destinationConfig.applyToAllCustomEnvironments)
+  );
 };
 
 // True when an existing team shared env var's scope is a strict superset of the sync's scope
@@ -428,10 +432,17 @@ const teamVarStrictlyCoversSyncScope = (envVar: VercelSharedEnvVar, destinationC
     if (!isSubset(ourProjects, varProjects)) return false;
   }
 
+  // If our sync claims all-custom-environments, the existing var must also have it set —
+  // otherwise it doesn't cover the custom-env dimension we need.
+  const ourApplyAll = Boolean(destinationConfig.applyToAllCustomEnvironments);
+  const varApplyAll = Boolean(envVar.applyToAllCustomEnvironments);
+  if (ourApplyAll && !varApplyAll) return false;
+
   // Scopes must not be exactly equal. If they are, this is the "owned" path.
   const targetEqual = setsEqual(envVar.target, effectiveTargets);
   const projectEqual = setsEqual(varProjects, ourProjects);
-  return !(targetEqual && projectEqual);
+  const applyAllEqual = ourApplyAll === varApplyAll;
+  return !(targetEqual && projectEqual && applyAllEqual);
 };
 
 const listTeamSharedEnvVarsWithRetries = async (
@@ -791,13 +802,19 @@ const detachTeamSharedEnvVar = async (
       : destinationConfig.targetEnvironments) ?? [];
   const ourTargetsSet = new Set<string>(ourEffectiveTargets);
 
-  // Vercel's uniqueness constraint on team shared env vars is at (key, target) — projectId
-  // is metadata about which projects see the var on its targets, not part of the conflict
-  // space.
-  const newTarget = envVar.target.filter((t) => !ourTargetsSet.has(t));
+  // Vercel's conflict space for team shared env vars spans (key, target) and the
+  // applyToAllCustomEnvironments flag — projectId is metadata about which projects see the
+  // var on its scopes, not part of the conflict space.
+  const newTarget = (envVar.target ?? []).filter((t) => !ourTargetsSet.has(t));
 
-  if (newTarget.length === 0) {
-    // No targets remain — the var has no scope to cover. Full delete.
+  // If our sync wants all-custom coverage and the existing var also has it, we must release
+  // that claim on the existing var so our new dedicated record can take it.
+  const ourApplyAll = Boolean(destinationConfig.applyToAllCustomEnvironments);
+  const varApplyAll = Boolean(envVar.applyToAllCustomEnvironments);
+  const newApplyAll = ourApplyAll ? false : varApplyAll;
+
+  if (newTarget.length === 0 && !newApplyAll) {
+    // No scope remains — the var has nothing to cover. Full delete.
     await deleteTeamSharedEnvVar(secretSync, envVar);
     return;
   }
@@ -811,7 +828,8 @@ const detachTeamSharedEnvVar = async (
       {
         updates: {
           [envVar.id]: {
-            target: newTarget
+            target: newTarget,
+            applyToAllCustomEnvironments: newApplyAll
           }
         }
       },
