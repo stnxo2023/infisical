@@ -213,15 +213,18 @@ describe("identityAccessTokenServiceFactory", () => {
   });
 
   test("writes per-token revocation to PG for exact legacy tokens", async () => {
-    const { service, identityAccessTokenRevocationDAL } = createService();
+    const { service, identityAccessTokenRevocationDAL } = createService({
+      tokenRow: createLegacyTokenRow()
+    });
     const legacyToken = signLegacyUniversalAuthAccessToken();
 
     await service.revokeAccessToken(legacyToken);
 
+    // Legacy row has accessTokenMaxTTL: 7200, createdAt: NOW_SECONDS
     expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith({
       id: "legacy-token-id",
       identityId: "identity-id",
-      expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
+      expiresAt: new Date((NOW_SECONDS + 7200) * 1000)
     });
   });
 
