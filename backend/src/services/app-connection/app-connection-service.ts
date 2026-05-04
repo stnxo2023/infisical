@@ -86,6 +86,7 @@ import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
 import { dbtConnectionService } from "./dbt/dbt-connection-service";
+import { ValidateDevinConnectionCredentialsSchema } from "./devin";
 import { ValidateDigiCertConnectionCredentialsSchema } from "./digicert/digicert-connection-schemas";
 import { digicertConnectionService } from "./digicert/digicert-connection-service";
 import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean";
@@ -231,6 +232,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Doppler]: ValidateDopplerConnectionCredentialsSchema,
   [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
   [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema,
+  [AppConnection.Devin]: ValidateDevinConnectionCredentialsSchema,
   [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
   [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
   [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema
