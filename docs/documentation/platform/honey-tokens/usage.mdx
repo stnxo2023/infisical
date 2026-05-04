@@ -18,25 +18,37 @@ description: "Create, monitor, and manage AWS honey tokens in your projects."
   <Step title="Add a Honey Token">
     Click the **Add Honey Token** button to open the creation dialog.
 
-    {/* <!-- Screenshot: The Secrets Dashboard showing the Add Honey Token button --> */}
+    ![Add Honey Token](/images/platform/honey-tokens/create-honey-token.png)
   </Step>
-  <Step title="Configure the honey token">
-    Fill in the creation form:
+  <Step title="Select the honey token type">
+    Choose the type of honey token you want to create.
 
-    - **Name** — a slug-friendly identifier for this honey token (must be unique within the folder).
-    - **Description** (optional) — a note about this honey token's purpose.
-    - **Environment** — the target environment where the decoy secrets will be planted.
-    - **Secret Path** — the folder path where the decoy secrets will appear.
-    - **Secrets Mapping** — the secret key names that will hold the decoy credentials:
-      - **Access Key ID** — the name of the secret that will store the AWS access key ID (e.g., `AWS_ACCESS_KEY_ID`).
-      - **Secret Access Key** — the name of the secret that will store the AWS secret access key (e.g., `AWS_SECRET_ACCESS_KEY`).
-
-    {/* <!-- Screenshot: The honey token creation form showing all fields filled out --> */}
+    ![Select Honey Token Type](/images/platform/honey-tokens/honey-token-type.png)
   </Step>
-  <Step title="Review and create">
-    Review the configuration summary, then click **Create**. Infisical will provision the decoy credentials in your AWS account and store them as secrets in the specified environment and path.
+  <Step title="Step 1: Environment">
+    Configure where the honey token will be planted:
 
-    {/* <!-- Screenshot: The review step of the creation dialog --> */}
+    - **Environment** — choose the target environment.
+
+    ![Honey Token Environment Step](/images/platform/honey-tokens/honey-token-environment.png)
+  </Step>
+  <Step title="Step 2: Mapping">
+    Configure **Secrets Mapping**:
+
+    - **Access Key ID** — secret name for the AWS access key ID (for example: `AWS_ACCESS_KEY_ID`).
+    - **Secret Access Key** — secret name for the AWS secret access key (for example: `AWS_SECRET_ACCESS_KEY`).
+
+    ![Honey Token Mapping Step](/images/platform/honey-tokens/honey-token-mapping.png)
+  </Step>
+  <Step title="Step 3: Details">
+    Add the token metadata:
+
+    - **Name** — a slug-friendly identifier (must be unique within the selected folder).
+    - **Description** (optional) — context for this honey token.
+
+    Click **Create**. Infisical provisions the decoy credentials in your AWS account and stores them as secrets in the selected environment and path.
+
+    ![Honey Token Details Step](/images/platform/honey-tokens/honey-token-create.png)
   </Step>
 </Steps>
 
