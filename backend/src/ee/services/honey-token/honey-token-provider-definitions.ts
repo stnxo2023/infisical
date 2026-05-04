@@ -1,17 +1,17 @@
 import { z } from "zod";
 
+import { registerAwsHoneyTokenRouter } from "@app/ee/routes/v1/honey-token-routers/aws-honey-token-router";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { honeyTokenAwsConfigProviderFactory } from "./honey-token-aws-config-provider";
 import { honeyTokenAwsProviderHooksFactory } from "./honey-token-aws-service";
 import { AwsHoneyTokenCredentialsSchema } from "./honey-token-aws-types";
+import type { THoneyTokenConfigProvider, THoneyTokenConfigServiceFactoryDep } from "./honey-token-config-service";
 import { HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenProviderHooks } from "./honey-token-provider-hook-types";
 import { THoneyTokenConfigByType, THoneyTokenDisplayCredentialsByType } from "./honey-token-provider-types";
-import { AwsHoneyTokenConfigSchema } from "./honey-token-types";
-import type { THoneyTokenConfigProvider, THoneyTokenConfigServiceFactoryDep } from "./honey-token-config-service";
 import type { THoneyTokenServiceFactoryDep } from "./honey-token-service-types";
-import { registerAwsHoneyTokenRouter } from "@app/ee/routes/v1/honey-token-routers/aws-honey-token-router";
+import { AwsHoneyTokenConfigSchema } from "./honey-token-types";
 
 export type THoneyTokenProviderDefinition<T extends HoneyTokenType = HoneyTokenType> = {
   type: T;

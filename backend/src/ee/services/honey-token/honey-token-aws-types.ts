@@ -15,9 +15,7 @@ export const AwsHoneyTokenDecryptedCredentialsSchema = AwsHoneyTokenCredentialsS
 
 export type TAwsHoneyTokenDecryptedCredentials = z.infer<typeof AwsHoneyTokenDecryptedCredentialsSchema>;
 
-export const parseAwsHoneyTokenDecryptedCredentials = (
-  value: unknown
-): TAwsHoneyTokenDecryptedCredentials => {
+export const parseAwsHoneyTokenDecryptedCredentials = (value: unknown): TAwsHoneyTokenDecryptedCredentials => {
   const result = AwsHoneyTokenDecryptedCredentialsSchema.safeParse(value);
 
   if (!result.success) {

@@ -31,6 +31,8 @@ import {
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
+const INCLUDE_HONEY_TOKENS_OVERVIEW_DESC = DASHBOARD.SECRET_OVERVIEW_LIST.includeHoneyTokens as string;
+const INCLUDE_HONEY_TOKENS_DETAILS_DESC = DASHBOARD.SECRET_DETAILS_LIST.includeHoneyTokens as string;
 
 const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   id: true,
@@ -131,7 +133,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
         includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecretRotations),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets),
-        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeHoneyTokens)
+        includeHoneyTokens: booleanSchema.describe(INCLUDE_HONEY_TOKENS_OVERVIEW_DESC)
       }),
       response: {
         200: z.object({
@@ -726,7 +728,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeImports),
         includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecretRotations),
-        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeHoneyTokens)
+        includeHoneyTokens: booleanSchema.describe(INCLUDE_HONEY_TOKENS_DETAILS_DESC)
       }),
       response: {
         200: z.object({

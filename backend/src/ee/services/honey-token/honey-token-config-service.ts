@@ -5,18 +5,15 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import {
-  THoneyTokenConfigRecord,
-  THoneyTokenConfigWithDecrypted
-} from "./honey-token-aws-config-provider";
+import { THoneyTokenConfigRecord, THoneyTokenConfigWithDecrypted } from "./honey-token-aws-config-provider";
 import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 import { HoneyTokenType } from "./honey-token-enums";
-import { THoneyTokenConfigByType, THoneyTokenTestConnectionResponseByType } from "./honey-token-provider-types";
 import {
   getHoneyTokenConfigProvidersByType,
   getHoneyTokenProviderDefinition,
   HONEY_TOKEN_PROVIDER_MAP
 } from "./honey-token-provider-registry";
+import { THoneyTokenConfigByType, THoneyTokenTestConnectionResponseByType } from "./honey-token-provider-types";
 
 export type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { HoneyTokenConfigsSchema, HoneyTokensSchema } from "@app/db/schemas";
+import { HoneyTokensSchema } from "@app/db/schemas";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
   HONEY_TOKEN_CREDENTIALS_RESPONSE_SCHEMA_MAP,
@@ -142,7 +142,10 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const { honeyToken } = await server.services.honeyToken.getHoneyTokenById({ honeyTokenId: req.params.id }, req.permission);
+      const { honeyToken } = await server.services.honeyToken.getHoneyTokenById(
+        { honeyTokenId: req.params.id },
+        req.permission
+      );
       return { honeyToken };
     }
   });
@@ -312,7 +315,6 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       return { events, totalCount };
     }
   });
-
 };
 
 export const registerHoneyTokenRouter = async (server: FastifyZodProvider) => {

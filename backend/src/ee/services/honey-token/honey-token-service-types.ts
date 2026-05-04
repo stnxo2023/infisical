@@ -4,8 +4,8 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";

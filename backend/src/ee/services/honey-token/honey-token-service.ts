@@ -6,8 +6,8 @@ import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { crypto } from "@app/lib/crypto/cryptography";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -20,22 +20,22 @@ import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenProviderHooks } from "./honey-token-provider-hook-types";
 import {
+  getHoneyTokenProviderDefinition,
+  getHoneyTokenServiceHooksByType,
+  HONEY_TOKEN_PROVIDER_MAP
+} from "./honey-token-provider-registry";
+import {
   THoneyTokenByIdInput,
   THoneyTokenCreateInput,
   THoneyTokenListInput,
   THoneyTokenUpdateInput
 } from "./honey-token-provider-types";
+import { THoneyTokenServiceFactoryDep } from "./honey-token-service-types";
 import {
   AwsHoneyTokenConfigSchema,
   AwsHoneyTokenEventMetadataSchema,
   THoneyTokenEventsInput
 } from "./honey-token-types";
-import {
-  getHoneyTokenProviderDefinition,
-  getHoneyTokenServiceHooksByType,
-  HONEY_TOKEN_PROVIDER_MAP
-} from "./honey-token-provider-registry";
-import { THoneyTokenServiceFactoryDep } from "./honey-token-service-types";
 
 const TRIGGER_NOTIFICATION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
@@ -259,7 +259,8 @@ export const honeyTokenServiceFactory = ({
       });
     }
     assertHoneyTokenConnectionType(providerType, appConnection.app);
-    const { credentials: honeyTokenCredentials, tokenIdentifier } = await providerHooks.createCredentials(appConnection);
+    const { credentials: honeyTokenCredentials, tokenIdentifier } =
+      await providerHooks.createCredentials(appConnection);
 
     const { encryptor: credentialEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -853,11 +854,7 @@ export const honeyTokenServiceFactory = ({
   };
 
   const getHoneyTokenEvents = async (
-    {
-      honeyTokenId,
-      offset,
-      limit
-    }: THoneyTokenEventsInput,
+    { honeyTokenId, offset, limit }: THoneyTokenEventsInput,
     actor: OrgServiceActor
   ) => {
     const honeyToken = await getHoneyTokenWithProjectAccess({

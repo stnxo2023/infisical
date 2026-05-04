@@ -567,10 +567,7 @@ const buildMemberPermissionRules = () => {
   );
 
   can(
-    [
-      ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionHoneyTokenActions.Create
-    ],
+    [ProjectPermissionHoneyTokenActions.Read, ProjectPermissionHoneyTokenActions.Create],
     ProjectPermissionSub.HoneyTokens
   );
 

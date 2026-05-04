@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { HoneyTokenConfigsSchema } from "@app/db/schemas";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import {
+  THoneyTokenConfigByType,
+  THoneyTokenTestConnectionResponseByType
+} from "@app/ee/services/honey-token/honey-token-provider-types";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -16,7 +20,7 @@ const SanitizedHoneyTokenConfigSchema = HoneyTokenConfigsSchema.pick({
   updatedAt: true
 });
 
-export const registerHoneyTokenEndpoints = <TConfig extends z.ZodTypeAny>({
+export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
   server,
   type,
   configSchema,
@@ -24,10 +28,10 @@ export const registerHoneyTokenEndpoints = <TConfig extends z.ZodTypeAny>({
   decryptedConfigSchema
 }: {
   server: FastifyZodProvider;
-  type: HoneyTokenType;
-  configSchema: TConfig;
-  testConnectionResponseSchema: z.ZodTypeAny;
-  decryptedConfigSchema: z.ZodTypeAny;
+  type: TType;
+  configSchema: z.ZodType<THoneyTokenConfigByType[TType], z.ZodTypeDef, unknown>;
+  testConnectionResponseSchema: z.ZodType<THoneyTokenTestConnectionResponseByType[TType], z.ZodTypeDef, unknown>;
+  decryptedConfigSchema: z.ZodType<THoneyTokenConfigByType[TType], z.ZodTypeDef, unknown>;
 }) => {
   const upsertBodySchema = z.object({
     connectionId: z.string().uuid(),
@@ -50,7 +54,7 @@ export const registerHoneyTokenEndpoints = <TConfig extends z.ZodTypeAny>({
       }
     },
     handler: async (req) => {
-      const { connectionId, config } = req.body as { connectionId: string; config: unknown };
+      const { connectionId, config } = upsertBodySchema.parse(req.body);
       const parsedConfig = configSchema.parse(config);
       const savedConfig = await server.services.honeyTokenConfig.upsertConfig({
         orgPermission: req.permission,

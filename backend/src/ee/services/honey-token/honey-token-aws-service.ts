@@ -1,3 +1,5 @@
+import { KmsDataKey } from "@app/services/kms/kms-types";
+
 import {
   createAwsIamHoneyTokenCredentials,
   revokeAwsIamHoneyTokenCredentials,
@@ -6,12 +8,9 @@ import {
 import { parseAwsHoneyTokenDecryptedCredentials } from "./honey-token-aws-types";
 import { THoneyTokenProviderHooks } from "./honey-token-provider-hook-types";
 import { THoneyTokenServiceFactoryDep } from "./honey-token-service-types";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { AwsHoneyTokenConfigSchema } from "./honey-token-types";
 
-type THoneyTokenAwsProviderHookFactoryDep = Pick<
-  THoneyTokenServiceFactoryDep,
-  "kmsService" | "appConnectionDAL"
->;
+type THoneyTokenAwsProviderHookFactoryDep = Pick<THoneyTokenServiceFactoryDep, "kmsService" | "appConnectionDAL">;
 
 export const honeyTokenAwsProviderHooksFactory = ({
   kmsService,
@@ -38,7 +37,9 @@ export const honeyTokenAwsProviderHooksFactory = ({
       orgId
     });
     const stackName = encryptedConfig
-      ? JSON.parse(configDecryptor({ cipherTextBlob: encryptedConfig }).toString()).stackName
+      ? AwsHoneyTokenConfigSchema.parse(
+          JSON.parse(configDecryptor({ cipherTextBlob: encryptedConfig }).toString()) as unknown
+        ).stackName
       : "infisical-honey-tokens";
 
     return verifyAwsStackDeployment({

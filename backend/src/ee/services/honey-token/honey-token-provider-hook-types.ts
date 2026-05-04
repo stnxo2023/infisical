@@ -21,8 +21,5 @@ export type THoneyTokenProviderHooks = {
     encryptedConfig?: Buffer | null;
     connectionId: string;
   }) => Promise<THoneyTokenDeploymentStatus>;
-  getCredentialsForDisplay: (input: {
-    encryptedCredentials: Buffer;
-    orgId: string;
-  }) => Promise<Record<string, string>>;
+  getCredentialsForDisplay: (input: { encryptedCredentials: Buffer; orgId: string }) => Promise<Record<string, string>>;
 };
