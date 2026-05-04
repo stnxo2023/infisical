@@ -858,30 +858,21 @@ const detachTeamSharedEnvVar = async (
   }
 };
 
-const getMergedTeamSharedEnvVars = async (secretSync: TVercelSyncWithCredentials): Promise<VercelSharedEnvVar[]> => {
-  if (secretSync.destinationConfig.scope !== VercelSyncScope.Team) {
-    throw new SecretSyncError({
-      message: "Invalid scope for team-level Vercel secret sync",
-      shouldRetry: false
-    });
-  }
-
-  const teamDestinationConfig = secretSync.destinationConfig;
-  const allSharedEnvVars = await getTeamSharedEnvVars(secretSync);
-  return allSharedEnvVars.filter((envVar) => teamVarStrictlyCoversSyncScope(envVar, teamDestinationConfig));
-};
-
 export const VercelSyncFns = {
   syncSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
+      const teamDestinationConfig = secretSync.destinationConfig;
       const allSharedEnvVars = await getTeamSharedEnvVars(secretSync);
       const sharedEnvVarsMap = new Map(allSharedEnvVars.map((s) => [s.key, s]));
 
       // Vars whose scope strictly covers ours — Vercel rejects creating an overlapping var,
       // so we must split (detach our scope from the existing var, then create a dedicated
       // record)
-      const mergedSharedEnvVars = await getMergedTeamSharedEnvVars(secretSync);
-      const mergedSharedEnvVarsMap = new Map(mergedSharedEnvVars.map((s) => [s.key, s]));
+      const mergedSharedEnvVarsMap = new Map(
+        allSharedEnvVars
+          .filter((envVar) => teamVarStrictlyCoversSyncScope(envVar, teamDestinationConfig))
+          .map((s) => [s.key, s])
+      );
 
       const { targetEnvironments, targetProjects, sensitive, applyToAllCustomEnvironments } =
         secretSync.destinationConfig;
@@ -945,7 +936,6 @@ export const VercelSyncFns = {
 
       if (secretSync.syncOptions.disableSecretDeletion) return;
 
-      const teamDestinationConfig = secretSync.destinationConfig;
       const ownedEnvVars = allSharedEnvVars.filter((envVar) =>
         isTeamSharedEnvVarOwnedByThisSync(envVar, teamDestinationConfig)
       );
