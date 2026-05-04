@@ -5,22 +5,20 @@ import { crypto } from "@app/lib/crypto";
 import { IPType, TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
-import {
-  LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT,
-  signIdentityAccessToken,
-  verifyAccessTokenJwt
-} from "./identity-access-token-fns";
+import { signIdentityAccessToken, verifyAccessTokenJwt } from "./identity-access-token-fns";
 import { identityAccessTokenServiceFactory } from "./identity-access-token-service";
 import { TIdentityAccessTokenJwtPayload } from "./identity-access-token-types";
 
 const MAX_AGE = 7_776_000;
 const AUTH_SECRET = "test-auth-secret";
 const NOW_SECONDS = 1_700_000_000;
+const ENFORCED_AT = new Date("2026-05-04T00:00:00.000Z");
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({
     AUTH_SECRET,
-    MAX_MACHINE_IDENTITY_TOKEN_AGE: MAX_AGE
+    MAX_MACHINE_IDENTITY_TOKEN_AGE: MAX_AGE,
+    LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT: ENFORCED_AT
   })
 }));
 
@@ -539,9 +537,7 @@ describe("identityAccessTokenServiceFactory", () => {
   test("rejects no-exp legacy renewal after deployment plus MAX_MACHINE_IDENTITY_TOKEN_AGE", async () => {
     const { service } = createService({ tokenRow: createLegacyTokenRow() });
     const legacyToken = signLegacyUniversalAuthAccessToken({}, { expiresIn: undefined });
-    vi.setSystemTime(
-      new Date(LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT.getTime() + MAX_AGE * 1000 + 1)
-    );
+    vi.setSystemTime(new Date(ENFORCED_AT.getTime() + MAX_AGE * 1000 + 1));
 
     await expect(service.renewAccessToken({ accessToken: legacyToken })).rejects.toThrow("exceeded max age");
   });
@@ -592,15 +588,10 @@ describe("identityAccessTokenServiceFactory", () => {
 
   test("rejects legacy JWTs without exp after deployment plus MAX_MACHINE_IDENTITY_TOKEN_AGE", async () => {
     const { service } = createService();
-    vi.setSystemTime(
-      new Date(LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT.getTime() + MAX_AGE * 1000 + 1)
-    );
+    vi.setSystemTime(new Date(ENFORCED_AT.getTime() + MAX_AGE * 1000 + 1));
 
     await expect(
-      service.fnValidateIdentityAccessTokenFast(
-        createTokenClaims({ exp: undefined, iat: NOW_SECONDS }),
-        "10.0.0.1"
-      )
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims({ exp: undefined, iat: NOW_SECONDS }), "10.0.0.1")
     ).rejects.toThrow("exceeded max age");
   });
 

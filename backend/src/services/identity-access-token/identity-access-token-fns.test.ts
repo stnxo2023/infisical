@@ -1,13 +1,10 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import {
-  computeIssuedTtl,
-  hasLegacyTokenWithoutExpExceededMaxAge,
-  LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT
-} from "./identity-access-token-fns";
+import { computeIssuedTtl, hasLegacyTokenWithoutExpExceededMaxAge } from "./identity-access-token-fns";
 
 const MAX_AGE = 7_776_000;
 const NOW = 1_700_000_000;
+const ENFORCED_AT = new Date("2026-05-04T00:00:00.000Z");
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({
@@ -122,8 +119,9 @@ describe("hasLegacyTokenWithoutExpExceededMaxAge", () => {
     expect(
       hasLegacyTokenWithoutExpExceededMaxAge({
         exp: NOW,
+        enforcedAt: ENFORCED_AT,
         maxAgeSeconds: MAX_AGE,
-        nowMs: LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT.getTime() + MAX_AGE * 1000 + 1
+        nowMs: ENFORCED_AT.getTime() + MAX_AGE * 1000 + 1
       })
     ).toBe(false);
   });
@@ -131,8 +129,9 @@ describe("hasLegacyTokenWithoutExpExceededMaxAge", () => {
   test("keeps no-exp legacy JWTs valid until deployment plus max age", () => {
     expect(
       hasLegacyTokenWithoutExpExceededMaxAge({
+        enforcedAt: ENFORCED_AT,
         maxAgeSeconds: MAX_AGE,
-        nowMs: LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT.getTime() + MAX_AGE * 1000
+        nowMs: ENFORCED_AT.getTime() + MAX_AGE * 1000
       })
     ).toBe(false);
   });
@@ -140,8 +139,9 @@ describe("hasLegacyTokenWithoutExpExceededMaxAge", () => {
   test("expires no-exp legacy JWTs after deployment plus max age", () => {
     expect(
       hasLegacyTokenWithoutExpExceededMaxAge({
+        enforcedAt: ENFORCED_AT,
         maxAgeSeconds: MAX_AGE,
-        nowMs: LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT.getTime() + MAX_AGE * 1000 + 1
+        nowMs: ENFORCED_AT.getTime() + MAX_AGE * 1000 + 1
       })
     ).toBe(true);
   });

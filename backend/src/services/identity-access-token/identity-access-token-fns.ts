@@ -15,8 +15,6 @@ import {
   TSignIdentityAccessTokenOutput
 } from "./identity-access-token-types";
 
-export const LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT = new Date("2026-05-04T00:00:00.000Z");
-
 export const hasNonWildcardTrustedIps = (trustedIps: TIp[] | null | undefined): boolean => {
   if (!trustedIps || trustedIps.length === 0) {
     return false;
@@ -91,15 +89,15 @@ export const assertRevocableClaims = assertMinimalRenewClaims as (
 
 export const hasLegacyTokenWithoutExpExceededMaxAge = ({
   exp,
+  enforcedAt,
   maxAgeSeconds,
   nowMs = Date.now()
 }: {
   exp?: number;
+  enforcedAt: Date;
   maxAgeSeconds: number;
   nowMs?: number;
-}) =>
-  typeof exp !== "number" &&
-  nowMs > LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT.getTime() + maxAgeSeconds * 1000;
+}) => typeof exp !== "number" && nowMs > enforcedAt.getTime() + maxAgeSeconds * 1000;
 
 // Compute the TTL (seconds) to sign the JWT with.
 //

@@ -264,6 +264,7 @@ export const identityAccessTokenServiceFactory = ({
     if (
       hasLegacyTokenWithoutExpExceededMaxAge({
         exp: token.exp,
+        enforcedAt: appCfg.LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT,
         maxAgeSeconds: appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
       })
     ) {
@@ -347,6 +348,7 @@ export const identityAccessTokenServiceFactory = ({
     if (
       hasLegacyTokenWithoutExpExceededMaxAge({
         exp: decodedToken.exp,
+        enforcedAt: appCfg.LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT,
         maxAgeSeconds: appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
       })
     ) {
