@@ -251,36 +251,38 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
               <AccordionItem value="advanced">
                 <AccordionTrigger>Advanced Options</AccordionTrigger>
                 <AccordionContent>
-                  <Controller
-                    control={control}
-                    name="stackName"
-                    render={({ field, fieldState: { error } }) => (
-                      <Field>
-                        <FieldLabel>CloudFormation Stack Name</FieldLabel>
-                        <FieldContent>
-                          <Input
-                            {...field}
-                            placeholder={DEFAULT_STACK_NAME}
-                            isError={Boolean(error)}
-                          />
-                          <FieldError errors={[error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name="awsRegion"
-                    render={({ field, fieldState: { error } }) => (
-                      <Field>
-                        <FieldLabel>AWS Region</FieldLabel>
-                        <FieldContent>
-                          <Input {...field} placeholder={DEFAULT_AWS_REGION} isError={Boolean(error)} />
-                          <FieldError errors={[error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <Controller
+                      control={control}
+                      name="stackName"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel>CloudFormation Stack Name</FieldLabel>
+                          <FieldContent>
+                            <Input
+                              {...field}
+                              placeholder={DEFAULT_STACK_NAME}
+                              isError={Boolean(error)}
+                            />
+                            <FieldError errors={[error]} />
+                          </FieldContent>
+                        </Field>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="awsRegion"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel>AWS Region</FieldLabel>
+                          <FieldContent>
+                            <Input {...field} placeholder={DEFAULT_AWS_REGION} isError={Boolean(error)} />
+                            <FieldError errors={[error]} />
+                          </FieldContent>
+                        </Field>
+                      )}
+                    />
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
