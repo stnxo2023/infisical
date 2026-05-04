@@ -2818,6 +2818,11 @@ export const AppConnections = {
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
     },
+    SNOWFLAKE: {
+      account: "The Snowflake account identifier (e.g., xy12345.us-east-1).",
+      username: "The username (login name) used to authenticate with Snowflake.",
+      password: "The Programmatic Access Token used to authenticate with Snowflake."
+    },
     VENAFI: {
       apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
       region: "The region of your Venafi TLS Protect Cloud instance (e.g., 'us', 'eu')."
@@ -3135,6 +3140,10 @@ export const SecretSyncs = {
       repositorySlug: "The slug (owner/repo) of the Travis CI repository to sync secrets to.",
       branch:
         "The branch of the Travis CI repository to sync secrets to. If omitted, secrets sync to the repository-level scope."
+    },
+    SNOWFLAKE: {
+      database: "The name of the Snowflake database to sync secrets to.",
+      schema: "The name of the Snowflake schema (within the database) to sync secrets to."
     }
   }
 };

@@ -49,6 +49,7 @@ import { OnaSyncReviewFields } from "./OnaSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
+import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
 import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
@@ -209,6 +210,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.TravisCI:
       DestinationFieldsComponent = <TravisCISyncReviewFields />;
+      break;
+    case SecretSync.Snowflake:
+      DestinationFieldsComponent = <SnowflakeSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

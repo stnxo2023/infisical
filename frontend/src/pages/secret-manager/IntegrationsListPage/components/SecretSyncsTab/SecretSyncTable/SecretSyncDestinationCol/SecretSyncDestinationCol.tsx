@@ -33,6 +33,7 @@ import { OctopusDeploySyncDestinationCol } from "./OctopusDeploySyncDestinationC
 import { OnaSyncDestinationCol } from "./OnaSyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
+import { SnowflakeSyncDestinationCol } from "./SnowflakeSyncDestinationCol";
 import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
@@ -127,6 +128,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <OnaSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.TravisCI:
       return <TravisCISyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Snowflake:
+      return <SnowflakeSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

@@ -75,6 +75,7 @@ import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
+import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
@@ -123,7 +124,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.ExternalInfisical]: EXTERNAL_INFISICAL_SYNC_LIST_OPTION,
   [SecretSync.Devin]: DEVIN_SYNC_LIST_OPTION,
   [SecretSync.Ona]: ONA_SYNC_LIST_OPTION,
-  [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION
+  [SecretSync.TravisCI]: TRAVIS_CI_SYNC_LIST_OPTION,
+  [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -390,6 +392,8 @@ export const SecretSyncFns = {
         return OnaSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.TravisCI:
         return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Snowflake:
+        return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -539,6 +543,9 @@ export const SecretSyncFns = {
       case SecretSync.TravisCI:
         secretMap = await TravisCISyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Snowflake:
+        secretMap = await SnowflakeSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -654,6 +661,8 @@ export const SecretSyncFns = {
         return OnaSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.TravisCI:
         return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Snowflake:
+        return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

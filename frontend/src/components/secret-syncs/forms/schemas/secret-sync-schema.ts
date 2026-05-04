@@ -33,6 +33,7 @@ import { OctopusDeploySyncDestinationSchema } from "./octopus-deploy-sync-destin
 import { OnaSyncDestinationSchema } from "./ona-sync-destination-schema";
 import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
+import { SnowflakeSyncDestinationSchema } from "./snowflake-sync-destination-schema";
 import { SupabaseSyncDestinationSchema } from "./supabase-sync-destination-schema";
 import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
@@ -81,7 +82,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   ExternalInfisicalSyncDestinationSchema,
   DevinSyncDestinationSchema,
   OnaSyncDestinationSchema,
-  TravisCISyncDestinationSchema
+  TravisCISyncDestinationSchema,
+  SnowflakeSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

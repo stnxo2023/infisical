@@ -306,6 +306,12 @@ import {
   TValidateSmbConnectionCredentialsSchema
 } from "./smb";
 import {
+  TSnowflakeConnection,
+  TSnowflakeConnectionConfig,
+  TSnowflakeConnectionInput,
+  TValidateSnowflakeConnectionCredentialsSchema
+} from "./snowflake";
+import {
   TSshConnection,
   TSshConnectionConfig,
   TSshConnectionInput,
@@ -429,6 +435,7 @@ export type TAppConnection = { id: string } & (
   | TOnaConnection
   | TDigiCertConnection
   | TTravisCIConnection
+  | TSnowflakeConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -502,6 +509,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOnaConnectionInput
   | TDigiCertConnectionInput
   | TTravisCIConnectionInput
+  | TSnowflakeConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -603,7 +611,8 @@ export type TAppConnectionConfig =
   | TDevinConnectionConfig
   | TOnaConnectionConfig
   | TDigiCertConnectionConfig
-  | TTravisCIConnectionConfig;
+  | TTravisCIConnectionConfig
+  | TSnowflakeConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -667,7 +676,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDevinConnectionCredentialsSchema
   | TValidateOnaConnectionCredentialsSchema
   | TValidateDigiCertConnectionCredentialsSchema
-  | TValidateTravisCIConnectionCredentialsSchema;
+  | TValidateTravisCIConnectionCredentialsSchema
+  | TValidateSnowflakeConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

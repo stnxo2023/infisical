@@ -62,6 +62,7 @@ import { OctopusDeploySyncListItemSchema, OctopusDeploySyncSchema } from "@app/s
 import { OnaSyncListItemSchema, OnaSyncSchema } from "@app/services/secret-sync/ona";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
+import { SnowflakeSyncListItemSchema, SnowflakeSyncSchema } from "@app/services/secret-sync/snowflake";
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
 import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
 import { TerraformCloudSyncListItemSchema, TerraformCloudSyncSchema } from "@app/services/secret-sync/terraform-cloud";
@@ -110,7 +111,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   ExternalInfisicalSyncSchema,
   DevinSyncSchema,
   OnaSyncSchema,
-  TravisCISyncSchema
+  TravisCISyncSchema,
+  SnowflakeSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -153,7 +155,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   ExternalInfisicalSyncListItemSchema,
   DevinSyncListItemSchema,
   OnaSyncListItemSchema,
-  TravisCISyncListItemSchema
+  TravisCISyncListItemSchema,
+  SnowflakeSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

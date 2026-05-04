@@ -461,7 +461,15 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect Travis CI to pull secrets from Infisical.",
       category: "CI/CD",
-    }
+    },
+    {
+      name: "Snowflake",
+      slug: "snowflake",
+      path: "/integrations/app-connections/snowflake",
+      description:
+        "Learn how to connect Snowflake to pull secrets from Infisical.",
+      category: "Databases",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
