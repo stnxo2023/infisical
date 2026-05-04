@@ -16,13 +16,12 @@ export type THoneyTokenCreateInput = {
 
 export type THoneyTokenUpdateInput = {
   honeyTokenId: string;
-  projectId: string;
   name?: string;
   description?: string | null;
   secretsMapping?: Record<string, string>;
 };
 
-export type THoneyTokenByIdInput = { honeyTokenId: string; projectId: string };
+export type THoneyTokenByIdInput = { honeyTokenId: string };
 
 export type THoneyTokenListInput = {
   projectId: string;

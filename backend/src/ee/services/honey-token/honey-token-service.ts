@@ -132,6 +132,32 @@ export const honeyTokenServiceFactory = ({
     return permission;
   };
 
+  const getHoneyTokenWithProjectAccess = async ({
+    honeyTokenId,
+    actor,
+    action
+  }: {
+    honeyTokenId: string;
+    actor: OrgServiceActor;
+    action: ProjectPermissionHoneyTokenActions;
+  }) => {
+    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
+    if (!honeyToken) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
+
+    try {
+      await assertProjectPermission({ projectId: honeyToken.projectId, actor, action });
+    } catch (error) {
+      if (error instanceof ForbiddenError) {
+        throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+      }
+      throw error;
+    }
+
+    return honeyToken;
+  };
+
   const create = async (
     { projectId, type, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
     actor: OrgServiceActor
@@ -234,20 +260,6 @@ export const honeyTokenServiceFactory = ({
       plainText: Buffer.from(JSON.stringify(honeyTokenCredentials))
     }).cipherTextBlob;
 
-    const honeyToken = await honeyTokenDAL.create({
-      name,
-      description,
-      type: providerType,
-      status: HoneyTokenStatus.Active,
-      projectId,
-      folderId: folder.id,
-      connectionId: orgConfig.connectionId,
-      encryptedCredentials,
-      secretsMapping,
-      tokenIdentifier,
-      createdByUserId: actor.id
-    });
-
     const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
@@ -264,27 +276,49 @@ export const honeyTokenServiceFactory = ({
       return { key: secretKey, value: credentialValue };
     });
 
-    await fnSecretBulkInsert({
-      folderId: folder.id,
-      orgId: actor.orgId,
-      inputSecrets: secretEntries.map(({ key, value }) => ({
-        key,
-        type: SecretType.Shared,
-        encryptedValue: secretEncryptor({
-          plainText: Buffer.from(value)
-        }).cipherTextBlob,
-        references: []
-      })),
-      secretDAL,
-      secretVersionDAL,
-      secretVersionTagDAL,
-      secretTagDAL,
-      folderCommitService,
-      resourceMetadataDAL,
-      actor: {
-        type: actor.type as ActorType,
-        actorId: actor.id
-      }
+    const honeyToken = await honeyTokenDAL.transaction(async (tx) => {
+      const createdHoneyToken = await honeyTokenDAL.create(
+        {
+          name,
+          description,
+          type: providerType,
+          status: HoneyTokenStatus.Active,
+          projectId,
+          folderId: folder.id,
+          connectionId: orgConfig.connectionId,
+          encryptedCredentials,
+          secretsMapping,
+          tokenIdentifier,
+          createdByUserId: actor.id
+        },
+        tx
+      );
+
+      await fnSecretBulkInsert({
+        folderId: folder.id,
+        orgId: actor.orgId,
+        inputSecrets: secretEntries.map(({ key, value }) => ({
+          key,
+          type: SecretType.Shared,
+          encryptedValue: secretEncryptor({
+            plainText: Buffer.from(value)
+          }).cipherTextBlob,
+          references: []
+        })),
+        secretDAL,
+        secretVersionDAL,
+        secretVersionTagDAL,
+        secretTagDAL,
+        folderCommitService,
+        resourceMetadataDAL,
+        actor: {
+          type: actor.type as ActorType,
+          actorId: actor.id
+        },
+        tx
+      });
+
+      return createdHoneyToken;
     });
 
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
@@ -315,13 +349,11 @@ export const honeyTokenServiceFactory = ({
   const updateHoneyToken = async (
     {
       honeyTokenId,
-      projectId,
       name,
       description,
       secretsMapping
     }: {
       honeyTokenId: string;
-      projectId: string;
       name?: string;
       description?: string | null;
       secretsMapping?: Record<string, string>;
@@ -329,13 +361,12 @@ export const honeyTokenServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     await ensurePlanSupportsHoneyTokens(actor.orgId, "update honey token");
-    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Create });
-
-    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
-
-    if (!honeyToken || honeyToken.projectId !== projectId) {
-      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
-    }
+    const honeyToken = await getHoneyTokenWithProjectAccess({
+      honeyTokenId,
+      actor,
+      action: ProjectPermissionHoneyTokenActions.Create
+    });
+    const { projectId } = honeyToken;
 
     if (name && name !== honeyToken.name) {
       const existingHoneyToken = await honeyTokenDAL.findOne({ name, folderId: honeyToken.folderId });
@@ -464,17 +495,16 @@ export const honeyTokenServiceFactory = ({
   };
 
   const revokeHoneyToken = async (
-    { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
+    { honeyTokenId }: { honeyTokenId: string },
     actor: OrgServiceActor
   ) => {
     await ensurePlanSupportsHoneyTokens(actor.orgId, "revoke honey token");
-    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Revoke });
-
-    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
-
-    if (!honeyToken || honeyToken.projectId !== projectId) {
-      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
-    }
+    const honeyToken = await getHoneyTokenWithProjectAccess({
+      honeyTokenId,
+      actor,
+      action: ProjectPermissionHoneyTokenActions.Revoke
+    });
+    const { projectId } = honeyToken;
 
     if (honeyToken.status === HoneyTokenStatus.Revoked) {
       throw new BadRequestError({ message: "Honey token is already revoked" });
@@ -539,16 +569,14 @@ export const honeyTokenServiceFactory = ({
   };
 
   const resetHoneyToken = async (
-    { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
+    { honeyTokenId }: { honeyTokenId: string },
     actor: OrgServiceActor
   ) => {
-    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Reset });
-
-    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
-
-    if (!honeyToken || honeyToken.projectId !== projectId) {
-      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
-    }
+    const honeyToken = await getHoneyTokenWithProjectAccess({
+      honeyTokenId,
+      actor,
+      action: ProjectPermissionHoneyTokenActions.Reset
+    });
     assertSupportedHoneyTokenType(honeyToken.type);
 
     if (honeyToken.status !== HoneyTokenStatus.Triggered) {
@@ -648,14 +676,12 @@ export const honeyTokenServiceFactory = ({
     return honeyTokens;
   };
 
-  const getCredentials = async ({ honeyTokenId, projectId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
-    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Read });
-
-    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
-
-    if (!honeyToken || honeyToken.projectId !== projectId) {
-      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
-    }
+  const getCredentials = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
+    const honeyToken = await getHoneyTokenWithProjectAccess({
+      honeyTokenId,
+      actor,
+      action: ProjectPermissionHoneyTokenActions.Read
+    });
 
     const type = assertSupportedHoneyTokenType(honeyToken.type);
     const providerHooks = honeyTokenProviderHooksByType[type];
@@ -806,16 +832,14 @@ export const honeyTokenServiceFactory = ({
   };
 
   const getHoneyTokenById = async (
-    { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
+    { honeyTokenId }: { honeyTokenId: string },
     actor: OrgServiceActor
   ) => {
-    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Read });
-
-    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
-
-    if (!honeyToken || honeyToken.projectId !== projectId) {
-      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
-    }
+    const honeyToken = await getHoneyTokenWithProjectAccess({
+      honeyTokenId,
+      actor,
+      action: ProjectPermissionHoneyTokenActions.Read
+    });
 
     const allInFolder = await honeyTokenDAL.findByFolderIds([honeyToken.folderId]);
     const match = allInFolder.find((ht) => ht.id === honeyTokenId);
@@ -835,19 +859,16 @@ export const honeyTokenServiceFactory = ({
   const getHoneyTokenEvents = async (
     {
       honeyTokenId,
-      projectId,
       offset,
       limit
-    }: { honeyTokenId: string; projectId: string; offset?: number; limit?: number },
+    }: { honeyTokenId: string; offset?: number; limit?: number },
     actor: OrgServiceActor
   ) => {
-    await assertProjectPermission({ projectId, actor, action: ProjectPermissionHoneyTokenActions.Read });
-
-    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
-
-    if (!honeyToken || honeyToken.projectId !== projectId) {
-      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
-    }
+    const honeyToken = await getHoneyTokenWithProjectAccess({
+      honeyTokenId,
+      actor,
+      action: ProjectPermissionHoneyTokenActions.Read
+    });
 
     const since = honeyToken.lastResetAt ?? undefined;
 

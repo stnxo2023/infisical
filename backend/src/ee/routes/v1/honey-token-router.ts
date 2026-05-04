@@ -135,9 +135,6 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       params: z.object({
         id: z.string().uuid()
       }),
-      querystring: z.object({
-        projectId: z.string().trim()
-      }),
       response: {
         200: z.object({
           honeyToken: HoneyTokenDetailsResponseSchema
@@ -145,13 +142,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const { honeyToken } = await server.services.honeyToken.getHoneyTokenById(
-        {
-          honeyTokenId: req.params.id,
-          projectId: req.query.projectId
-        },
-        req.permission
-      );
+      const { honeyToken } = await server.services.honeyToken.getHoneyTokenById({ honeyTokenId: req.params.id }, req.permission);
       return { honeyToken };
     }
   });
@@ -168,7 +159,6 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         id: z.string().uuid()
       }),
       body: z.object({
-        projectId: z.string().trim(),
         name: slugSchema({ field: "name" }).optional(),
         description: z.string().trim().max(256).nullish(),
         secretsMapping: z.record(z.string(), z.string().min(1)).optional()
@@ -180,11 +170,10 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const { projectId, name, description, secretsMapping } = req.body;
+      const { name, description, secretsMapping } = req.body;
       const { honeyToken } = await server.services.honeyToken.updateHoneyToken(
         {
           honeyTokenId: req.params.id,
-          projectId,
           name,
           description,
           secretsMapping
@@ -206,9 +195,6 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       params: z.object({
         id: z.string().uuid()
       }),
-      body: z.object({
-        projectId: z.string().trim()
-      }),
       response: {
         200: z.object({
           honeyToken: HoneyTokenResetResponseSchema
@@ -217,10 +203,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { honeyToken } = await server.services.honeyToken.resetHoneyToken(
-        {
-          honeyTokenId: req.params.id,
-          projectId: req.body.projectId
-        },
+        { honeyTokenId: req.params.id },
         req.permission
       );
       return {
@@ -244,9 +227,6 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       params: z.object({
         id: z.string().uuid()
       }),
-      body: z.object({
-        projectId: z.string().trim()
-      }),
       response: {
         200: z.object({
           honeyTokenId: z.string().uuid()
@@ -255,10 +235,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { honeyTokenId } = await server.services.honeyToken.revokeHoneyToken(
-        {
-          honeyTokenId: req.params.id,
-          projectId: req.body.projectId
-        },
+        { honeyTokenId: req.params.id },
         req.permission
       );
       return { honeyTokenId };
@@ -276,19 +253,13 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       params: z.object({
         id: z.string().uuid()
       }),
-      querystring: z.object({
-        projectId: z.string().trim()
-      }),
       response: {
         200: HoneyTokenCredentialsResponseSchema
       }
     },
     handler: async (req) => {
       const { type, credentials } = await server.services.honeyToken.getCredentials(
-        {
-          honeyTokenId: req.params.id,
-          projectId: req.query.projectId
-        },
+        { honeyTokenId: req.params.id },
         req.permission
       );
       return {
@@ -310,7 +281,6 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         id: z.string().uuid()
       }),
       querystring: z.object({
-        projectId: z.string().trim(),
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(25)
       }),
@@ -334,7 +304,6 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       const { events, totalCount } = await server.services.honeyToken.getHoneyTokenEvents(
         {
           honeyTokenId: req.params.id,
-          projectId: req.query.projectId,
           offset: req.query.offset,
           limit: req.query.limit
         },
