@@ -276,7 +276,11 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                         <Field>
                           <FieldLabel>AWS Region</FieldLabel>
                           <FieldContent>
-                            <Input {...field} placeholder={DEFAULT_AWS_REGION} isError={Boolean(error)} />
+                            <Input
+                              {...field}
+                              placeholder={DEFAULT_AWS_REGION}
+                              isError={Boolean(error)}
+                            />
                             <FieldError errors={[error]} />
                           </FieldContent>
                         </Field>

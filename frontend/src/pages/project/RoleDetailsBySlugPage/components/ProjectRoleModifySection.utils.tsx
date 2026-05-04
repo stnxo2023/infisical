@@ -20,8 +20,8 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
-  ProjectPermissionIdentityActions,
   ProjectPermissionHoneyTokenActions,
+  ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMcpEndpointActions,
@@ -1430,7 +1430,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (subject === ProjectPermissionSub.HoneyTokens) {
         const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
         const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
-        const canTestConnection = action.includes(ProjectPermissionHoneyTokenActions.TestConnection);
+        const canTestConnection = action.includes(
+          ProjectPermissionHoneyTokenActions.TestConnection
+        );
         const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
         const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
         const canDelete = action.includes(ProjectPermissionHoneyTokenActions.Delete);
