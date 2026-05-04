@@ -409,17 +409,6 @@ export const honeyTokenServiceFactory = ({
 
       const oldSecretKeys = Object.values(oldMapping);
 
-      await fnSecretBulkDelete({
-        folderId: honeyToken.folderId,
-        projectId,
-        inputSecrets: oldSecretKeys.map((key) => ({ type: SecretType.Shared, secretKey: key })),
-        actorId: actor.id,
-        secretDAL,
-        secretQueueService,
-        folderCommitService,
-        secretVersionDAL
-      });
-
       const { decryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: actor.orgId
@@ -445,27 +434,42 @@ export const honeyTokenServiceFactory = ({
         return { key: secretKey, value: credentialValue };
       });
 
-      await fnSecretBulkInsert({
-        folderId: honeyToken.folderId,
-        orgId: actor.orgId,
-        inputSecrets: secretEntries.map(({ key, value }) => ({
-          key,
-          type: SecretType.Shared,
-          encryptedValue: secretEncryptor({
-            plainText: Buffer.from(value)
-          }).cipherTextBlob,
-          references: []
-        })),
-        secretDAL,
-        secretVersionDAL,
-        secretVersionTagDAL,
-        secretTagDAL,
-        folderCommitService,
-        resourceMetadataDAL,
-        actor: {
-          type: actor.type as ActorType,
-          actorId: actor.id
-        }
+      await honeyTokenDAL.transaction(async (tx) => {
+        await fnSecretBulkDelete({
+          folderId: honeyToken.folderId,
+          projectId,
+          inputSecrets: oldSecretKeys.map((key) => ({ type: SecretType.Shared, secretKey: key })),
+          actorId: actor.id,
+          secretDAL,
+          secretQueueService,
+          folderCommitService,
+          secretVersionDAL,
+          tx
+        });
+
+        await fnSecretBulkInsert({
+          folderId: honeyToken.folderId,
+          orgId: actor.orgId,
+          inputSecrets: secretEntries.map(({ key, value }) => ({
+            key,
+            type: SecretType.Shared,
+            encryptedValue: secretEncryptor({
+              plainText: Buffer.from(value)
+            }).cipherTextBlob,
+            references: []
+          })),
+          secretDAL,
+          secretVersionDAL,
+          secretVersionTagDAL,
+          secretTagDAL,
+          folderCommitService,
+          resourceMetadataDAL,
+          actor: {
+            type: actor.type as ActorType,
+            actorId: actor.id
+          },
+          tx
+        });
       });
     }
 
@@ -534,21 +538,28 @@ export const honeyTokenServiceFactory = ({
 
     const secretKeys = Object.values(honeyToken.secretsMapping as Record<string, string>);
 
-    await fnSecretBulkDelete({
-      folderId: honeyToken.folderId,
-      projectId,
-      inputSecrets: secretKeys.map((key) => ({ type: SecretType.Shared, secretKey: key })),
-      actorId: actor.id,
-      secretDAL,
-      secretQueueService,
-      folderCommitService,
-      secretVersionDAL
-    });
+    await honeyTokenDAL.transaction(async (tx) => {
+      await fnSecretBulkDelete({
+        folderId: honeyToken.folderId,
+        projectId,
+        inputSecrets: secretKeys.map((key) => ({ type: SecretType.Shared, secretKey: key })),
+        actorId: actor.id,
+        secretDAL,
+        secretQueueService,
+        folderCommitService,
+        secretVersionDAL,
+        tx
+      });
 
-    await honeyTokenDAL.updateById(honeyTokenId, {
-      status: HoneyTokenStatus.Revoked,
-      revokedAt: new Date(),
-      revokedByUserId: actor.id
+      await honeyTokenDAL.updateById(
+        honeyTokenId,
+        {
+          status: HoneyTokenStatus.Revoked,
+          revokedAt: new Date(),
+          revokedByUserId: actor.id
+        },
+        tx
+      );
     });
 
     await secretDAL.invalidateSecretCacheByProjectId(projectId);

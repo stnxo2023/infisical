@@ -125,13 +125,19 @@ export const revokeAwsIamHoneyTokenCredentials = async ({
         AccessKeyId: accessKeyId
       })
     );
-  } catch {
-    // Access key may already be deleted
+  } catch (err) {
+    logger.info(
+      { err, iamUserName, accessKeyId },
+      "Skipping AWS access key deletion for honey token because it may already be deleted"
+    );
   }
 
   try {
     await iam.send(new DeleteUserCommand({ UserName: iamUserName }));
-  } catch {
-    // IAM user may already be deleted
+  } catch (err) {
+    logger.info(
+      { err, iamUserName, accessKeyId },
+      "Skipping AWS IAM user deletion for honey token because it may already be deleted"
+    );
   }
 };
