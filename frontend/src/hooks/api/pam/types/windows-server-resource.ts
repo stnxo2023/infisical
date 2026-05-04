@@ -44,17 +44,3 @@ export type TWindowsAccount = TBasePamAccount & {
   internalMetadata: TWindowsAccountMetadata;
 };
 
-// Sessions
-// The session-credentials endpoint remaps `hostname` to `host` so the
-// gateway's handler dispatch can share one code path across all resource
-// types. See getSessionCredentials in pam-account-service on the backend.
-export type TWindowsSessionCredentials = {
-  protocol: WindowsProtocol.RDP;
-  host: string;
-  port: number;
-  winrmPort: number;
-  useWinrmHttps: boolean;
-  winrmRejectUnauthorized: boolean;
-  winrmCaCert?: string;
-  winrmTlsServerName?: string;
-} & TWindowsCredentials;
