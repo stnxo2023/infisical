@@ -43,4 +43,3 @@ export type TWindowsAccount = TBasePamAccount & {
   credentials: TWindowsCredentials;
   internalMetadata: TWindowsAccountMetadata;
 };
-
