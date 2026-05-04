@@ -13,6 +13,7 @@ import { WindowsSessionCredentialsSchema } from "@app/ee/services/pam-resource/w
 import {
   HttpEventSchema,
   PamSessionCommandLogSchema,
+  SanitizedSessionListItemSchema,
   SanitizedSessionSchema,
   SessionLogsPageSchema,
   TerminalEventSchema
@@ -54,13 +55,23 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           credentials: SessionCredentialsSchema,
-          policyRules: PolicyRulesResponseSchema
+          policyRules: PolicyRulesResponseSchema,
+          recording: z
+            .object({
+              sessionKey: z.string(),
+              uploadToken: z.string(),
+              storageBackend: z.string(),
+              projectId: z.string(),
+              sessionId: z.string()
+            })
+            .nullable()
+            .optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { credentials, policyRules, projectId, account, sessionStarted } =
+      const { credentials, policyRules, projectId, account, sessionStarted, recording } =
         await server.services.pamAccount.getSessionCredentials(req.params.sessionId, req.permission);
 
       await server.services.auditLog.createAuditLog({
@@ -104,7 +115,16 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
 
       return {
         credentials: credentials as z.infer<typeof SessionCredentialsSchema>,
-        policyRules
+        policyRules,
+        recording: recording
+          ? {
+              sessionKey: recording.sessionKeyBase64,
+              uploadToken: recording.uploadTokenBase64,
+              storageBackend: recording.storageBackend,
+              projectId,
+              sessionId: req.params.sessionId
+            }
+          : null
       };
     }
   });
@@ -342,7 +362,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          sessions: SanitizedSessionSchema.array()
+          sessions: SanitizedSessionListItemSchema.array()
         })
       }
     },

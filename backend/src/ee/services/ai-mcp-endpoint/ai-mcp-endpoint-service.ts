@@ -9,7 +9,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { z } from "zod";
 
 import { ActionProjectType, TAiMcpEndpoints } from "@app/db/schemas";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto as cryptoModule } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -112,8 +112,6 @@ const OauthChallengeCodeSchema = z.object({
     actorUserAgent: z.string()
   })
 });
-
-const OAUTH_FLOW_EXPIRY_IN_SECS = 5 * 60;
 
 // PKCE challenge computation
 const computePkceChallenge = (codeVerifier: string) => {
@@ -1019,7 +1017,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.AiMcpEndpointOAuthClient(clientId),
-      OAUTH_FLOW_EXPIRY_IN_SECS,
+      KeyStoreTtls.AiMcpEndpointOAuthFlowInSeconds,
       JSON.stringify(payload)
     );
 
@@ -1035,7 +1033,7 @@ export const aiMcpEndpointServiceFactory = ({
     // Update with state
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.AiMcpEndpointOAuthClient(clientId),
-      OAUTH_FLOW_EXPIRY_IN_SECS,
+      KeyStoreTtls.AiMcpEndpointOAuthFlowInSeconds,
       JSON.stringify({ ...JSON.parse(oauthClientCache), state })
     );
   };
@@ -1085,7 +1083,7 @@ export const aiMcpEndpointServiceFactory = ({
     const code = crypto.randomBytes(32).toString("hex");
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.AiMcpEndpointOAuthCode(clientId, code),
-      OAUTH_FLOW_EXPIRY_IN_SECS,
+      KeyStoreTtls.AiMcpEndpointOAuthFlowInSeconds,
       JSON.stringify({
         codeChallenge,
         codeChallengeMethod,

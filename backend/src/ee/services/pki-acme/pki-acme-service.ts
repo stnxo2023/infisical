@@ -13,7 +13,7 @@ import { z, ZodError } from "zod";
 import { TPkiAcmeOrders } from "@app/db/schemas";
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -436,13 +436,8 @@ export const pkiAcmeServiceFactory = ({
     await validateAcmeProfile(profileId);
     const nonce = crypto.randomBytes(32).toString("base64url");
     const nonceKey = KeyStorePrefixes.PkiAcmeNonce(nonce);
-    await keyStore.setItemWithExpiry(
-      nonceKey,
-      // Expire in 5 minutes.
-      // TODO: read config from the profile to get the expiration time instead
-      60 * 5,
-      nonce
-    );
+    // TODO: read config from the profile to get the expiration time instead
+    await keyStore.setItemWithExpiry(nonceKey, KeyStoreTtls.PkiAcmeNonceInSeconds, nonce);
     return nonce;
   };
 

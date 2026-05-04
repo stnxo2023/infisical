@@ -55,8 +55,8 @@ Example values:
   default="false"
   optional
 >
-  Determines whether App Connections and Dynamic Secrets are permitted to
-  connect with internal/private IP addresses.
+  Determines whether App Connections, Dynamic Secrets, and PKI Certificate
+  Discovery jobs are permitted to connect with internal/private IP addresses.
 </ParamField>
 
 <ParamField
@@ -353,6 +353,15 @@ Without email configuration, Infisical's core functions like sign-up/login and s
 
 <ParamField query="SMTP_FROM_NAME" type="string" default="none" optional>
   Name label to be used in From field (e.g. Team)
+</ParamField>
+
+<ParamField query="SMTP_HELO_HOST" type="string" default="none" optional>
+  Hostname that Infisical announces in the SMTP `EHLO`/`HELO` greeting. When
+  unset, the underlying mailer falls back to the operating system hostname.
+  Inside containers (e.g. Cloud Run, Kubernetes) the OS hostname is typically a
+  random container ID, which can be rejected by SMTP relays that validate the
+  sender hostname (such as Gmail SMTP relay with sender-hostname checks). Set
+  this to a valid FQDN that the relay accepts.
 </ParamField>
 
 <ParamField query="SMTP_IGNORE_TLS" type="bool" default="false" optional>

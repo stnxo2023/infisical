@@ -90,9 +90,11 @@ export const secretSharingDALFactory = (db: TDbClient) => {
   const pruneExpiredSharedSecrets = async (tx?: Knex) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired shared secret started`);
     try {
-      const today = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
       const docs = await (tx || db)(TableName.SecretSharing)
-        .where("expiresAt", "<", today)
+        .where("expiresAt", "<", sevenDaysAgo)
         .andWhere("type", SecretSharingType.Share)
         .del();
       logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired shared secret completed`);
@@ -105,11 +107,12 @@ export const secretSharingDALFactory = (db: TDbClient) => {
   const pruneExpiredSecretRequests = async (tx?: Knex) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: pruning expired secret requests started`);
     try {
-      const today = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       const docs = await (tx || db)(TableName.SecretSharing)
         .whereNotNull("expiresAt")
-        .andWhere("expiresAt", "<", today)
+        .andWhere("expiresAt", "<", sevenDaysAgo)
         .andWhere("type", SecretSharingType.Request)
         .delete();
 
