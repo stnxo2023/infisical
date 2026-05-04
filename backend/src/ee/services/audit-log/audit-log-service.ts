@@ -4,10 +4,9 @@ import { requestContext } from "@fastify/request-context";
 import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -146,90 +145,6 @@ export const auditLogServiceFactory = ({
     return auditLogQueue.pushToLog(el);
   };
 
-  const checkAuditLogReadPermission = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId
-  }: TGenericPermission & { projectId?: string }) => {
-    if (projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.Any
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAuditLogsActions.Read,
-        ProjectPermissionSub.AuditLogs
-      );
-      return;
-    }
-
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
-  };
-
-  const recordViewAuditLogDetails: TAuditLogServiceFactory["recordViewAuditLogDetails"] = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId,
-    auditLogId,
-    auditLogInfo
-  }) => {
-    await checkAuditLogReadPermission({ actor, actorId, actorAuthMethod, actorOrgId, projectId });
-    await createAuditLog({
-      ...auditLogInfo,
-      orgId: actorOrgId,
-      projectId,
-      event: {
-        type: EventType.VIEW_AUDIT_LOG_DETAILS,
-        metadata: { auditLogId }
-      }
-    });
-  };
-
-  const trackAuditLogDetailsViewForOrg: TAuditLogServiceFactory["trackAuditLogDetailsViewForOrg"] = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    auditLogId,
-    auditLogInfo
-  }) => {
-    const appCfg = getConfig();
-    const useClickHouse = appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL;
-
-    const row = useClickHouse
-      ? await clickhouseAuditLogDAL.findById(auditLogId, actorOrgId)
-      : await auditLogDAL.findById(auditLogId);
-
-    if (!row || row.orgId !== actorOrgId) {
-      throw new NotFoundError({ message: "Audit log not found" });
-    }
-    await recordViewAuditLogDetails({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      projectId: row.projectId ?? undefined,
-      auditLogId,
-      auditLogInfo
-    });
-  };
-
   const getAuditLogPostgresStorageStatus: TAuditLogServiceFactory["getAuditLogPostgresStorageStatus"] = async ({
     actorAuthMethod,
     actorId,
@@ -346,8 +261,6 @@ export const auditLogServiceFactory = ({
 
   return {
     createAuditLog,
-    recordViewAuditLogDetails,
-    trackAuditLogDetailsViewForOrg,
     listAuditLogs,
     getAuditLogPostgresStorageStatus,
     checkPostgresAuditLogVolumeMigrationAlert

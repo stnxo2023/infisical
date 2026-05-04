@@ -304,41 +304,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    method: "POST",
-    url: "/audit-logs/:auditLogId/track-log-details-view",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      operationId: "trackOrganizationAuditLogView",
-      tags: [ApiDocsTags.AuditLogs],
-      description:
-        "Record that the current actor expanded a specific audit log entry. Emits a VIEW_AUDIT_LOG_DETAILS audit event. The frontend dedupes per-log within a session so this should be called at most once per (actor, log) per session.",
-      params: z.object({
-        auditLogId: z.string().trim().uuid()
-      }),
-      response: {
-        200: z.object({
-          tracked: z.boolean()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      await server.services.auditLog.trackAuditLogDetailsViewForOrg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        auditLogId: req.params.auditLogId,
-        auditLogInfo: req.auditLogInfo
-      });
-
-      return { tracked: true };
-    }
-  });
-
-  server.route({
     method: "GET",
     url: "/:organizationId/users",
     config: {
