@@ -96,6 +96,8 @@ export type TCreateAuditLogDTO = {
   projectId?: string;
 } & BaseAuthData;
 
+export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
+
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
   listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
@@ -128,8 +130,6 @@ export type TAuditLogServiceFactory = {
   }>;
   checkPostgresAuditLogVolumeMigrationAlert: () => Promise<void>;
 };
-
-export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
 interface BaseAuthData {
   ipAddress?: string;
@@ -691,6 +691,7 @@ export enum EventType {
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
+  VIEW_AUDIT_LOGS = "view-audit-logs",
 
   // PKI ACME
   CREATE_ACME_ACCOUNT = "create-acme-account",
@@ -4807,6 +4808,11 @@ interface ViewSecretManagementInsightsSummaryEvent {
   };
 }
 
+interface ViewAuditLogsEvent {
+  type: EventType.VIEW_AUDIT_LOGS;
+  metadata?: Record<string, unknown>;
+}
+
 interface ViewPamInsightsSummaryEvent {
   type: EventType.VIEW_INSIGHTS_PAM_SUMMARY;
   metadata: {
@@ -6704,6 +6710,7 @@ export type Event =
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
+  | ViewAuditLogsEvent
   | ViewPamInsightsSummaryEvent
   | ViewPamInsightsSessionActivityEvent
   | ViewPamInsightsTopActorsEvent
