@@ -72,6 +72,7 @@ import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
 import { TRedisAccountCredentials } from "../pam-resource/redis/redis-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
 import { TSSHAccountCredentials, TSSHResourceInternalMetadata } from "../pam-resource/ssh/ssh-resource-types";
+import { TWindowsAccountCredentials } from "../pam-resource/windows-server/windows-server-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -1065,6 +1066,19 @@ export const pamAccountServiceFactory = ({
           };
         }
         break;
+      case PamResource.Windows:
+        {
+          const credentials = (await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            kmsService,
+            projectId
+          })) as TWindowsAccountCredentials;
+
+          metadata = {
+            username: credentials.username
+          };
+        }
+        break;
       case PamResource.Kubernetes:
         metadata = {
           resourceName: resource.name,
@@ -1300,9 +1314,6 @@ export const pamAccountServiceFactory = ({
       }
     }
 
-    // Windows connection details store the target as `hostname`; every other
-    // resource type (and the gateway's handler code) reads `host`. Remap
-    // before returning so the gateway never has to special-case it.
     if (decryptedResource.resourceType === PamResource.Windows) {
       const { hostname, ...rest } = decryptedResource.connectionDetails as {
         hostname: string;
@@ -1312,7 +1323,6 @@ export const pamAccountServiceFactory = ({
         credentials: {
           ...rest,
           host: hostname,
-          accountName: account.name,
           ...decryptedAccount.credentials
         },
         policyRules,
