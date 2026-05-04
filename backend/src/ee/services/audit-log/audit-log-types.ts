@@ -54,6 +54,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
+import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
@@ -783,7 +784,12 @@ export enum EventType {
   GATEWAY_POOL_UPDATE = "gateway-pool-update",
   GATEWAY_POOL_DELETE = "gateway-pool-delete",
   GATEWAY_POOL_ADD_MEMBER = "gateway-pool-add-member",
-  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member"
+  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member",
+
+  // Honey Tokens
+  CREATE_HONEY_TOKEN = "create-honey-token",
+  UPDATE_HONEY_TOKEN = "update-honey-token",
+  REVOKE_HONEY_TOKEN = "revoke-honey-token"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -6199,6 +6205,39 @@ interface GatewayPoolRemoveMemberEvent {
   };
 }
 
+interface CreateHoneyTokenEvent {
+  type: EventType.CREATE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface UpdateHoneyTokenEvent {
+  type: EventType.UPDATE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface RevokeHoneyTokenEvent {
+  type: EventType.REVOKE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -6761,4 +6800,7 @@ export type Event =
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent
   | GatewayPoolAddMemberEvent
-  | GatewayPoolRemoveMemberEvent;
+  | GatewayPoolRemoveMemberEvent
+  | CreateHoneyTokenEvent
+  | UpdateHoneyTokenEvent
+  | RevokeHoneyTokenEvent;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { HoneyTokensSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
   HONEY_TOKEN_CREDENTIALS_RESPONSE_SCHEMA_MAP,
@@ -120,6 +121,22 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { honeyToken, stackDeployment } = await server.services.honeyToken.create(req.body, req.permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: honeyToken.projectId,
+        event: {
+          type: EventType.CREATE_HONEY_TOKEN,
+          metadata: {
+            honeyTokenId: honeyToken.id,
+            name: honeyToken.name,
+            type: honeyToken.type as HoneyTokenType,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath
+          }
+        }
+      });
+
       return { honeyToken, stackDeployment };
     }
   });
@@ -174,7 +191,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { name, description, secretsMapping } = req.body;
-      const { honeyToken } = await server.services.honeyToken.updateHoneyToken(
+      const { honeyToken, folderInfo } = await server.services.honeyToken.updateHoneyToken(
         {
           honeyTokenId: req.params.id,
           name,
@@ -183,6 +200,22 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         },
         req.permission
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: honeyToken.projectId,
+        event: {
+          type: EventType.UPDATE_HONEY_TOKEN,
+          metadata: {
+            honeyTokenId: honeyToken.id,
+            name: honeyToken.name,
+            type: honeyToken.type as HoneyTokenType,
+            environment: folderInfo?.environmentSlug || "",
+            secretPath: folderInfo?.path || ""
+          }
+        }
+      });
+
       return { honeyToken };
     }
   });
@@ -237,10 +270,26 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const { honeyTokenId } = await server.services.honeyToken.revokeHoneyToken(
+      const { honeyTokenId, honeyToken, folderInfo } = await server.services.honeyToken.revokeHoneyToken(
         { honeyTokenId: req.params.id },
         req.permission
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: honeyToken.projectId,
+        event: {
+          type: EventType.REVOKE_HONEY_TOKEN,
+          metadata: {
+            honeyTokenId,
+            name: honeyToken.name,
+            type: honeyToken.type as HoneyTokenType,
+            environment: folderInfo?.environmentSlug || "",
+            secretPath: folderInfo?.path || ""
+          }
+        }
+      });
+
       return { honeyTokenId };
     }
   });

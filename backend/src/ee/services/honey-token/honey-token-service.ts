@@ -160,7 +160,9 @@ export const honeyTokenServiceFactory = ({
       await assertProjectPermission({ projectId: honeyToken.projectId, actor, action });
     } catch (error) {
       if (error instanceof ForbiddenError) {
-        throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+        throw new NotFoundError({
+          message: `Honey token with ID "${honeyTokenId}" not found or you don't have permission to ${action.toLowerCase()} it`
+        });
       }
       throw error;
     }
@@ -497,7 +499,8 @@ export const honeyTokenServiceFactory = ({
     }
 
     return {
-      honeyToken: updated
+      honeyToken: updated,
+      folderInfo
     };
   };
 
@@ -576,7 +579,7 @@ export const honeyTokenServiceFactory = ({
       });
     }
 
-    return { honeyTokenId };
+    return { honeyTokenId, honeyToken, folderInfo };
   };
 
   const resetHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
