@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { ExternalLinkIcon, Loader2Icon } from "lucide-react";
 
 import { Button } from "@app/components/v3";
@@ -15,6 +16,10 @@ import { useDecryptedSessionLogs } from "@app/hooks/api/pam/session-playback";
 import { CommandLogView } from "./CommandLogView";
 import { HttpEventView } from "./HttpEventView";
 import { TerminalEventView } from "./TerminalEventView";
+
+// The IronRDP decoder WASM is ~MB-scale; load it only when an RDP session is
+// actually being viewed. The dynamic import keeps it out of the main bundle.
+const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
 
 type Props = {
   session: TPamSession;
@@ -45,6 +50,7 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
     session.resourceType === PamResourceType.Redis;
   const isHttpSession = session.resourceType === PamResourceType.Kubernetes;
   const isAwsIamSession = session.resourceType === PamResourceType.AwsIam;
+  const isRdpSession = session.resourceType === PamResourceType.Windows;
   const hasLogs = logs.length > 0;
 
   return (
@@ -73,6 +79,20 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
       )}
       {isSSHSession && hasLogs && <TerminalEventView events={logs as TTerminalEvent[]} />}
       {isHttpSession && hasLogs && <HttpEventView events={logs as THttpEvent[]} />}
+      {isRdpSession && hasLogs && (
+        <Suspense
+          fallback={
+            <div className="flex grow items-center justify-center">
+              <div className="flex items-center gap-2 text-sm text-muted">
+                <Loader2Icon className="size-4 animate-spin" />
+                <span>Loading RDP replay player...</span>
+              </div>
+            </div>
+          }
+        >
+          <RdpReplayView events={logs as TTerminalEvent[]} />
+        </Suspense>
+      )}
       {isAwsIamSession && (
         <div className="flex grow items-center justify-center text-muted">
           <div className="text-center">
