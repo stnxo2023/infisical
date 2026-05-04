@@ -18,8 +18,17 @@ import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
 import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenProviderHooks } from "./honey-token-provider-hook-types";
-import { THoneyTokenByIdInput, THoneyTokenCreateInput } from "./honey-token-provider-types";
-import { AwsHoneyTokenConfigSchema, AwsHoneyTokenEventMetadataSchema } from "./honey-token-types";
+import {
+  THoneyTokenByIdInput,
+  THoneyTokenCreateInput,
+  THoneyTokenListInput,
+  THoneyTokenUpdateInput
+} from "./honey-token-provider-types";
+import {
+  AwsHoneyTokenConfigSchema,
+  AwsHoneyTokenEventMetadataSchema,
+  THoneyTokenEventsInput
+} from "./honey-token-types";
 import {
   getHoneyTokenProviderDefinition,
   getHoneyTokenServiceHooksByType,
@@ -347,17 +356,7 @@ export const honeyTokenServiceFactory = ({
   };
 
   const updateHoneyToken = async (
-    {
-      honeyTokenId,
-      name,
-      description,
-      secretsMapping
-    }: {
-      honeyTokenId: string;
-      name?: string;
-      description?: string | null;
-      secretsMapping?: Record<string, string>;
-    },
+    { honeyTokenId, name, description, secretsMapping }: THoneyTokenUpdateInput,
     actor: OrgServiceActor
   ) => {
     await ensurePlanSupportsHoneyTokens(actor.orgId, "update honey token");
@@ -498,10 +497,7 @@ export const honeyTokenServiceFactory = ({
     };
   };
 
-  const revokeHoneyToken = async (
-    { honeyTokenId }: { honeyTokenId: string },
-    actor: OrgServiceActor
-  ) => {
+  const revokeHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
     await ensurePlanSupportsHoneyTokens(actor.orgId, "revoke honey token");
     const honeyToken = await getHoneyTokenWithProjectAccess({
       honeyTokenId,
@@ -579,10 +575,7 @@ export const honeyTokenServiceFactory = ({
     return { honeyTokenId };
   };
 
-  const resetHoneyToken = async (
-    { honeyTokenId }: { honeyTokenId: string },
-    actor: OrgServiceActor
-  ) => {
+  const resetHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
     const honeyToken = await getHoneyTokenWithProjectAccess({
       honeyTokenId,
       actor,
@@ -640,25 +633,7 @@ export const honeyTokenServiceFactory = ({
   };
 
   const getDashboardHoneyTokens = async (
-    {
-      projectId,
-      environments,
-      secretPath,
-      search,
-      orderBy,
-      orderDirection,
-      limit,
-      offset
-    }: {
-      projectId: string;
-      environments: string[];
-      secretPath: string;
-      search?: string;
-      orderBy?: string;
-      orderDirection?: OrderByDirection;
-      limit?: number;
-      offset?: number;
-    },
+    { projectId, environments, secretPath, search, orderBy, orderDirection, limit, offset }: THoneyTokenListInput,
     actor: OrgServiceActor
   ) => {
     await getProjectPermission(projectId, actor);
@@ -842,10 +817,7 @@ export const honeyTokenServiceFactory = ({
     return { acknowledged: true };
   };
 
-  const getHoneyTokenById = async (
-    { honeyTokenId }: { honeyTokenId: string },
-    actor: OrgServiceActor
-  ) => {
+  const getHoneyTokenById = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
     const honeyToken = await getHoneyTokenWithProjectAccess({
       honeyTokenId,
       actor,
@@ -872,7 +844,7 @@ export const honeyTokenServiceFactory = ({
       honeyTokenId,
       offset,
       limit
-    }: { honeyTokenId: string; offset?: number; limit?: number },
+    }: THoneyTokenEventsInput,
     actor: OrgServiceActor
   ) => {
     const honeyToken = await getHoneyTokenWithProjectAccess({

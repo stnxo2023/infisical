@@ -47,3 +47,9 @@ export const HoneyTokenConfigSchema = z.discriminatedUnion("type", [
 ]);
 
 export type THoneyTokenConfig = z.infer<typeof HoneyTokenConfigSchema>;
+
+export type THoneyTokenEventsInput = {
+  honeyTokenId: string;
+  offset?: number;
+  limit?: number;
+};

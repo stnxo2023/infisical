@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { SecretFoldersSchema, SecretImportsSchema, SecretType } from "@app/db/schemas";
+import { HoneyTokensSchema, SecretFoldersSchema, SecretImportsSchema, SecretType } from "@app/db/schemas";
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
@@ -31,6 +31,29 @@ import {
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
+
+const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
+  id: true,
+  name: true,
+  description: true,
+  type: true,
+  status: true,
+  projectId: true,
+  folderId: true,
+  connectionId: true,
+  secretsMapping: true,
+  createdAt: true,
+  updatedAt: true
+}).extend({
+  environment: z.object({
+    id: z.string(),
+    name: z.string(),
+    slug: z.string()
+  }),
+  folder: z.object({
+    path: z.string()
+  })
+});
 
 const parseSecretPathSearch = (search?: string) => {
   if (!search)
@@ -108,36 +131,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
         includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecretRotations),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets),
-        includeHoneyTokens: booleanSchema.optional()
+        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeHoneyTokens)
       }),
       response: {
         200: z.object({
           folders: SecretFoldersSchema.extend({ environment: z.string() }).array().optional(),
           dynamicSecrets: SanitizedDynamicSecretSchema.extend({ environment: z.string() }).array().optional(),
-          honeyTokens: z
-            .object({
-              id: z.string().uuid(),
-              name: z.string(),
-              description: z.string().nullable().optional(),
-              type: z.string(),
-              status: z.string(),
-              projectId: z.string(),
-              folderId: z.string().uuid(),
-              connectionId: z.string().uuid(),
-              secretsMapping: z.unknown(),
-              createdAt: z.date(),
-              updatedAt: z.date(),
-              environment: z.object({
-                id: z.string(),
-                name: z.string(),
-                slug: z.string()
-              }),
-              folder: z.object({
-                path: z.string()
-              })
-            })
-            .array()
-            .optional(),
+          honeyTokens: SanitizedHoneyTokenSchema.array().optional(),
           secretRotations: z
             .intersection(
               SecretRotationV2Schema,
@@ -726,7 +726,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeImports),
         includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecretRotations),
-        includeHoneyTokens: booleanSchema.optional()
+        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeHoneyTokens)
       }),
       response: {
         200: z.object({
@@ -738,30 +738,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .optional(),
           folders: SecretFoldersSchema.array().optional(),
           dynamicSecrets: SanitizedDynamicSecretSchema.array().optional(),
-          honeyTokens: z
-            .object({
-              id: z.string().uuid(),
-              name: z.string(),
-              description: z.string().nullable().optional(),
-              type: z.string(),
-              status: z.string(),
-              projectId: z.string(),
-              folderId: z.string().uuid(),
-              connectionId: z.string().uuid(),
-              secretsMapping: z.unknown(),
-              createdAt: z.date(),
-              updatedAt: z.date(),
-              environment: z.object({
-                id: z.string(),
-                name: z.string(),
-                slug: z.string()
-              }),
-              folder: z.object({
-                path: z.string()
-              })
-            })
-            .array()
-            .optional(),
+          honeyTokens: SanitizedHoneyTokenSchema.array().optional(),
           secretRotations: z
             .intersection(
               SecretRotationV2Schema,
