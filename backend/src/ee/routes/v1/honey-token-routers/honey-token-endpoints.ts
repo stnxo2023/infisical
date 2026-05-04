@@ -37,6 +37,8 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     connectionId: z.string().uuid(),
     config: configSchema
   });
+  const routeTestConnectionResponseSchema: z.ZodTypeAny = testConnectionResponseSchema;
+  const routeDecryptedConfigSchema: z.ZodTypeAny = decryptedConfigSchema;
 
   server.route({
     url: "/configs",
@@ -76,14 +78,15 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       response: {
-        200: testConnectionResponseSchema
+        200: routeTestConnectionResponseSchema
       }
     },
     handler: async (req) => {
-      return server.services.honeyTokenConfig.testConnection({
+      const response = await server.services.honeyTokenConfig.testConnection({
         orgPermission: req.permission,
         type
       });
+      return testConnectionResponseSchema.parse(response);
     }
   });
 
@@ -102,7 +105,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
             connectionId: z.string().nullable(),
             createdAt: z.date().nullable(),
             updatedAt: z.date().nullable(),
-            decryptedConfig: decryptedConfigSchema.nullable()
+            decryptedConfig: routeDecryptedConfigSchema.nullable()
           })
         })
       }
@@ -113,7 +116,12 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
         type
       });
 
-      return { config };
+      return {
+        config: {
+          ...config,
+          decryptedConfig: config.decryptedConfig ? decryptedConfigSchema.parse(config.decryptedConfig) : null
+        }
+      };
     }
   });
 

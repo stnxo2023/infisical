@@ -31,8 +31,8 @@ import {
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
-const INCLUDE_HONEY_TOKENS_OVERVIEW_DESC = DASHBOARD.SECRET_OVERVIEW_LIST.includeHoneyTokens as string;
-const INCLUDE_HONEY_TOKENS_DETAILS_DESC = DASHBOARD.SECRET_DETAILS_LIST.includeHoneyTokens as string;
+const INCLUDE_HONEY_TOKENS_OVERVIEW_DESC = "Whether to include honey tokens in the overview response.";
+const INCLUDE_HONEY_TOKENS_DETAILS_DESC = "Whether to include honey tokens in the details response.";
 
 const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   id: true,
