@@ -17,7 +17,7 @@ import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
 import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
-import { THoneyTokenDeploymentStatus, THoneyTokenProviderHooks } from "./honey-token-provider-hook-types";
+import { THoneyTokenProviderHooks } from "./honey-token-provider-hook-types";
 import { THoneyTokenByIdInput, THoneyTokenCreateInput } from "./honey-token-provider-types";
 import { AwsHoneyTokenConfigSchema, AwsHoneyTokenEventMetadataSchema } from "./honey-token-types";
 import {
@@ -47,20 +47,6 @@ const assertHoneyTokenConnectionType = (type: HoneyTokenType, app: string) => {
 };
 
 export type THoneyTokenServiceFactory = ReturnType<typeof honeyTokenServiceFactory>;
-interface THoneyTokenCreateResult {
-  honeyToken: {
-    id: string;
-    name: string;
-    description?: string | null;
-    type: string;
-    status: string;
-    projectId: string;
-    secretsMapping: unknown;
-    createdAt: Date;
-    updatedAt: Date;
-  };
-  stackDeployment?: THoneyTokenDeploymentStatus;
-}
 
 export const honeyTokenServiceFactory = ({
   honeyTokenDAL,
@@ -321,17 +307,7 @@ export const honeyTokenServiceFactory = ({
       : undefined;
 
     return {
-      honeyToken: {
-        id: honeyToken.id,
-        name: honeyToken.name,
-        description: honeyToken.description,
-        type: honeyToken.type,
-        status: honeyToken.status,
-        projectId: honeyToken.projectId,
-        secretsMapping: honeyToken.secretsMapping,
-        createdAt: honeyToken.createdAt,
-        updatedAt: honeyToken.updatedAt
-      },
+      honeyToken,
       ...(stackDeployment ? { stackDeployment } : {})
     };
   };
@@ -483,17 +459,7 @@ export const honeyTokenServiceFactory = ({
     }
 
     return {
-      honeyToken: {
-        id: updated.id,
-        name: updated.name,
-        description: updated.description,
-        type: updated.type,
-        status: updated.status,
-        projectId: updated.projectId,
-        secretsMapping: updated.secretsMapping,
-        createdAt: updated.createdAt,
-        updatedAt: updated.updatedAt
-      }
+      honeyToken: updated
     };
   };
 
@@ -858,22 +824,7 @@ export const honeyTokenServiceFactory = ({
 
     return {
       honeyToken: {
-        id: honeyToken.id,
-        name: honeyToken.name,
-        description: honeyToken.description,
-        type: honeyToken.type,
-        status: honeyToken.status,
-        projectId: honeyToken.projectId,
-        folderId: honeyToken.folderId,
-        connectionId: honeyToken.connectionId,
-        secretsMapping: honeyToken.secretsMapping,
-        createdAt: honeyToken.createdAt,
-        updatedAt: honeyToken.updatedAt,
-        lastResetAt: honeyToken.lastResetAt,
-        revokedAt: honeyToken.revokedAt,
-        createdByUserId: honeyToken.createdByUserId,
-        resetByUserId: honeyToken.resetByUserId,
-        revokedByUserId: honeyToken.revokedByUserId,
+        ...honeyToken,
         environment: match?.environment ?? null,
         folder: match?.folder ?? null,
         openEvents
