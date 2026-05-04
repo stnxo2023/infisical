@@ -68,7 +68,6 @@ const InsightsPolicyActionSchema = z.object({
 const HoneyTokenPolicyActionSchema = z.object({
   [ProjectPermissionHoneyTokenActions.Read]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Create]: z.boolean().optional(),
-  [ProjectPermissionHoneyTokenActions.TestConnection]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Reset]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Revoke]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Delete]: z.boolean().optional()
@@ -1430,9 +1429,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (subject === ProjectPermissionSub.HoneyTokens) {
         const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
         const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
-        const canTestConnection = action.includes(
-          ProjectPermissionHoneyTokenActions.TestConnection
-        );
         const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
         const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
         const canDelete = action.includes(ProjectPermissionHoneyTokenActions.Delete);
@@ -1441,8 +1437,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
         if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
         if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
-        if (canTestConnection)
-          formVal[subject]![0][ProjectPermissionHoneyTokenActions.TestConnection] = true;
         if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
         if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
         if (canDelete) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Delete] = true;
@@ -1729,7 +1723,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
     if (subject === ProjectPermissionSub.HoneyTokens) {
       const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
       const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
-      const canTestConnection = action.includes(ProjectPermissionHoneyTokenActions.TestConnection);
       const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
       const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
       const canDelete = action.includes(ProjectPermissionHoneyTokenActions.Delete);
@@ -1738,8 +1731,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
       if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
       if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
-      if (canTestConnection)
-        formVal[subject]![0][ProjectPermissionHoneyTokenActions.TestConnection] = true;
       if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
       if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
       if (canDelete) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Delete] = true;
@@ -2485,11 +2476,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create",
         value: ProjectPermissionHoneyTokenActions.Create,
         description: "Create and update honey tokens"
-      },
-      {
-        label: "Test Connection",
-        value: ProjectPermissionHoneyTokenActions.TestConnection,
-        description: "Test honey token provider connection"
       },
       {
         label: "Reset",

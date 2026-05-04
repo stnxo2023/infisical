@@ -23,7 +23,7 @@ import {
   IconButton,
   Input
 } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
@@ -329,7 +329,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
             <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
               Cancel
             </Button>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+            <OrgPermissionCan I={OrgPermissionHoneyTokenActions.Setup} a={OrgPermissionSubjects.HoneyTokens}>
               {(isAllowed) => (
                 <Button
                   type="submit"

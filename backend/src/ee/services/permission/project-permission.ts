@@ -293,7 +293,6 @@ export enum ProjectPermissionMcpEndpointActions {
 export enum ProjectPermissionHoneyTokenActions {
   Read = "read",
   Create = "create",
-  TestConnection = "test-connection",
   Reset = "reset",
   Revoke = "revoke",
   Delete = "delete"

@@ -5,6 +5,7 @@ export {
   OrgPermissionAuditLogsActions,
   OrgPermissionBillingActions,
   OrgPermissionEmailDomainActions,
+  OrgPermissionHoneyTokenActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
   OrgPermissionSsoActions,

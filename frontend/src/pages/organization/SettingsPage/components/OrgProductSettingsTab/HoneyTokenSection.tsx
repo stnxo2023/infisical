@@ -1,7 +1,7 @@
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   HoneyTokenType,
@@ -55,7 +55,7 @@ export const HoneyTokenSection = () => {
             attempt.
           </p>
         </div>
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+        <OrgPermissionCan I={OrgPermissionHoneyTokenActions.Setup} a={OrgPermissionSubjects.HoneyTokens}>
           {(isAllowed) => (
             <div className="flex gap-2">
               {isConfigured && (

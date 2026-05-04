@@ -15,7 +15,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 import { HoneyTokenType } from "./honey-token-enums";
@@ -133,7 +133,10 @@ export const honeyTokenAwsConfigProviderFactory = ({
       actorAuthMethod: orgPermission.authMethod,
       actorOrgId: orgPermission.orgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionHoneyTokenActions.Setup,
+      OrgPermissionSubjects.HoneyTokens
+    );
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
     if (!plan.honeyTokens) {
@@ -175,7 +178,10 @@ export const honeyTokenAwsConfigProviderFactory = ({
       actorAuthMethod: orgPermission.authMethod,
       actorOrgId: orgPermission.orgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionHoneyTokenActions.Setup,
+      OrgPermissionSubjects.HoneyTokens
+    );
 
     const config = await honeyTokenConfigDAL.findOne({
       orgId: orgPermission.orgId,
@@ -217,7 +223,10 @@ export const honeyTokenAwsConfigProviderFactory = ({
       actorAuthMethod: orgPermission.authMethod,
       actorOrgId: orgPermission.orgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionHoneyTokenActions.Setup,
+      OrgPermissionSubjects.HoneyTokens
+    );
 
     const config = await honeyTokenConfigDAL.findOne({
       orgId: orgPermission.orgId,

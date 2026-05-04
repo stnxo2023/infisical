@@ -81,7 +81,8 @@ export enum OrgPermissionSubjects {
   GithubOrgSyncManual = "github-org-sync-manual",
   MachineIdentityAuthTemplate = "machine-identity-auth-template",
   SubOrganization = "sub-organization",
-  EmailDomains = "email-domains"
+  EmailDomains = "email-domains",
+  HoneyTokens = "honey-tokens"
 }
 
 export enum OrgPermissionEmailDomainActions {
@@ -89,6 +90,10 @@ export enum OrgPermissionEmailDomainActions {
   Create = "create",
   VerifyDomain = "verify-domain",
   Delete = "delete"
+}
+
+export enum OrgPermissionHoneyTokenActions {
+  Setup = "setup"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -188,6 +193,7 @@ export type OrgPermissionSet =
       )
     ]
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
-  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains];
+  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
+  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

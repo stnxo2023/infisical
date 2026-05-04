@@ -394,7 +394,6 @@ const buildAdminPermissionRules = () => {
     [
       ProjectPermissionHoneyTokenActions.Read,
       ProjectPermissionHoneyTokenActions.Create,
-      ProjectPermissionHoneyTokenActions.TestConnection,
       ProjectPermissionHoneyTokenActions.Reset,
       ProjectPermissionHoneyTokenActions.Revoke,
       ProjectPermissionHoneyTokenActions.Delete
