@@ -55,7 +55,10 @@ export const HoneyTokenSection = () => {
             attempt.
           </p>
         </div>
-        <OrgPermissionCan I={OrgPermissionHoneyTokenActions.Setup} a={OrgPermissionSubjects.HoneyTokens}>
+        <OrgPermissionCan
+          I={OrgPermissionHoneyTokenActions.Setup}
+          a={OrgPermissionSubjects.HoneyTokens}
+        >
           {(isAllowed) => (
             <div className="flex gap-2">
               {isConfigured && (

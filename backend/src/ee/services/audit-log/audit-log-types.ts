@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import {
@@ -54,7 +55,6 @@ import {
 } from "@app/services/secret-sync/secret-sync-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
-import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
