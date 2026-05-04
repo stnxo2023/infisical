@@ -14,6 +14,8 @@ import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-ac
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
@@ -40,10 +42,7 @@ import {
   TCertificateAuthorityWithAssociatedCa
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import {
-  createDistinguishedName,
-  parseDistinguishedName
-} from "@app/services/certificate-authority/certificate-authority-fns";
+import { createDistinguishedName, extractDnParts } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -672,7 +671,9 @@ export const certificateV3ServiceFactory = ({
         };
       }
     } else if (actor === ActorType.IDENTITY) {
-      const identity = await identityDAL.findById(actorId);
+      const identity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
+        identityDAL.findById(actorId)
+      );
       if (identity) {
         return {
           requesterName: identity.name || "Machine Identity",
@@ -1504,7 +1505,7 @@ export const certificateV3ServiceFactory = ({
       flowDefaultTtl: ""
     });
 
-    const csrSubjectParsed = parseDistinguishedName(new x509.Pkcs10CertificateRequest(csr).subject);
+    const csrSubjectParsed = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
     const mergedSubject = {
       ...csrSubjectParsed,
       commonName: csrSubjectParsed.commonName ?? certificateRequest.commonName,
