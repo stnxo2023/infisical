@@ -1,4 +1,5 @@
 import axios, { Axios } from "axios";
+import http from "http";
 import https from "https";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
@@ -104,7 +105,7 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
       maxRedirects: 0,
       ...(isHttps
         ? { httpsAgent: pinnedAgent as https.Agent | undefined }
-        : { httpAgent: pinnedAgent as import("http").Agent | undefined })
+        : { httpAgent: pinnedAgent as http.Agent | undefined })
     });
 
     return axiosInstance;
