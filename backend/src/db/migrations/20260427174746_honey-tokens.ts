@@ -12,6 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("type").notNullable();
       t.uuid("connectionId").notNullable();
       t.foreign("connectionId").references("id").inTable(TableName.AppConnection);
+      t.string("status").notNullable().defaultTo("VERIFICATION_PENDING");
       t.binary("encryptedConfig");
       t.timestamps(true, true, true);
       t.unique(["orgId", "type"]);

@@ -44,8 +44,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectPermissionSub, useProjectPermission } from "@app/context";
+import { ProjectPermissionHoneyTokenActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_CREDENTIAL_FIELDS, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { useResetHoneyToken, useRevokeHoneyToken } from "@app/hooks/api/honeyTokens/mutations";
@@ -78,13 +78,18 @@ const DrawerContent = ({
 
   const { mutateAsync: resetHoneyToken } = useResetHoneyToken();
   const { mutateAsync: revokeHoneyToken } = useRevokeHoneyToken();
+  const { permission } = useProjectPermission();
   const [isRevokeOpen, setIsRevokeOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [revokeInput, setRevokeInput] = useState("");
+  const canReadCredentials = permission.can(
+    ProjectPermissionHoneyTokenActions.ReadCredentials,
+    ProjectPermissionSub.HoneyTokens
+  );
   const { data: credentials, isPending: isCredentialsPending } = useGetHoneyTokenCredentials({
     honeyTokenId,
     projectId,
-    enabled: Boolean(honeyTokenId && projectId)
+    enabled: Boolean(honeyTokenId && projectId && canReadCredentials)
   });
 
   useEffect(() => {
@@ -213,8 +218,8 @@ const DrawerContent = ({
 
         {!isRevoked && (
           <ProjectPermissionCan
-            I={ProjectPermissionSecretActions.DescribeAndReadValue}
-            a={ProjectPermissionSub.Secrets}
+            I={ProjectPermissionHoneyTokenActions.ReadCredentials}
+            a={ProjectPermissionSub.HoneyTokens}
           >
             {(isAllowed) =>
               isAllowed && (

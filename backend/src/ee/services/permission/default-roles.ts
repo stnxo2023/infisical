@@ -393,7 +393,9 @@ const buildAdminPermissionRules = () => {
   can(
     [
       ProjectPermissionHoneyTokenActions.Read,
+      ProjectPermissionHoneyTokenActions.ReadCredentials,
       ProjectPermissionHoneyTokenActions.Create,
+      ProjectPermissionHoneyTokenActions.Edit,
       ProjectPermissionHoneyTokenActions.Reset,
       ProjectPermissionHoneyTokenActions.Revoke,
       ProjectPermissionHoneyTokenActions.Delete
@@ -565,10 +567,7 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.ServiceTokens
   );
 
-  can(
-    [ProjectPermissionHoneyTokenActions.Read, ProjectPermissionHoneyTokenActions.Create],
-    ProjectPermissionSub.HoneyTokens
-  );
+  can([ProjectPermissionHoneyTokenActions.Read], ProjectPermissionSub.HoneyTokens);
 
   can(
     [

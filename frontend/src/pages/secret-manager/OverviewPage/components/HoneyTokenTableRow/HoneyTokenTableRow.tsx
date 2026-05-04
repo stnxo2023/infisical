@@ -12,6 +12,7 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
+  Checkbox,
   IconButton,
   Table,
   TableBody,
@@ -50,6 +51,8 @@ type Props = {
   onRevoke: (honeyToken: TDashboardHoneyToken) => void;
   onViewCredentials: (honeyToken: TDashboardHoneyToken) => void;
   onViewDetails: (honeyToken: TDashboardHoneyToken) => void;
+  isSelected: boolean;
+  onToggleHoneyTokenSelect: (honeyTokenName: string) => void;
 };
 
 export const HoneyTokenTableRow = ({
@@ -61,7 +64,9 @@ export const HoneyTokenTableRow = ({
   onEdit,
   onRevoke,
   onViewCredentials,
-  onViewDetails
+  onViewDetails,
+  isSelected,
+  onToggleHoneyTokenSelect
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
 
@@ -84,6 +89,8 @@ export const HoneyTokenTableRow = ({
   });
 
   const renderActionButtons = (honeyToken: TDashboardHoneyToken) => {
+    const isRevoked = honeyToken.status === HoneyTokenStatus.Revoked;
+
     return (
       <div
         className={twMerge(
@@ -116,7 +123,7 @@ export const HoneyTokenTableRow = ({
                   variant="ghost"
                   size="xs"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
-                  isDisabled={!isAllowed}
+                  isDisabled={!isAllowed || isRevoked}
                   onClick={() => onViewCredentials(honeyToken)}
                 >
                   <AsteriskIcon />
@@ -139,7 +146,7 @@ export const HoneyTokenTableRow = ({
                   variant="ghost"
                   size="xs"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
-                  isDisabled={!isAllowed}
+                  isDisabled={!isAllowed || isRevoked}
                   onClick={() => onEdit(honeyToken)}
                 >
                   <EditIcon />
@@ -225,11 +232,27 @@ export const HoneyTokenTableRow = ({
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover"
           )}
         >
+          <Checkbox
+            variant="project"
+            id={`checkbox-${honeyTokenName}`}
+            isChecked={isSelected}
+            onCheckedChange={() => {
+              onToggleHoneyTokenSelect(honeyTokenName);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            className={twMerge("hidden group-hover:flex", isSelected && "flex")}
+          />
           {!isSingleEnvView && isExpanded ? (
-            <ChevronDownIcon />
+            <ChevronDownIcon
+              className={twMerge("block", "group-hover:!hidden", isSelected && "!hidden")}
+            />
           ) : (
             <HexagonIcon
               className={twMerge(
+                "group-hover:!hidden",
+                isSelected && "!hidden",
                 isTriggered && "text-red",
                 !isTriggered && !isAllRevoked && "text-yellow",
                 isAllRevoked && "text-mineshaft-400"

@@ -1,12 +1,14 @@
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button } from "@app/components/v3";
+import { Badge, Button } from "@app/components/v3";
 import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
+  HoneyTokenConfigStatus,
   HoneyTokenType,
   useGetHoneyTokenConfig,
-  useTestHoneyTokenConnection
+  useTestHoneyTokenConnection,
+  useUpsertHoneyTokenConfig
 } from "@app/hooks/api/honeyToken";
 
 import { HoneyTokenModal } from "./HoneyTokenModal";
@@ -18,13 +20,28 @@ export const HoneyTokenSection = () => {
     retry: false
   });
   const { mutateAsync: testConnection, isPending: isTesting } = useTestHoneyTokenConnection();
+  const { mutateAsync: upsertConfig, isPending: isSaving } = useUpsertHoneyTokenConfig();
 
-  const isConfigured = Boolean(existingConfig?.id);
+  const hasConfig = Boolean(existingConfig);
+  const isConfigVerified = existingConfig?.status === HoneyTokenConfigStatus.Complete;
 
   const handleTestConnection = async () => {
     try {
       const result = await testConnection(HoneyTokenType.AWS);
       if (result.isConnected) {
+        if (existingConfig?.decryptedConfig) {
+          await upsertConfig({
+            type: HoneyTokenType.AWS,
+            connectionId: existingConfig.connectionId,
+            status: HoneyTokenConfigStatus.Complete,
+            config: {
+              webhookSigningKey: existingConfig.decryptedConfig.webhookSigningKey,
+              stackName: existingConfig.decryptedConfig.stackName,
+              awsRegion: existingConfig.decryptedConfig.awsRegion
+            }
+          });
+        }
+
         createNotification({
           text: `CloudFormation stack "${result.stackName}" is deployed and healthy.`,
           type: "success"
@@ -49,7 +66,14 @@ export const HoneyTokenSection = () => {
     <div className="mt-6 border-t border-mineshaft-600 pt-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium text-mineshaft-100">AWS Honey Tokens</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-medium text-mineshaft-100">AWS Honey Tokens</h3>
+            {hasConfig && (
+              <Badge variant={isConfigVerified ? "success" : "warning"}>
+                {isConfigVerified ? "Verified" : "Not verified"}
+              </Badge>
+            )}
+          </div>
           <p className="mt-1 text-sm text-mineshaft-400">
             Plant decoy IAM credentials in your AWS account. Infisical alerts on every access
             attempt.
@@ -61,14 +85,14 @@ export const HoneyTokenSection = () => {
         >
           {(isAllowed) => (
             <div className="flex gap-2">
-              {isConfigured && (
+              {hasConfig && (
                 <Button
                   variant="outline"
-                  isDisabled={!isAllowed || isTesting}
-                  isPending={isTesting}
+                  isDisabled={!isAllowed || isTesting || isSaving}
+                  isPending={isTesting || isSaving}
                   onClick={handleTestConnection}
                 >
-                  Test Connection
+                  Verify Connection
                 </Button>
               )}
               <Button
@@ -76,7 +100,7 @@ export const HoneyTokenSection = () => {
                 isDisabled={!isAllowed}
                 onClick={() => handlePopUpOpen("honeyTokenModal")}
               >
-                {isConfigured ? "Manage" : "Connect"}
+                {hasConfig ? "Manage" : "Connect"}
               </Button>
             </div>
           )}

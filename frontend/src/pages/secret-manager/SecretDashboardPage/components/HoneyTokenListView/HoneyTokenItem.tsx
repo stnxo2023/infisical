@@ -11,6 +11,7 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { Checkbox } from "@app/components/v2";
 import { Badge, IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
@@ -20,6 +21,8 @@ import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 type Props = {
   honeyToken: TDashboardHoneyToken;
+  isSelected: boolean;
+  onToggleSelect: () => void;
   onEdit: () => void;
   onRevoke: () => void;
   onViewCredentials: () => void;
@@ -28,12 +31,15 @@ type Props = {
 
 export const HoneyTokenItem = ({
   honeyToken,
+  isSelected,
+  onToggleSelect,
   onEdit,
   onRevoke,
   onViewCredentials,
   onViewDetails
 }: Props) => {
   const { name, type, status, secretsMapping } = honeyToken;
+  const isRevoked = status === HoneyTokenStatus.Revoked;
   const [isExpanded, setIsExpanded] = useState(true);
 
   const honeyTokenInfo = HONEY_TOKEN_MAP[type as HoneyTokenType];
@@ -71,7 +77,16 @@ export const HoneyTokenItem = ({
             status === HoneyTokenStatus.Revoked && "text-mineshaft-400"
           )}
         >
-          <HexagonIcon className="size-4" />
+          <div className={twMerge("ml-[-1px] hidden group-hover:flex", isSelected && "flex")}>
+            <Checkbox
+              id={`checkbox-honey-token-${honeyToken.id}`}
+              isChecked={isSelected}
+              onCheckedChange={onToggleSelect}
+              onClick={(e) => e.stopPropagation()}
+              className={twMerge("hidden group-hover:flex", isSelected && "flex")}
+            />
+          </div>
+          <HexagonIcon className={twMerge("size-4 group-hover:hidden", isSelected && "hidden")} />
         </div>
         <div className="flex grow items-center py-2 pr-2 pl-4">
           <div className="flex w-full flex-wrap items-center">
@@ -140,7 +155,7 @@ export const HoneyTokenItem = ({
                   aria-label="View credentials"
                   variant="ghost"
                   size="xs"
-                  isDisabled={!isAllowed}
+                  isDisabled={!isAllowed || isRevoked}
                   className="opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -162,7 +177,7 @@ export const HoneyTokenItem = ({
                   aria-label="Edit honey token"
                   variant="ghost"
                   size="xs"
-                  isDisabled={!isAllowed}
+                  isDisabled={!isAllowed || isRevoked}
                   className="opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();

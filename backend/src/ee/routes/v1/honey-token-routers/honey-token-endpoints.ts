@@ -6,6 +6,7 @@ import {
   THoneyTokenConfigByType,
   THoneyTokenTestConnectionResponseByType
 } from "@app/ee/services/honey-token/honey-token-provider-types";
+import { HoneyTokenConfigStatus } from "@app/ee/services/honey-token-config/honey-token-config-enums";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -16,6 +17,7 @@ const SanitizedHoneyTokenConfigSchema = HoneyTokenConfigsSchema.pick({
   orgId: true,
   type: true,
   connectionId: true,
+  status: true,
   createdAt: true,
   updatedAt: true
 });
@@ -35,6 +37,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
 }) => {
   const upsertBodySchema = z.object({
     connectionId: z.string().uuid(),
+    status: z.nativeEnum(HoneyTokenConfigStatus),
     config: configSchema
   });
   const routeTestConnectionResponseSchema: z.ZodTypeAny = testConnectionResponseSchema;
@@ -56,12 +59,13 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
       }
     },
     handler: async (req) => {
-      const { connectionId, config } = upsertBodySchema.parse(req.body);
+      const { connectionId, status, config } = upsertBodySchema.parse(req.body);
       const parsedConfig = configSchema.parse(config);
       const savedConfig = await server.services.honeyTokenConfig.upsertConfig({
         orgPermission: req.permission,
         type,
         connectionId,
+        status,
         config: parsedConfig
       });
 
@@ -101,12 +105,8 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
       response: {
         200: z.object({
           config: SanitizedHoneyTokenConfigSchema.extend({
-            id: z.string().nullable(),
-            connectionId: z.string().nullable(),
-            createdAt: z.date().nullable(),
-            updatedAt: z.date().nullable(),
             decryptedConfig: routeDecryptedConfigSchema.nullable()
-          })
+          }).nullable()
         })
       }
     },
@@ -115,6 +115,10 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
         orgPermission: req.permission,
         type
       });
+
+      if (!config) {
+        return { config: null };
+      }
 
       return {
         config: {
@@ -126,15 +130,12 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
   });
 
   server.route({
-    url: "/:orgId/trigger",
+    url: "/trigger",
     method: "POST",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      params: z.object({
-        orgId: z.string().trim()
-      }),
       body: z.unknown(),
       response: {
         200: z.object({
@@ -143,14 +144,10 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
       }
     },
     handler: async (req) => {
-      logger.info(
-        { orgId: req.params.orgId, payload: req.body, headers: req.headers, type },
-        `Honey token trigger received [orgId=${req.params.orgId}] [type=${type}]`
-      );
+      logger.info({ payload: req.body, headers: req.headers, type }, `Honey token trigger received [type=${type}]`);
 
       const { acknowledged } = await server.services.honeyToken.handleTrigger({
         type,
-        orgId: req.params.orgId,
         signature: req.headers["x-infisical-signature"] as string | undefined,
         payload: req.body
       });

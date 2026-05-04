@@ -295,7 +295,9 @@ export enum ProjectPermissionMcpEndpointActions {
 
 export enum ProjectPermissionHoneyTokenActions {
   Read = "read",
+  ReadCredentials = "read-credentials",
   Create = "create",
+  Edit = "edit",
   Reset = "reset",
   Revoke = "revoke",
   Delete = "delete"

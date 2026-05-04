@@ -8,7 +8,6 @@ export type THoneyTokenBase = {
   status: HoneyTokenStatus;
   projectId: string;
   folderId: string;
-  connectionId: string;
   createdAt: string;
   updatedAt: string;
 };

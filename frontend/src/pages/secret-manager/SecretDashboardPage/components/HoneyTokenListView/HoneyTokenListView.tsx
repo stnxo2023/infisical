@@ -22,6 +22,14 @@ export const HoneyTokenListView = ({ honeyTokens }: Props) => {
   const [editTarget, setEditTarget] = useState<TDashboardHoneyToken>();
   const [credentialsTarget, setCredentialsTarget] = useState<TDashboardHoneyToken>();
   const [detailsHoneyTokenId, setDetailsHoneyTokenId] = useState<string | null>(null);
+  const [selectedHoneyTokenIds, setSelectedHoneyTokenIds] = useState<Record<string, boolean>>({});
+
+  const toggleHoneyTokenSelect = (honeyTokenId: string) => {
+    setSelectedHoneyTokenIds((prev) => ({
+      ...prev,
+      [honeyTokenId]: !prev[honeyTokenId]
+    }));
+  };
 
   return (
     <>
@@ -29,6 +37,8 @@ export const HoneyTokenListView = ({ honeyTokens }: Props) => {
         <HoneyTokenItem
           key={honeyToken.id}
           honeyToken={honeyToken}
+          isSelected={Boolean(selectedHoneyTokenIds[honeyToken.id])}
+          onToggleSelect={() => toggleHoneyTokenSelect(honeyToken.id)}
           onEdit={() => setEditTarget(honeyToken)}
           onRevoke={() => setRevokeTarget(honeyToken)}
           onViewCredentials={() => setCredentialsTarget(honeyToken)}

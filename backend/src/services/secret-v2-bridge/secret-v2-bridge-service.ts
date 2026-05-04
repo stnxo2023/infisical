@@ -543,6 +543,8 @@ export const secretV2BridgeServiceFactory = ({
       });
       if (!sharedSecretToModify)
         throw new NotFoundError({ message: `Secret with name ${inputSecret.secretName} not found` });
+      if (sharedSecretToModify.isHoneyTokenSecret)
+        throw new BadRequestError({ message: "Cannot update honey token secrets" });
       if (sharedSecretToModify.isRotatedSecret && inputSecret.newSecretName)
         throw new BadRequestError({ message: "Cannot update rotated secret name" });
       secretId = sharedSecretToModify.id;
@@ -830,6 +832,10 @@ export const secretV2BridgeServiceFactory = ({
           })
     });
     if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
+    if (inputSecret.type === SecretType.Shared) {
+      if (secretToDelete.isHoneyTokenSecret)
+        throw new BadRequestError({ message: "Cannot delete honey token secrets" });
+    }
 
     if (secretToDelete.type !== SecretType.Personal)
       ForbiddenError.from(permission).throwUnlessCan(
@@ -2204,6 +2210,12 @@ export const secretV2BridgeServiceFactory = ({
         const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdateInDB, (i) => i.key);
         const secretsToCreate = secretsToUpdate.filter((el) => !secretsToUpdateInDBGroupedByKey?.[el.secretKey]);
         secretsToUpdate = secretsToUpdate.filter((el) => secretsToUpdateInDBGroupedByKey?.[el.secretKey]);
+        const honeyTokenSecretsToUpdate = secretsToUpdateInDB.filter((el) => el.isHoneyTokenSecret);
+        if (honeyTokenSecretsToUpdate.length) {
+          throw new BadRequestError({
+            message: `Cannot update honey token secrets: ${honeyTokenSecretsToUpdate.map((el) => el.key).join(", ")}`
+          });
+        }
 
         secretsToUpdateInDB.forEach((el) => {
           ForbiddenError.from(permission).throwUnlessCan(
@@ -2617,6 +2629,12 @@ export const secretV2BridgeServiceFactory = ({
         })
       );
     });
+    const honeyTokenSecretsToDelete = secretsToDelete.filter((el) => el.isHoneyTokenSecret);
+    if (honeyTokenSecretsToDelete.length) {
+      throw new BadRequestError({
+        message: `Cannot delete honey token secrets: ${honeyTokenSecretsToDelete.map((el) => el.key).join(", ")}`
+      });
+    }
 
     const executeBulkDelete = async (tx: Knex) => {
       const modifiedSecretsInDB = await fnSecretBulkDelete({
@@ -2761,7 +2779,6 @@ export const secretV2BridgeServiceFactory = ({
         sort: [["createdAt", "desc"]]
       }
     });
-
     return secretVersions.map((el) => {
       const secretValueHidden = !hasSecretReadValueOrDescribePermission(
         permission,
@@ -2903,7 +2920,6 @@ export const secretV2BridgeServiceFactory = ({
         message: `One or more secrets not found in source folder with path '${sourceSecretPath}' and environment slug '${sourceEnvironment}'`
       });
     }
-
     const sourceActions = [
       ProjectPermissionSecretActions.Delete,
       ProjectPermissionSecretActions.ReadValue,
@@ -2914,6 +2930,9 @@ export const secretV2BridgeServiceFactory = ({
     sourceSecrets.forEach((secret) => {
       if (secret.isRotatedSecret) {
         throw new BadRequestError({ message: `Cannot move rotated secret: ${secret.key}` });
+      }
+      if (secret.isHoneyTokenSecret) {
+        throw new BadRequestError({ message: `Cannot move honey token secret: ${secret.key}` });
       }
 
       for (const sourceAction of sourceActions) {
@@ -2991,6 +3010,15 @@ export const secretV2BridgeServiceFactory = ({
       if (conflictingRotationSecretKeys.length > 0) {
         throw new BadRequestError({
           message: `Cannot move secrets to '${destinationFolder.path}' because the following keys are managed by a secret rotation at the destination: ${conflictingRotationSecretKeys.join(", ")}`
+        });
+      }
+
+      const conflictingHoneyTokenSecretKeys = sourceKeys.filter(
+        (key) => destinationSecretsGroupedByKey[key]?.[0]?.isHoneyTokenSecret
+      );
+      if (conflictingHoneyTokenSecretKeys.length > 0) {
+        throw new BadRequestError({
+          message: `Cannot move secrets to '${destinationFolder.path}' because the following keys are managed by a honey token at the destination: ${conflictingHoneyTokenSecretKeys.join(", ")}`
         });
       }
 

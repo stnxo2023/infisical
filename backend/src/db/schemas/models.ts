@@ -293,6 +293,7 @@ export enum TableName {
   HoneyTokenConfig = "honey_token_configs",
   HoneyToken = "honey_tokens",
   HoneyTokenEvent = "honey_token_events",
+  HoneyTokenSecretMapping = "honey_token_secret_mappings",
 
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",

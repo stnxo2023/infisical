@@ -12,9 +12,9 @@ export const useGetHoneyTokenConfig = (
   type: HoneyTokenType,
   options?: Omit<
     UseQueryOptions<
-      THoneyTokenConfig,
+      THoneyTokenConfig | null,
       unknown,
-      THoneyTokenConfig,
+      THoneyTokenConfig | null,
       ReturnType<typeof honeyTokenKeys.config>
     >,
     "queryKey" | "queryFn"
@@ -23,7 +23,7 @@ export const useGetHoneyTokenConfig = (
   useQuery({
     queryKey: honeyTokenKeys.config(type),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ config: THoneyTokenConfig }>(
+      const { data } = await apiRequest.get<{ config: THoneyTokenConfig | null }>(
         `/api/v1/honey-tokens/${type}/configs`
       );
       return data.config;

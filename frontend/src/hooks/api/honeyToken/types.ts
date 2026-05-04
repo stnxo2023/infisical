@@ -2,13 +2,19 @@ import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 export { HoneyTokenType };
 
+export enum HoneyTokenConfigStatus {
+  VerificationPending = "VERIFICATION_PENDING",
+  Complete = "COMPLETE"
+}
+
 export type THoneyTokenConfig = {
-  id: string | null;
+  id: string;
   orgId: string;
   type: HoneyTokenType;
-  connectionId: string | null;
-  createdAt: string | null;
-  updatedAt: string | null;
+  connectionId: string;
+  status: HoneyTokenConfigStatus;
+  createdAt: string;
+  updatedAt: string;
   decryptedConfig: {
     webhookSigningKey: string;
     stackName: string;
@@ -19,6 +25,7 @@ export type THoneyTokenConfig = {
 export type TUpsertHoneyTokenConfigDTO = {
   type: HoneyTokenType;
   connectionId: string;
+  status: HoneyTokenConfigStatus;
   config: {
     webhookSigningKey: string;
     stackName?: string;

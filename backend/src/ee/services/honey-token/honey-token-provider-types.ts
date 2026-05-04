@@ -1,6 +1,6 @@
 import { OrderByDirection } from "@app/lib/types";
 
-import { TAwsHoneyTokenCredentials } from "./honey-token-aws-types";
+import { TAwsHoneyTokenCredentials } from "./aws/honey-token-aws-types";
 import { HoneyTokenType } from "./honey-token-enums";
 import { TAwsHoneyTokenConfig } from "./honey-token-types";
 

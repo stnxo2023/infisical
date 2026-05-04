@@ -12,6 +12,7 @@ export const useUpsertHoneyTokenConfig = () => {
     mutationFn: async (dto: TUpsertHoneyTokenConfigDTO) => {
       const { data } = await apiRequest.put(`/api/v1/honey-tokens/${dto.type}/configs`, {
         connectionId: dto.connectionId,
+        status: dto.status,
         config: dto.config
       });
       return data.config;

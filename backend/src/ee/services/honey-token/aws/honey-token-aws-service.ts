@@ -1,16 +1,20 @@
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { THoneyTokenProviderHooks } from "../honey-token-service-types";
+import { AwsHoneyTokenConfigSchema } from "../honey-token-types";
 import {
   createAwsIamHoneyTokenCredentials,
+  parseAwsHoneyTokenDecryptedCredentials,
   revokeAwsIamHoneyTokenCredentials,
   verifyAwsStackDeployment
-} from "./honey-token-aws-service-helpers";
-import { parseAwsHoneyTokenDecryptedCredentials } from "./honey-token-aws-types";
-import { THoneyTokenProviderHooks } from "./honey-token-provider-hook-types";
-import { THoneyTokenServiceFactoryDep } from "./honey-token-service-types";
-import { AwsHoneyTokenConfigSchema } from "./honey-token-types";
+} from "./honey-token-aws-fns";
 
-type THoneyTokenAwsProviderHookFactoryDep = Pick<THoneyTokenServiceFactoryDep, "kmsService" | "appConnectionDAL">;
+type THoneyTokenAwsProviderHookFactoryDep = {
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+};
 
 export const honeyTokenAwsProviderHooksFactory = ({
   kmsService,
@@ -36,23 +40,25 @@ export const honeyTokenAwsProviderHooksFactory = ({
       type: KmsDataKey.Organization,
       orgId
     });
-    const stackName = encryptedConfig
+    const config = encryptedConfig
       ? AwsHoneyTokenConfigSchema.parse(
           JSON.parse(configDecryptor({ cipherTextBlob: encryptedConfig }).toString()) as unknown
-        ).stackName
-      : "infisical-honey-tokens";
+        )
+      : null;
 
     return verifyAwsStackDeployment({
+      orgId,
       connectionId,
-      stackName,
+      stackName: config?.stackName ?? "infisical-honey-tokens",
+      awsRegion: config?.awsRegion ?? "us-east-1",
       appConnectionDAL,
       kmsService
     });
   },
-  getCredentialsForDisplay: async ({ encryptedCredentials, orgId }) => {
+  getCredentialsForDisplay: async ({ encryptedCredentials, projectId }) => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
+      type: KmsDataKey.SecretManager,
+      projectId
     });
     const decryptedCredentials = parseAwsHoneyTokenDecryptedCredentials(
       JSON.parse(decryptor({ cipherTextBlob: encryptedCredentials }).toString()) as unknown

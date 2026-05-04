@@ -66,6 +66,7 @@ export * from "./group-project-memberships";
 export * from "./groups";
 export * from "./honey-token-configs";
 export * from "./honey-token-events";
+export * from "./honey-token-secret-mappings";
 export * from "./honey-tokens";
 export * from "./identities";
 export * from "./identity-access-tokens";

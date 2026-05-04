@@ -34,12 +34,11 @@ export const HoneyTokenTriggeredTemplate = ({
         <Text className="text-red-600 text-[14px] font-bold m-0">ACTION REQUIRED — POTENTIAL SECRET COMPROMISE</Text>
       </Section>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0 mt-[24px]">
-        Honey token <strong>{honeyTokenName}</strong> was accessed in project{" "}
-        <strong>{projectName}</strong>
+        Honey token <strong>{honeyTokenName}</strong> was accessed in project <strong>{projectName}</strong>
       </Heading>
       <Text className="text-center">
-        An unauthorized party may have access to your secrets. Investigate immediately and rotate any secrets that
-        may have been exposed.
+        An unauthorized party may have access to your secrets. Investigate immediately and rotate any secrets that may
+        have been exposed.
       </Text>
       <Section className="px-[24px] mt-[24px] pt-[24px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <strong className="text-[14px]">Event</strong>

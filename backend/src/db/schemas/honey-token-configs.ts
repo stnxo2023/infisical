@@ -14,6 +14,7 @@ export const HoneyTokenConfigsSchema = z.object({
   orgId: z.string().uuid(),
   type: z.string(),
   connectionId: z.string().uuid(),
+  status: z.string().default("VERIFICATION_PENDING"),
   encryptedConfig: zodBuffer.nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()

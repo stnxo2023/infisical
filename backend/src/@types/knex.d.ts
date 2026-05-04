@@ -195,6 +195,9 @@ import {
   THoneyTokenEventsInsert,
   THoneyTokenEventsUpdate,
   THoneyTokens,
+  THoneyTokenSecretMappings,
+  THoneyTokenSecretMappingsInsert,
+  THoneyTokenSecretMappingsUpdate,
   THoneyTokensInsert,
   THoneyTokensUpdate,
   TIdentities,
@@ -1522,6 +1525,11 @@ declare module "knex/types/tables" {
       THoneyTokenEvents,
       THoneyTokenEventsInsert,
       THoneyTokenEventsUpdate
+    >;
+    [TableName.HoneyTokenSecretMapping]: KnexOriginal.CompositeTableType<
+      THoneyTokenSecretMappings,
+      THoneyTokenSecretMappingsInsert,
+      THoneyTokenSecretMappingsUpdate
     >;
     [TableName.FolderCommit]: KnexOriginal.CompositeTableType<
       TFolderCommits,

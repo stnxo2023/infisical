@@ -23,17 +23,15 @@ import {
   IconButton,
   Input
 } from "@app/components/v3";
-import {
-  OrgPermissionHoneyTokenActions,
-  OrgPermissionSubjects,
-  useOrganization
-} from "@app/context";
+import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/context";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
+  HoneyTokenConfigStatus,
   HoneyTokenType,
   useGetHoneyTokenConfig,
+  useTestHoneyTokenConnection,
   useUpsertHoneyTokenConfig
 } from "@app/hooks/api/honeyToken";
 
@@ -42,6 +40,13 @@ const CF_TEMPLATE_URL =
 
 const DEFAULT_STACK_NAME = "infisical-honey-tokens";
 const DEFAULT_AWS_REGION = "us-east-1";
+const WEBHOOK_SIGNING_KEY_BYTES = 32;
+
+const generateWebhookSigningKey = () => {
+  const randomBytes = new Uint8Array(WEBHOOK_SIGNING_KEY_BYTES);
+  window.crypto.getRandomValues(randomBytes);
+  return Array.from(randomBytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+};
 
 const schema = z.object({
   connectionId: z.string().min(1, "AWS Connection is required"),
@@ -58,7 +63,6 @@ type Props = {
 };
 
 export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
-  const { currentOrg } = useOrganization();
   const [isTokenVisible, setIsTokenVisible] = useToggle(false);
   const [, isTokenCopied, setTokenCopied] = useTimedReset({ initialState: false });
   const [, isCommandCopied, setCommandCopied] = useTimedReset({ initialState: false });
@@ -68,18 +72,20 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     retry: false
   });
   const { mutateAsync: upsertConfig, isPending: isSaving } = useUpsertHoneyTokenConfig();
+  const { mutateAsync: testConnection, isPending: isTestingConnection } =
+    useTestHoneyTokenConnection();
 
-  const isConfigured = Boolean(existingConfig?.id);
+  const hasSavedConfig = Boolean(existingConfig?.id);
 
   const awsConnections = useMemo(
-    () => appConnections.filter((conn) => conn.app === AppConnection.AWS),
+    () => appConnections.filter((conn) => conn.app === AppConnection.AWS && conn.projectId == null),
     [appConnections]
   );
 
   const webhookUrl = useMemo(() => {
     const { protocol, host } = window.location;
-    return `${protocol}//${host}/api/v1/honey-tokens/${HoneyTokenType.AWS}/${currentOrg?.id}/trigger`;
-  }, [currentOrg?.id]);
+    return `${protocol}//${host}/api/v1/honey-tokens/${HoneyTokenType.AWS}/trigger`;
+  }, []);
 
   const { control, handleSubmit, watch, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -115,7 +121,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     } else {
       reset({
         connectionId: "",
-        webhookSigningKey: "",
+        webhookSigningKey: generateWebhookSigningKey(),
         stackName: DEFAULT_STACK_NAME,
         awsRegion: DEFAULT_AWS_REGION
       });
@@ -141,17 +147,48 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     [awsRegion, stackName, webhookSigningKey, webhookUrl]
   );
 
-  const onSubmit = async (data: FormData) => {
+  const saveConfig = async (data: FormData, status: HoneyTokenConfigStatus) =>
+    upsertConfig({
+      type: HoneyTokenType.AWS,
+      connectionId: data.connectionId,
+      status,
+      config: {
+        webhookSigningKey: data.webhookSigningKey,
+        stackName: data.stackName,
+        awsRegion: data.awsRegion
+      }
+    });
+
+  const onNext = async (data: FormData) => {
     try {
-      await upsertConfig({
-        type: HoneyTokenType.AWS,
-        connectionId: data.connectionId,
-        config: {
-          webhookSigningKey: data.webhookSigningKey,
-          stackName: data.stackName,
-          awsRegion: data.awsRegion
-        }
+      await saveConfig(data, HoneyTokenConfigStatus.VerificationPending);
+      createNotification({
+        text: "Settings saved. Deploy the CloudFormation stack, then click Save.",
+        type: "success"
       });
+    } catch {
+      createNotification({
+        text: "Failed to save honey token settings",
+        type: "error"
+      });
+    }
+  };
+
+  const onSave = async (data: FormData) => {
+    try {
+      await saveConfig(data, HoneyTokenConfigStatus.VerificationPending);
+      const result = await testConnection(HoneyTokenType.AWS);
+      if (!result.isConnected) {
+        createNotification({
+          text: result.status
+            ? `Stack "${result.stackName}" is not ready (status: ${result.status}).`
+            : `Stack "${result.stackName}" was not found. Deploy the stack first.`,
+          type: "error"
+        });
+        return;
+      }
+
+      await saveConfig(data, HoneyTokenConfigStatus.Complete);
       createNotification({
         text: "Honey token settings saved successfully",
         type: "success"
@@ -175,7 +212,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(hasSavedConfig ? onSave : onNext)}>
           <div className="mb-4 space-y-4">
             <Controller
               control={control}
@@ -224,6 +261,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                         type={isTokenVisible ? "text" : "password"}
                         placeholder="Enter webhook signing key..."
                         isError={Boolean(error)}
+                        readOnly={hasSavedConfig}
                         className="flex-1 font-mono"
                       />
                     )}
@@ -296,7 +334,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
             </Accordion>
           </div>
 
-          {isConfigured && (
+          {hasSavedConfig && (
             <div className="mb-4 rounded-md border border-border bg-container p-4">
               <div className="mb-3 flex items-center gap-2 text-sm text-mineshaft-300">
                 <FontAwesomeIcon icon={faTerminal} className="text-mineshaft-400" />
@@ -341,10 +379,10 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                 <Button
                   type="submit"
                   variant="org"
-                  isPending={isSaving}
-                  isDisabled={!isAllowed || isSaving}
+                  isPending={isSaving || isTestingConnection}
+                  isDisabled={!isAllowed || isSaving || isTestingConnection}
                 >
-                  {isConfigured ? "Update" : "Save"}
+                  {hasSavedConfig ? "Save" : "Next"}
                 </Button>
               )}
             </OrgPermissionCan>

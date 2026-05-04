@@ -8,6 +8,8 @@ import {
   DialogTitle,
   PageLoader
 } from "@app/components/v3";
+import { ProjectPermissionSub, useProjectPermission } from "@app/context";
+import { ProjectPermissionHoneyTokenActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetHoneyTokenCredentials } from "@app/hooks/api/honeyTokens";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
@@ -47,14 +49,27 @@ const ModalBody = ({
   projectId: string;
   isOpen: boolean;
 }) => {
+  const { permission } = useProjectPermission();
+  const canReadCredentials = permission.can(
+    ProjectPermissionHoneyTokenActions.ReadCredentials,
+    ProjectPermissionSub.HoneyTokens
+  );
   const { data: credentials, isPending } = useGetHoneyTokenCredentials({
     honeyTokenId: honeyToken?.id ?? "",
     projectId,
-    enabled: isOpen && Boolean(honeyToken)
+    enabled: isOpen && Boolean(honeyToken) && canReadCredentials
   });
 
   if (isPending) {
     return <PageLoader />;
+  }
+
+  if (!canReadCredentials) {
+    return (
+      <p className="text-sm text-muted">
+        You do not have permission to view honey token credentials.
+      </p>
+    );
   }
 
   if (credentials && honeyToken) {

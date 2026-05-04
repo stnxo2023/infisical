@@ -1,10 +1,15 @@
 import { BadRequestError } from "@app/lib/errors";
 
-import type { THoneyTokenConfigProvider, THoneyTokenConfigServiceFactoryDep } from "./honey-token-config-service";
+import type {
+  THoneyTokenConfigProvider,
+  THoneyTokenConfigServiceFactoryDep
+} from "../honey-token-config/honey-token-config-types";
+import { AWS_HONEY_TOKEN_PROVIDER_DEFINITION } from "./aws/honey-token-aws-provider-definition";
 import { HoneyTokenType } from "./honey-token-enums";
-import { HONEY_TOKEN_PROVIDER_DEFINITIONS, THoneyTokenProviderDefinition } from "./honey-token-provider-definitions";
-import { THoneyTokenProviderHooks } from "./honey-token-provider-hook-types";
-import type { THoneyTokenServiceFactoryDep } from "./honey-token-service-types";
+import type { THoneyTokenServiceFactoryDep } from "./honey-token-service";
+import { THoneyTokenProviderDefinition, THoneyTokenProviderHooks } from "./honey-token-service-types";
+
+const HONEY_TOKEN_PROVIDER_DEFINITIONS: THoneyTokenProviderDefinition[] = [AWS_HONEY_TOKEN_PROVIDER_DEFINITION];
 
 export const HONEY_TOKEN_PROVIDER_MAP: Record<HoneyTokenType, THoneyTokenProviderDefinition> =
   HONEY_TOKEN_PROVIDER_DEFINITIONS.reduce(
@@ -14,30 +19,6 @@ export const HONEY_TOKEN_PROVIDER_MAP: Record<HoneyTokenType, THoneyTokenProvide
     },
     {} as Record<HoneyTokenType, THoneyTokenProviderDefinition>
   );
-
-export const HONEY_TOKEN_NAME_MAP: Record<HoneyTokenType, string> = HONEY_TOKEN_PROVIDER_DEFINITIONS.reduce(
-  (acc, provider) => {
-    acc[provider.type] = provider.name;
-    return acc;
-  },
-  {} as Record<HoneyTokenType, string>
-);
-
-export const HONEY_TOKEN_CONNECTION_MAP = HONEY_TOKEN_PROVIDER_DEFINITIONS.reduce(
-  (acc, provider) => {
-    acc[provider.type] = provider.connectionApp;
-    return acc;
-  },
-  {} as Record<HoneyTokenType, THoneyTokenProviderDefinition["connectionApp"]>
-);
-
-export const HONEY_TOKEN_CONFIG_SCHEMA_MAP = HONEY_TOKEN_PROVIDER_DEFINITIONS.reduce(
-  (acc, provider) => {
-    acc[provider.type] = provider.configSchema;
-    return acc;
-  },
-  {} as Record<HoneyTokenType, THoneyTokenProviderDefinition["configSchema"]>
-);
 
 export const HONEY_TOKEN_CREDENTIALS_RESPONSE_SCHEMA_MAP = HONEY_TOKEN_PROVIDER_DEFINITIONS.reduce(
   (acc, provider) => {

@@ -242,7 +242,8 @@ type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
 export enum EntryType {
   FOLDER = "folder",
   SECRET = "secret",
-  SECRET_ROTATION = "secretRotation"
+  SECRET_ROTATION = "secretRotation",
+  HONEY_TOKEN = "honeyToken"
 }
 
 export enum RowType {
@@ -250,7 +251,8 @@ export enum RowType {
   DynamicSecret = "dynamic",
   Secret = "secret",
   SecretRotation = "rotation",
-  SecretImport = "import"
+  SecretImport = "import",
+  HoneyToken = "honeyToken"
 }
 
 type Filter = {
@@ -262,7 +264,8 @@ const DEFAULT_FILTER_STATE = {
   [RowType.DynamicSecret]: false,
   [RowType.Secret]: false,
   [RowType.SecretRotation]: false,
-  [RowType.SecretImport]: false
+  [RowType.SecretImport]: false,
+  [RowType.HoneyToken]: false
 };
 
 // const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
@@ -349,10 +352,12 @@ const OverviewPageContent = () => {
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
     [EntryType.SECRET_ROTATION]: Record<string, Record<string, TSecretRotationV2>>;
+    [EntryType.HONEY_TOKEN]: Record<string, Record<string, TDashboardHoneyToken>>;
   }>({
     [EntryType.FOLDER]: {},
     [EntryType.SECRET]: {},
-    [EntryType.SECRET_ROTATION]: {}
+    [EntryType.SECRET_ROTATION]: {},
+    [EntryType.HONEY_TOKEN]: {}
   });
 
   const {
@@ -378,7 +383,8 @@ const OverviewPageContent = () => {
     setSelectedEntries({
       [EntryType.FOLDER]: {},
       [EntryType.SECRET]: {},
-      [EntryType.SECRET_ROTATION]: {}
+      [EntryType.SECRET_ROTATION]: {},
+      [EntryType.HONEY_TOKEN]: {}
     });
   }, []);
 
@@ -568,7 +574,7 @@ const OverviewPageContent = () => {
       includeSecrets: activeTagSlugs.length > 0 || (isFilteredByResources ? filter.secret : true),
       includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
-      includeHoneyTokens: true,
+      includeHoneyTokens: isFilteredByResources ? (filter[RowType.HoneyToken] ?? true) : true,
       search: searchFilter,
       tags: tagFilter,
       limit,
@@ -2129,7 +2135,12 @@ const OverviewPageContent = () => {
   }, []);
 
   const allRowsSelectedOnPage = useMemo(() => {
-    if (!secrets?.length && !folders?.length && !secretRotationNames?.length)
+    if (
+      !secrets?.length &&
+      !folders?.length &&
+      !secretRotationNames?.length &&
+      !honeyTokenNames?.length
+    )
       return { isChecked: false, isIndeterminate: false };
 
     if (
@@ -2138,19 +2149,22 @@ const OverviewPageContent = () => {
       (!folders?.length ||
         folders?.every((folder) => selectedEntries[EntryType.FOLDER][folder.name])) &&
       (!secretRotationNames?.length ||
-        secretRotationNames?.every((name) => selectedEntries[EntryType.SECRET_ROTATION][name]))
+        secretRotationNames?.every((name) => selectedEntries[EntryType.SECRET_ROTATION][name])) &&
+      (!honeyTokenNames?.length ||
+        honeyTokenNames?.every((name) => selectedEntries[EntryType.HONEY_TOKEN][name]))
     )
       return { isChecked: true, isIndeterminate: false };
 
     if (
       secrets?.some((secret) => selectedEntries[EntryType.SECRET][secret.key]) ||
       folders?.some((folder) => selectedEntries[EntryType.FOLDER][folder.name]) ||
-      secretRotationNames?.some((name) => selectedEntries[EntryType.SECRET_ROTATION][name])
+      secretRotationNames?.some((name) => selectedEntries[EntryType.SECRET_ROTATION][name]) ||
+      honeyTokenNames?.some((name) => selectedEntries[EntryType.HONEY_TOKEN][name])
     )
       return { isChecked: true, isIndeterminate: true };
 
     return { isChecked: false, isIndeterminate: false };
-  }, [selectedEntries, secrets, folders, secretRotationNames]);
+  }, [selectedEntries, secrets, folders, secretRotationNames, honeyTokenNames]);
 
   const toggleSelectedEntry = useCallback(
     (type: EntryType, key: string) => {
@@ -2168,6 +2182,8 @@ const OverviewPageContent = () => {
             resource = getSecretByKey(env.slug, key);
           } else if (type === EntryType.FOLDER) {
             resource = getFolderByNameAndEnv(key, env.slug);
+          } else if (type === EntryType.HONEY_TOKEN) {
+            resource = getHoneyTokenByName(env.slug, key);
           } else {
             resource = getSecretRotationByName(env.slug, key);
           }
@@ -2178,7 +2194,13 @@ const OverviewPageContent = () => {
 
       setSelectedEntries(newChecks);
     },
-    [selectedEntries, getFolderByNameAndEnv, getSecretByKey, getSecretRotationByName]
+    [
+      selectedEntries,
+      getFolderByNameAndEnv,
+      getSecretByKey,
+      getSecretRotationByName,
+      getHoneyTokenByName
+    ]
   );
 
   const toggleSelectAllRows = () => {
@@ -2221,6 +2243,19 @@ const OverviewPageContent = () => {
           const resource = getSecretRotationByName(env.slug, rotationName);
 
           if (resource) newChecks[EntryType.SECRET_ROTATION][rotationName][env.slug] = resource;
+        }
+      });
+
+      honeyTokenNames?.forEach((honeyTokenName) => {
+        if (allRowsSelectedOnPage.isChecked) {
+          delete newChecks[EntryType.HONEY_TOKEN][honeyTokenName];
+        } else {
+          if (!newChecks[EntryType.HONEY_TOKEN][honeyTokenName])
+            newChecks[EntryType.HONEY_TOKEN][honeyTokenName] = {};
+
+          const resource = getHoneyTokenByName(env.slug, honeyTokenName);
+
+          if (resource) newChecks[EntryType.HONEY_TOKEN][honeyTokenName][env.slug] = resource;
         }
       });
     });
@@ -3134,6 +3169,10 @@ const OverviewPageContent = () => {
                               getHoneyTokenByName={getHoneyTokenByName}
                               tableWidth={tableWidth}
                               key={`overview-ht-${honeyTokenName}-${index + 1}`}
+                              isSelected={Boolean(selectedEntries.honeyToken[honeyTokenName])}
+                              onToggleHoneyTokenSelect={() =>
+                                toggleSelectedEntry(EntryType.HONEY_TOKEN, honeyTokenName)
+                              }
                               onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
                               onRevoke={(honeyToken) =>
                                 handlePopUpOpen("revokeHoneyToken", honeyToken)

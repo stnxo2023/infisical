@@ -11,11 +11,9 @@ export const registerAwsHoneyTokenRouter = async (server: FastifyZodProvider) =>
     type: HoneyTokenType.AWS,
     configSchema: AwsHoneyTokenConfigSchema,
     decryptedConfigSchema: AwsHoneyTokenConfigSchema,
-    testConnectionResponseSchema: z
-      .object({
-        isConnected: z.boolean(),
-        status: z.string().nullable(),
-        stackName: z.string()
-      })
-      .passthrough()
+    testConnectionResponseSchema: z.object({
+      isConnected: z.boolean(),
+      status: z.string().nullable(),
+      stackName: z.string()
+    })
   });

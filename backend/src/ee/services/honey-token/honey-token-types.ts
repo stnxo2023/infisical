@@ -3,19 +3,19 @@ import { z } from "zod";
 import { HoneyTokenEventType, HoneyTokenType } from "./honey-token-enums";
 
 export const AwsHoneyTokenEventMetadataSchema = z.object({
-  username: z.string(),
-  eventName: z.string(),
-  eventSource: z.string(),
-  sourceIp: z.string().optional(),
-  userAgent: z.string().optional(),
-  awsRegion: z.string(),
-  eventTime: z.string(),
-  accountId: z.string(),
   accessKeyId: z.string(),
-  errorCode: z.string().optional(),
-  errorMessage: z.string().optional(),
-  eventId: z.string(),
-  requestParameters: z.unknown().nullable()
+  eventName: z.string(),
+  eventTime: z.string(),
+  awsRegion: z.string(),
+  sourceIp: z.string().nullable().optional(),
+  userAgent: z.string().nullable().optional(),
+  username: z.string().nullable().optional(),
+  eventSource: z.string().nullable().optional(),
+  accountId: z.string().nullable().optional(),
+  errorCode: z.string().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
+  eventId: z.string().nullable().optional(),
+  requestParameters: z.unknown().nullable().optional()
 });
 
 export type TAwsHoneyTokenEventMetadata = z.infer<typeof AwsHoneyTokenEventMetadataSchema>;
@@ -38,6 +38,7 @@ export const AwsHoneyTokenConfigSchema = z.object({
 });
 
 export type TAwsHoneyTokenConfig = z.infer<typeof AwsHoneyTokenConfigSchema>;
+export type TAwsHoneyTokenConfigInput = z.input<typeof AwsHoneyTokenConfigSchema>;
 
 export const HoneyTokenConfigSchema = z.discriminatedUnion("type", [
   z.object({

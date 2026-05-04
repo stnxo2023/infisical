@@ -23,7 +23,6 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
         db.ref("status").withSchema(TableName.HoneyToken),
         db.ref("projectId").withSchema(TableName.HoneyToken),
         db.ref("folderId").withSchema(TableName.HoneyToken),
-        db.ref("connectionId").withSchema(TableName.HoneyToken),
         db.ref("secretsMapping").withSchema(TableName.HoneyToken),
         db.ref("createdAt").withSchema(TableName.HoneyToken),
         db.ref("updatedAt").withSchema(TableName.HoneyToken)
@@ -43,7 +42,6 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       status: row.status,
       projectId: row.projectId,
       folderId: row.folderId,
-      connectionId: row.connectionId,
       secretsMapping: row.secretsMapping as Record<string, string>,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -86,6 +84,25 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return row ? HoneyTokensSchema.parse(row) : null;
   };
 
+  const findOneByTokenIdentifier = async (
+    tokenIdentifier: string,
+    tx?: Knex
+  ): Promise<{ honeyToken: THoneyTokens; orgId: string } | null> => {
+    const row: unknown = await (tx || db.replicaNode())(TableName.HoneyToken)
+      .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.HoneyToken}.tokenIdentifier`, tokenIdentifier)
+      .select(`${TableName.HoneyToken}.*`, db.ref("orgId").withSchema(TableName.Project).as("orgId"))
+      .first();
+
+    if (!row) return null;
+    const parsedRow = HoneyTokensSchema.extend({ orgId: HoneyTokensSchema.shape.id }).parse(row);
+
+    return {
+      honeyToken: HoneyTokensSchema.parse(parsedRow),
+      orgId: parsedRow.orgId
+    };
+  };
+
   const countByOrgId = async (orgId: string, tx?: Knex) => {
     const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
@@ -123,12 +140,33 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return parsedRows.length > 0 ? parsedRows[0] : null;
   };
 
+  const createSecretMappings = async (honeyTokenId: string, secretIds: string[], tx?: Knex) => {
+    if (!secretIds.length) return;
+
+    await (tx || db)(TableName.HoneyTokenSecretMapping)
+      .insert(
+        secretIds.map((secretId) => ({
+          honeyTokenId,
+          secretId
+        }))
+      )
+      .onConflict("secretId")
+      .merge({ honeyTokenId });
+  };
+
+  const deleteSecretMappingsByHoneyTokenId = async (honeyTokenId: string, tx?: Knex) => {
+    await (tx || db)(TableName.HoneyTokenSecretMapping).where({ honeyTokenId }).delete();
+  };
+
   return {
     ...orm,
     findByFolderIds,
     countByFolderIds,
     findOneByTokenIdentifierAndOrgId,
+    findOneByTokenIdentifier,
     countByOrgId,
-    tryMarkTriggered
+    tryMarkTriggered,
+    createSecretMappings,
+    deleteSecretMappingsByHoneyTokenId
   };
 };

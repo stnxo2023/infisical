@@ -67,7 +67,9 @@ const InsightsPolicyActionSchema = z.object({
 
 const HoneyTokenPolicyActionSchema = z.object({
   [ProjectPermissionHoneyTokenActions.Read]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.ReadCredentials]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Create]: z.boolean().optional(),
+  [ProjectPermissionHoneyTokenActions.Edit]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Reset]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Revoke]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Delete]: z.boolean().optional()
@@ -1428,7 +1430,11 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
       if (subject === ProjectPermissionSub.HoneyTokens) {
         const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
+        const canReadCredentials = action.includes(
+          ProjectPermissionHoneyTokenActions.ReadCredentials
+        );
         const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
+        const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
         const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
         const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
         const canDelete = action.includes(ProjectPermissionHoneyTokenActions.Delete);
@@ -1436,7 +1442,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         if (!formVal[subject]) formVal[subject] = [{}];
 
         if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
+        if (canReadCredentials)
+          formVal[subject]![0][ProjectPermissionHoneyTokenActions.ReadCredentials] = true;
         if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
+        if (canEdit) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Edit] = true;
         if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
         if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
         if (canDelete) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Delete] = true;
@@ -1722,7 +1731,11 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
     if (subject === ProjectPermissionSub.HoneyTokens) {
       const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
+      const canReadCredentials = action.includes(
+        ProjectPermissionHoneyTokenActions.ReadCredentials
+      );
       const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
+      const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
       const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
       const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
       const canDelete = action.includes(ProjectPermissionHoneyTokenActions.Delete);
@@ -1730,7 +1743,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (!formVal[subject]) formVal[subject] = [{}];
 
       if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
+      if (canReadCredentials)
+        formVal[subject]![0][ProjectPermissionHoneyTokenActions.ReadCredentials] = true;
       if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Edit] = true;
       if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
       if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
       if (canDelete) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Delete] = true;
@@ -2470,12 +2486,22 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Read",
         value: ProjectPermissionHoneyTokenActions.Read,
-        description: "View honey tokens, events, and credentials"
+        description: "View honey tokens and events"
+      },
+      {
+        label: "Read Credentials",
+        value: ProjectPermissionHoneyTokenActions.ReadCredentials,
+        description: "Reveal honey token credentials"
       },
       {
         label: "Create",
         value: ProjectPermissionHoneyTokenActions.Create,
-        description: "Create and update honey tokens"
+        description: "Create honey tokens"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionHoneyTokenActions.Edit,
+        description: "Update honey token metadata and mappings"
       },
       {
         label: "Reset",

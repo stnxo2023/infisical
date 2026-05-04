@@ -1,12 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { HoneyTokensSchema, SecretFoldersSchema, SecretImportsSchema, SecretType } from "@app/db/schemas";
+import { SecretFoldersSchema, SecretImportsSchema, SecretType } from "@app/db/schemas";
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
-import { DASHBOARD } from "@app/lib/api-docs";
+import { DASHBOARD, INCLUDE_HONEY_TOKENS_DETAILS_DESC, INCLUDE_HONEY_TOKENS_OVERVIEW_DESC } from "@app/lib/api-docs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
@@ -17,6 +17,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
   booleanSchema,
   SanitizedDynamicSecretSchema,
+  SanitizedHoneyTokenSchema,
   SanitizedTagSchema,
   SanitizedUserSchema,
   secretRawSchema
@@ -31,31 +32,6 @@ import {
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
-const INCLUDE_HONEY_TOKENS_OVERVIEW_DESC = "Whether to include honey tokens in the overview response.";
-const INCLUDE_HONEY_TOKENS_DETAILS_DESC = "Whether to include honey tokens in the details response.";
-
-const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
-  id: true,
-  name: true,
-  description: true,
-  type: true,
-  status: true,
-  projectId: true,
-  folderId: true,
-  connectionId: true,
-  secretsMapping: true,
-  createdAt: true,
-  updatedAt: true
-}).extend({
-  environment: z.object({
-    id: z.string(),
-    name: z.string(),
-    slug: z.string()
-  }),
-  folder: z.object({
-    path: z.string()
-  })
-});
 
 const parseSecretPathSearch = (search?: string) => {
   if (!search)
@@ -374,7 +350,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      if (!includeDynamicSecrets && !includeSecrets && !includeSecretRotations)
+      if (!includeDynamicSecrets && !includeSecrets && !includeSecretRotations && !includeHoneyTokens)
         return {
           imports,
           folders,

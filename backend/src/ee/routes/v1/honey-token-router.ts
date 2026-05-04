@@ -6,7 +6,7 @@ import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
   HONEY_TOKEN_CREDENTIALS_RESPONSE_SCHEMA_MAP,
   HONEY_TOKEN_REGISTER_ROUTER_MAP
-} from "@app/ee/services/honey-token/honey-token-provider-registry";
+} from "@app/ee/services/honey-token/honey-token-provider-fns";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
