@@ -6710,15 +6710,12 @@ export type Event =
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
-<<<<<<< HEAD
   | ViewAuditLogsEvent
-=======
   | ViewPamInsightsSummaryEvent
   | ViewPamInsightsSessionActivityEvent
   | ViewPamInsightsTopActorsEvent
   | ViewPamInsightsResourceBreakdownEvent
   | ViewPamInsightsRotationCalendarEvent
->>>>>>> main
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
