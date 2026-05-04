@@ -476,6 +476,7 @@ export enum EventType {
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
   CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",
   CMEK_BULK_EXPORT_PRIVATE_KEYS = "cmek-bulk-export-private-keys",
+  CMEK_BULK_IMPORT_KEYS = "cmek-bulk-import-keys",
 
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
@@ -3693,6 +3694,15 @@ interface CmekBulkGetPrivateKeysEvent {
   };
 }
 
+interface CmekBulkImportKeysEvent {
+  type: EventType.CMEK_BULK_IMPORT_KEYS;
+  metadata: {
+    keyNames: string[];
+    failedKeyNames: string[];
+    projectId: string;
+  };
+}
+
 interface GetExternalGroupOrgRoleMappingsEvent {
   type: EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS;
   metadata?: Record<string, never>; // not needed, based off orgId
@@ -6571,6 +6581,7 @@ export type Event =
   | CmekGetPublicKeyEvent
   | CmekGetPrivateKeyEvent
   | CmekBulkGetPrivateKeysEvent
+  | CmekBulkImportKeysEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent
