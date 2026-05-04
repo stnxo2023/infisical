@@ -257,10 +257,17 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
     }
   };
 
-  const encryptCount = parsedKeys?.filter((k) => k.keyType === "encrypt-decrypt").length ?? 0;
-  const signCount = parsedKeys?.filter((k) => k.keyType === "sign-verify").length ?? 0;
+  const encryptCount = parsedKeys?.filter((k) => k?.keyType === "encrypt-decrypt").length ?? 0;
+  const signCount = parsedKeys?.filter((k) => k?.keyType === "sign-verify").length ?? 0;
   const errorByIndex = new Map(validationErrors.map((err) => [err.index, err.message]));
   const hasErrors = validationErrors.length > 0;
+
+  const renderFieldValue = (value: unknown, displayValue?: string) => {
+    if (typeof value !== "string" || value.length === 0) {
+      return <span className="text-foreground/40">N/A</span>;
+    }
+    return displayValue ?? value;
+  };
 
   const renderContent = () => {
     if (importResult) {
@@ -391,8 +398,9 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {parsedKeys.map((key, i) => {
+            {parsedKeys.map((rawKey, i) => {
               const errorMsg = errorByIndex.get(i);
+              const key: Partial<ParsedKey> = rawKey && typeof rawKey === "object" ? rawKey : {};
               return (
                 <TableRow
                   // eslint-disable-next-line react/no-array-index-key
@@ -413,16 +421,19 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
                           <TooltipContent>{errorMsg}</TooltipContent>
                         </Tooltip>
                       ) : null}
-                      <p className="truncate">{String(key.name ?? "")}</p>
+                      <p className="truncate">{renderFieldValue(key.name)}</p>
                     </div>
                   </TableCell>
                   <TableCell isTruncatable className="w-1/4 max-w-0">
                     <p className="truncate">
-                      {kmsKeyUsageOptions[key.keyType as KmsKeyUsage]?.label ?? key.keyType}
+                      {renderFieldValue(
+                        key.keyType,
+                        kmsKeyUsageOptions[key.keyType as KmsKeyUsage]?.label ?? key.keyType
+                      )}
                     </p>
                   </TableCell>
                   <TableCell isTruncatable className="w-1/4 max-w-0 uppercase">
-                    <p className="truncate">{String(key.algorithm ?? "")}</p>
+                    <p className="truncate">{renderFieldValue(key.algorithm)}</p>
                   </TableCell>
                 </TableRow>
               );
