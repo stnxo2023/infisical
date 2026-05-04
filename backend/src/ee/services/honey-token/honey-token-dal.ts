@@ -26,7 +26,9 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
         db.ref("connectionId").withSchema(TableName.HoneyToken),
         db.ref("secretsMapping").withSchema(TableName.HoneyToken),
         db.ref("createdAt").withSchema(TableName.HoneyToken),
-        db.ref("updatedAt").withSchema(TableName.HoneyToken),
+        db.ref("updatedAt").withSchema(TableName.HoneyToken)
+      )
+      .select(
         db.ref("id").withSchema(TableName.Environment).as("envId"),
         db.ref("name").withSchema(TableName.Environment).as("envName"),
         db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
