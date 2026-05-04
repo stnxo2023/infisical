@@ -13,8 +13,7 @@ dbSchemaChanges:
     description: A new external_migration_configs table is created with provider,
       encryptedConfig, orgId, and optional connectionId. Existing Vault
       migration configs are copied into the new table during migration.
-    action: Apply database migrations during upgrade. Verify the app can access
-      KMS/HSM-backed encryption settings while migrations run.
+    action: Apply database migrations during upgrade. 
     confidence: high
     evidence:
       - type: file
@@ -33,8 +32,8 @@ deploymentNotes:
     description: The migration initializes logger, HSM, super-admin, KMS root
       config, and encryption services before copying existing Vault migration
       rows into encryptedConfig.
-    action: Run migrations in an environment with the same KMS/HSM and super-admin
-      configuration as the application.
+    action: Run migrations in an environment with the same KMS/HSM
+      environment variables as the application.
     confidence: medium
     evidence:
       - type: file
