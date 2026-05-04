@@ -8,5 +8,6 @@ export enum PamSessionStatus {
 export enum TerminalChannelType {
   Terminal = "terminal", // Interactive SSH terminal session
   Exec = "exec", // SSH exec command
-  Sftp = "sftp" // SFTP file transfer session
+  Sftp = "sftp", // SFTP file transfer session
+  Rdp = "rdp" // RDP frame/input tap; data carries an RDP-specific JSON envelope
 }
