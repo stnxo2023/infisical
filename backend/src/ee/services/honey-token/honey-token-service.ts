@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrgMembershipRole, SecretType, TableName } from "@app/db/schemas";
+import { THoneyTokens } from "@app/db/schemas/honey-tokens";
 import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
@@ -688,7 +689,7 @@ export const honeyTokenServiceFactory = ({
     eventMetadata
   }: {
     orgId: string;
-    honeyToken: { id: string; name: string; projectId: string };
+    honeyToken: Pick<THoneyTokens, "id" | "name" | "projectId" | "folderId">;
     eventMetadata: {
       eventName: string;
       eventTime: string;
@@ -704,8 +705,18 @@ export const honeyTokenServiceFactory = ({
       const adminEmails = orgAdmins.map((admin) => admin.user.email).filter(Boolean) as string[];
       if (adminEmails.length === 0 || !project) return;
 
+      const [folderInfo] = await folderDAL.findSecretPathByFolderIds(project.id, [honeyToken.folderId]);
+
       const cfg = getAppConfig();
       const siteUrl = removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com");
+      const honeyTokenUrlSearch = new URLSearchParams({ honeyTokenId: honeyToken.id });
+
+      if (folderInfo?.path) {
+        honeyTokenUrlSearch.set("secretPath", folderInfo.path);
+      }
+
+      const honeyTokenUrl = `${siteUrl}/organizations/${orgId}/projects/secret-management/${project.id}/overview?${honeyTokenUrlSearch.toString()}`;
+
       await smtpService.sendMail({
         recipients: adminEmails,
         subjectLine: `Security Alert: Honey Token "${honeyToken.name}" Triggered`,
@@ -717,7 +728,7 @@ export const honeyTokenServiceFactory = ({
           eventTime: eventMetadata.eventTime,
           sourceIp: eventMetadata.sourceIp || "Unknown",
           awsRegion: eventMetadata.awsRegion,
-          projectUrl: `${siteUrl}/organizations/${orgId}/projects/secret-management/${project.id}/overview?honeyTokenId=${honeyToken.id}`
+          honeyTokenUrl
         }
       });
     } catch (err) {

@@ -11,7 +11,7 @@ interface HoneyTokenTriggeredTemplateProps extends Omit<BaseEmailWrapperProps, "
   eventTime: string;
   sourceIp: string;
   awsRegion: string;
-  projectUrl: string;
+  honeyTokenUrl: string;
 }
 
 export const HoneyTokenTriggeredTemplate = ({
@@ -21,7 +21,7 @@ export const HoneyTokenTriggeredTemplate = ({
   eventTime,
   sourceIp,
   awsRegion,
-  projectUrl,
+  honeyTokenUrl,
   siteUrl
 }: HoneyTokenTriggeredTemplateProps) => {
   return (
@@ -52,7 +52,7 @@ export const HoneyTokenTriggeredTemplate = ({
         <Text className="text-[14px] mt-[4px]">{awsRegion}</Text>
       </Section>
       <Section className="text-center mt-[24px]">
-        <BaseButton href={projectUrl}>Investigate Now</BaseButton>
+        <BaseButton href={honeyTokenUrl}>Investigate Now</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
@@ -67,6 +67,6 @@ HoneyTokenTriggeredTemplate.PreviewProps = {
   eventTime: "2026-04-28T12:00:00Z",
   sourceIp: "203.0.113.42",
   awsRegion: "us-east-1",
-  projectUrl: "https://app.infisical.com/project/123",
+  honeyTokenUrl: "https://app.infisical.com/project/123",
   siteUrl: "https://infisical.com"
 } as HoneyTokenTriggeredTemplateProps;
