@@ -341,6 +341,8 @@ export const honeyTokenServiceFactory = ({
       excludeReplication: true
     });
 
+    // This is not a blocker, so if it fails, we just warn the user that they need
+    // to deploy the stack.
     const stackDeployment = providerHooks.verifyDeployment
       ? await providerHooks.verifyDeployment({
           appConnection,
