@@ -441,7 +441,7 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
         )}
 
         <DialogFooter className="items-center">
-          <Button variant="ghost" onClick={reset} className="mr-auto">
+          <Button variant="outline" onClick={reset} className="mr-auto">
             Back
           </Button>
           <DialogClose asChild>
