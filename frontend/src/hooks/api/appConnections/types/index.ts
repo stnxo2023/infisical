@@ -19,6 +19,7 @@ import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDbtConnection } from "./dbt-connection";
+import { TDevinConnection } from "./devin-connection";
 import { TDigiCertConnection } from "./digicert-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
@@ -52,6 +53,7 @@ import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
 import { TSmbConnection } from "./smb-connection";
+import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSshConnection } from "./ssh-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -81,6 +83,7 @@ export * from "./circleci-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
 export * from "./dbt-connection";
+export * from "./devin-connection";
 export * from "./digicert-connection";
 export * from "./dns-made-easy-connection";
 export * from "./doppler-connection";
@@ -113,6 +116,7 @@ export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
 export * from "./smb-connection";
+export * from "./snowflake-connection";
 export * from "./ssh-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
@@ -183,11 +187,12 @@ export type TAppConnection =
   | TExternalInfisicalConnection
   | TNetScalerConnection
   | TDopplerConnection
-  | TNetScalerConnection
   | TOvhConnection
+  | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
-  | TTravisCIConnection;
+  | TTravisCIConnection
+  | TSnowflakeConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

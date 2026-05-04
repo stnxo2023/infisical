@@ -58,7 +58,9 @@ export enum AppConnection {
   NetScaler = "netscaler",
   Anthropic = "anthropic",
   OVH = "ovh",
+  Devin = "devin",
   Ona = "ona",
   DigiCert = "digicert",
-  TravisCI = "travis-ci"
+  TravisCI = "travis-ci",
+  Snowflake = "snowflake"
 }

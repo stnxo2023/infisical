@@ -108,6 +108,7 @@ import {
   validateDatabricksConnectionCredentials
 } from "./databricks/databricks-connection-fns";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
+import { DevinConnectionMethod, getDevinConnectionListItem, validateDevinConnectionCredentials } from "./devin";
 import {
   DigiCertConnectionMethod,
   getDigiCertConnectionListItem,
@@ -192,6 +193,11 @@ import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnect
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
+import {
+  getSnowflakeConnectionListItem,
+  SnowflakeConnectionMethod,
+  validateSnowflakeConnectionCredentials
+} from "./snowflake";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
 import {
   getSupabaseConnectionListItem,
@@ -309,6 +315,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSmbConnectionListItem(),
     getOpenRouterConnectionListItem(),
     getAnthropicConnectionListItem(),
+    getDevinConnectionListItem(),
     getCircleCIConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
@@ -319,7 +326,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOvhConnectionListItem(),
     getOnaConnectionListItem(),
     getDigiCertConnectionListItem(),
-    getTravisCIConnectionListItem()
+    getTravisCIConnectionListItem(),
+    getSnowflakeConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -462,6 +470,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Anthropic]: validateAnthropicConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Devin]: validateDevinConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -480,7 +489,8 @@ export const validateAppConnectionCredentials = async (
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OVH]: validateOvhConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Snowflake]: validateSnowflakeConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -544,6 +554,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return "Username & Password";
+    case SnowflakeConnectionMethod.UsernameAndToken:
+      return "Username & Token";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
@@ -568,6 +580,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OctopusDeployConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
@@ -687,6 +700,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.SMB]: platformManagedCredentialsNotSupported,
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
   [AppConnection.Anthropic]: platformManagedCredentialsNotSupported,
+  [AppConnection.Devin]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
@@ -697,7 +711,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OVH]: platformManagedCredentialsNotSupported,
   [AppConnection.Ona]: platformManagedCredentialsNotSupported,
   [AppConnection.DigiCert]: platformManagedCredentialsNotSupported,
-  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported
+  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.Snowflake]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

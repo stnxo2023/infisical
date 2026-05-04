@@ -16,6 +16,7 @@ import { TCircleCISync } from "./circleci-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
+import { TDevinSync } from "./devin-sync";
 import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync";
 import { TExternalInfisicalSync } from "./external-infisical-sync";
 import { TFlyioSync } from "./flyio-sync";
@@ -34,6 +35,7 @@ import { TOnaSync } from "./ona-sync";
 import { TOvhSync } from "./ovh-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
+import { TSnowflakeSync } from "./snowflake-sync";
 import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
@@ -91,8 +93,10 @@ export type TSecretSync =
   | TAzureEntraIdScimSync
   | TExternalInfisicalSync
   | TOvhSync
+  | TDevinSync
   | TOnaSync
-  | TTravisCISync;
+  | TTravisCISync
+  | TSnowflakeSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

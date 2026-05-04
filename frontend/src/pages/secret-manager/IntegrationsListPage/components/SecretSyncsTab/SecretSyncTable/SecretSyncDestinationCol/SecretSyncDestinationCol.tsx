@@ -15,6 +15,7 @@ import { CircleCISyncDestinationCol } from "./CircleCISyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
+import { DevinSyncDestinationCol } from "./DevinSyncDestinationCol";
 import { DigitalOceanAppPlatformSyncDestinationCol } from "./DigitalOceanAppPlatformSyncDestinationCol";
 import { ExternalInfisicalSyncDestinationCol } from "./ExternalInfisicalSyncDestinationCol";
 import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
@@ -33,6 +34,7 @@ import { OnaSyncDestinationCol } from "./OnaSyncDestinationCol";
 import { OvhSyncDestinationCol } from "./OvhSyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
+import { SnowflakeSyncDestinationCol } from "./SnowflakeSyncDestinationCol";
 import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
@@ -123,10 +125,14 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <ExternalInfisicalSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.OVH:
       return <OvhSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Devin:
+      return <DevinSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Ona:
       return <OnaSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.TravisCI:
       return <TravisCISyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Snowflake:
+      return <SnowflakeSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

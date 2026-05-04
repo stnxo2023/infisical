@@ -41,8 +41,10 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.AzureEntraIdScim]: "Azure Entra ID SCIM",
   [SecretSync.ExternalInfisical]: "Infisical",
   [SecretSync.OVH]: "OVH",
+  [SecretSync.Devin]: "Devin",
   [SecretSync.Ona]: "Ona",
-  [SecretSync.TravisCI]: "Travis CI"
+  [SecretSync.TravisCI]: "Travis CI",
+  [SecretSync.Snowflake]: "Snowflake"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -84,8 +86,10 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId,
   [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical,
   [SecretSync.OVH]: AppConnection.OVH,
+  [SecretSync.Devin]: AppConnection.Devin,
   [SecretSync.Ona]: AppConnection.Ona,
-  [SecretSync.TravisCI]: AppConnection.TravisCI
+  [SecretSync.TravisCI]: AppConnection.TravisCI,
+  [SecretSync.Snowflake]: AppConnection.Snowflake
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -127,8 +131,10 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.AzureEntraIdScim]: SecretSyncPlanType.Regular,
   [SecretSync.ExternalInfisical]: SecretSyncPlanType.Regular,
   [SecretSync.OVH]: SecretSyncPlanType.Regular,
+  [SecretSync.Devin]: SecretSyncPlanType.Regular,
   [SecretSync.Ona]: SecretSyncPlanType.Regular,
-  [SecretSync.TravisCI]: SecretSyncPlanType.Regular
+  [SecretSync.TravisCI]: SecretSyncPlanType.Regular,
+  [SecretSync.Snowflake]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -179,8 +185,10 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.AzureEntraIdScim]: [],
   [SecretSync.ExternalInfisical]: [],
   [SecretSync.OVH]: [],
+  [SecretSync.Devin]: [],
   [SecretSync.Ona]: ["projectName"],
-  [SecretSync.TravisCI]: ["repositorySlug"]
+  [SecretSync.TravisCI]: ["repositorySlug"],
+  [SecretSync.Snowflake]: []
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
@@ -248,8 +256,10 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.AzureEntraIdScim]: defaultDuplicateCheck,
   [SecretSync.ExternalInfisical]: defaultDuplicateCheck,
   [SecretSync.OVH]: defaultDuplicateCheck,
+  [SecretSync.Devin]: defaultDuplicateCheck,
   [SecretSync.Ona]: defaultDuplicateCheck,
-  [SecretSync.TravisCI]: defaultDuplicateCheck
+  [SecretSync.TravisCI]: defaultDuplicateCheck,
+  [SecretSync.Snowflake]: defaultDuplicateCheck
 };
 
 /**

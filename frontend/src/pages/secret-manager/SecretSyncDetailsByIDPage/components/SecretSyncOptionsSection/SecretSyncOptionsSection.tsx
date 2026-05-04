@@ -81,8 +81,10 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.AzureEntraIdScim:
     case SecretSync.ExternalInfisical:
     case SecretSync.OVH:
+    case SecretSync.Devin:
     case SecretSync.Ona:
     case SecretSync.TravisCI:
+    case SecretSync.Snowflake:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

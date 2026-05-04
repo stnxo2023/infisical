@@ -131,6 +131,12 @@ import {
   TValidateDbtConnectionCredentialsSchema
 } from "./dbt";
 import {
+  TDevinConnection,
+  TDevinConnectionConfig,
+  TDevinConnectionInput,
+  TValidateDevinConnectionCredentialsSchema
+} from "./devin";
+import {
   TDigiCertConnection,
   TDigiCertConnectionConfig,
   TDigiCertConnectionInput,
@@ -306,6 +312,12 @@ import {
   TValidateSmbConnectionCredentialsSchema
 } from "./smb";
 import {
+  TSnowflakeConnection,
+  TSnowflakeConnectionConfig,
+  TSnowflakeConnectionInput,
+  TValidateSnowflakeConnectionCredentialsSchema
+} from "./snowflake";
+import {
   TSshConnection,
   TSshConnectionConfig,
   TSshConnectionInput,
@@ -426,9 +438,11 @@ export type TAppConnection = { id: string } & (
   | TNetScalerConnection
   | TAnthropicConnection
   | TOvhConnection
+  | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
   | TTravisCIConnection
+  | TSnowflakeConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -499,9 +513,11 @@ export type TAppConnectionInput = { id: string } & (
   | TNetScalerConnectionInput
   | TAnthropicConnectionInput
   | TOvhConnectionInput
+  | TDevinConnectionInput
   | TOnaConnectionInput
   | TDigiCertConnectionInput
   | TTravisCIConnectionInput
+  | TSnowflakeConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -601,9 +617,11 @@ export type TAppConnectionConfig =
   | TNetScalerConnectionConfig
   | TAnthropicConnectionConfig
   | TOvhConnectionConfig
+  | TDevinConnectionConfig
   | TOnaConnectionConfig
   | TDigiCertConnectionConfig
-  | TTravisCIConnectionConfig;
+  | TTravisCIConnectionConfig
+  | TSnowflakeConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -665,9 +683,11 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateNetScalerConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema
   | TValidateOvhConnectionCredentialsSchema
+  | TValidateDevinConnectionCredentialsSchema
   | TValidateOnaConnectionCredentialsSchema
   | TValidateDigiCertConnectionCredentialsSchema
-  | TValidateTravisCIConnectionCredentialsSchema;
+  | TValidateTravisCIConnectionCredentialsSchema
+  | TValidateSnowflakeConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

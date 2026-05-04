@@ -30,6 +30,7 @@ import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
+import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
 import { ExternalInfisicalSyncReviewFields } from "./ExternalInfisicalSyncReviewFields";
 import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
@@ -49,6 +50,7 @@ import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
+import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
 import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
@@ -204,11 +206,17 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.OVH:
       DestinationFieldsComponent = <OvhSyncReviewFields />;
       break;
+    case SecretSync.Devin:
+      DestinationFieldsComponent = <DevinSyncReviewFields />;
+      break;
     case SecretSync.Ona:
       DestinationFieldsComponent = <OnaSyncReviewFields />;
       break;
     case SecretSync.TravisCI:
       DestinationFieldsComponent = <TravisCISyncReviewFields />;
+      break;
+    case SecretSync.Snowflake:
+      DestinationFieldsComponent = <SnowflakeSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
