@@ -109,7 +109,8 @@ const buildService = (kubernetesAuthRecord: KubernetesAuthRecord, caCertPlainTex
       findById: vi.fn(async () => ({ id: "o-1", name: "test-org", rootOrgId: null })),
       findOne: vi.fn(),
       findEffectiveOrgMembership: vi.fn()
-    } as any
+    } as any,
+    identityAccessTokenService: { issueIdentityAccessToken: vi.fn(), revokeAllTokensForIdentity: vi.fn() } as any
   });
 };
 
