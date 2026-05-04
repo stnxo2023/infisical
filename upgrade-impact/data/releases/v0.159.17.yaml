@@ -3,7 +3,7 @@ releasedAt: 2026-04-18T12:45:00+02:00
 sourceTag: v0.159.17
 previousTag: v0.159.16
 impactLevel: medium
-summary: Run the new database migration before serving traffic. It creates a new
+summary: Run the new database migrations. The migration creates a new
   external migration config table and copies existing Vault migration settings
   into it.
 requiresDbMigration: true
