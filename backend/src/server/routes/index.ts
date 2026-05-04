@@ -310,6 +310,7 @@ import { identityMetadataDALFactory } from "@app/services/identity/identity-meta
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
 import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
+import { identityAccessTokenRevocationDALFactory } from "@app/services/identity-access-token/identity-access-token-revocation-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { identityAliCloudAuthDALFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-dal";
 import { identityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
@@ -558,6 +559,7 @@ export const registerRoutes = async (
   const identityV2DAL = identityV2DALFactory(db);
   const identityMetadataDAL = identityMetadataDALFactory(db);
   const identityAccessTokenDAL = identityAccessTokenDALFactory(db);
+  const identityAccessTokenRevocationDAL = identityAccessTokenRevocationDALFactory(db);
   const identityOrgMembershipDAL = identityOrgDALFactory(db);
   const identityGroupMembershipDAL = identityGroupMembershipDALFactory(db);
   const identityProjectDAL = identityProjectDALFactory(db);
@@ -1879,6 +1881,14 @@ export const registerRoutes = async (
     membershipRoleDAL
   });
 
+  const identityAccessTokenService = identityAccessTokenServiceFactory({
+    identityAccessTokenDAL,
+    identityAccessTokenRevocationDAL,
+    identityDAL,
+    orgDAL,
+    keyStore
+  });
+
   const identityV2Service = identityV2ServiceFactory({
     membershipIdentityDAL,
     membershipRoleDAL,
@@ -1886,6 +1896,7 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     identityDAL: identityV2DAL,
+    identityAccessTokenService,
     keyStore
   });
 
@@ -1904,32 +1915,26 @@ export const registerRoutes = async (
     auditLogService
   });
 
-  const identityAccessTokenService = identityAccessTokenServiceFactory({
-    identityAccessTokenDAL,
-    accessTokenQueue,
-    identityDAL,
-    orgDAL
-  });
-
   const identityTokenAuthService = identityTokenAuthServiceFactory({
     identityTokenAuthDAL,
     identityAccessTokenDAL,
     permissionService,
     licenseService,
     orgDAL,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const identityUaService = identityUaServiceFactory({
     identityDAL,
     permissionService,
-    identityAccessTokenDAL,
     identityUaClientSecretDAL,
     identityUaDAL,
     licenseService,
     keyStore,
     orgDAL,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
@@ -1946,7 +1951,8 @@ export const registerRoutes = async (
     kmsService,
     membershipIdentityDAL,
     gatewayPoolService,
-    gatewayPoolDAL
+    gatewayPoolDAL,
+    identityAccessTokenService
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
     identityDAL,
@@ -1955,7 +1961,8 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const identityAliCloudAuthService = identityAliCloudAuthServiceFactory({
@@ -1965,7 +1972,8 @@ export const registerRoutes = async (
     identityAliCloudAuthDAL,
     licenseService,
     permissionService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const identityTlsCertAuthService = identityTlsCertAuthServiceFactory({
@@ -1976,7 +1984,8 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     membershipIdentityDAL,
-    orgDAL
+    orgDAL,
+    identityAccessTokenService
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
@@ -1986,7 +1995,8 @@ export const registerRoutes = async (
     identityAwsAuthDAL,
     licenseService,
     permissionService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const identityAzureAuthService = identityAzureAuthServiceFactory({
@@ -1996,7 +2006,8 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const identityOciAuthService = identityOciAuthServiceFactory({
@@ -2006,7 +2017,8 @@ export const registerRoutes = async (
     identityOciAuthDAL,
     licenseService,
     permissionService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const pitService = pitServiceFactory({
@@ -2032,7 +2044,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const identityJwtAuthService = identityJwtAuthServiceFactory({
@@ -2043,7 +2056,8 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     licenseService,
     kmsService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const identitySpiffeAuthService = identitySpiffeAuthServiceFactory({
@@ -2054,7 +2068,8 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     licenseService,
     kmsService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const identityLdapAuthService = identityLdapAuthServiceFactory({
@@ -2067,7 +2082,8 @@ export const registerRoutes = async (
     identityDAL,
     identityAuthTemplateDAL,
     keyStore,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    identityAccessTokenService
   });
 
   const convertorService = convertorServiceFactory({
@@ -2183,6 +2199,7 @@ export const registerRoutes = async (
     secretFolderVersionDAL: folderVersionDAL,
     snapshotDAL,
     identityAccessTokenDAL,
+    identityAccessTokenRevocationDAL,
     secretSharingDAL,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
@@ -3392,7 +3409,8 @@ export const registerRoutes = async (
           redisConfigured: z.boolean().optional(),
           secretScanningConfigured: z.boolean().optional(),
           samlDefaultOrgSlug: z.string().optional(),
-          auditLogStorageDisabled: z.boolean().optional()
+          auditLogStorageDisabled: z.boolean().optional(),
+          maxIdentityAccessTokenTTL: z.number().optional()
         })
       }
     },
@@ -3420,7 +3438,8 @@ export const registerRoutes = async (
         redisConfigured: cfg.isRedisConfigured,
         secretScanningConfigured: cfg.isSecretScanningConfigured,
         samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
-        auditLogStorageDisabled: Boolean(cfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE)
+        auditLogStorageDisabled: Boolean(cfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE),
+        maxIdentityAccessTokenTTL: cfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
       };
     }
   });

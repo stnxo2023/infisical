@@ -65,6 +65,7 @@ export * from "./group-project-membership-roles";
 export * from "./group-project-memberships";
 export * from "./groups";
 export * from "./identities";
+export * from "./identity-access-token-revocations";
 export * from "./identity-access-tokens";
 export * from "./identity-alicloud-auths";
 export * from "./identity-aws-auths";
