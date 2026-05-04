@@ -49,6 +49,10 @@ description: "Learn how to configure a Snowflake Sync for Infisical."
           Infisical validates that the database and schema exist before creating any secrets. If either is missing or the connected Snowflake user lacks access, the sync fails with a descriptive error and no changes are written.
         </Note>
 
+        <Note>
+          Databases and schemas in the selectors are returned in lexicographic (A–Z) order by name. See [Snowflake's `SHOW DATABASES` reference](https://docs.snowflake.com/en/sql-reference/sql/show-databases) for details.
+        </Note>
+
     5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
         ![Configure Options](/images/secret-syncs/snowflake/sync-options.png)
 
