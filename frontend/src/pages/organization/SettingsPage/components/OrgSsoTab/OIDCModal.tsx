@@ -124,7 +124,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
 
   const { data } = useGetOIDCConfig(currentOrg?.id ?? "");
 
-  const { control, handleSubmit, reset, setValue, watch, formState } = useForm<OIDCFormData>({
+  const { control, handleSubmit, reset, setValue, watch } = useForm<OIDCFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       configurationType: ConfigurationType.DISCOVERY_URL

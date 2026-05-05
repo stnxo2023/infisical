@@ -16,7 +16,6 @@ import {
   HardDrive,
   IdCardLanyard,
   Key,
-  LayoutDashboard,
   Lock,
   MapPin,
   Plug,
