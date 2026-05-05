@@ -216,6 +216,12 @@ export const OrgSsoTab = withPermission(
       else if (provider === "ldap") handleConnectLdap();
     };
 
+    const isProviderEntitled = (provider: "saml" | "oidc" | "ldap") => {
+      if (provider === "saml") return Boolean(subscription?.samlSSO);
+      if (provider === "oidc") return Boolean(subscription?.oidcSSO);
+      return Boolean(subscription?.ldap);
+    };
+
     const handleConnectSelected = () => {
       if (!selectedProvider) return;
       const exclude = chooserExclude;
@@ -223,6 +229,10 @@ export const OrgSsoTab = withPermission(
       closeChooser();
 
       if (exclude && (target === "saml" || target === "oidc" || target === "ldap")) {
+        if (!isProviderEntitled(target)) {
+          openSelectedProvider(target);
+          return;
+        }
         setPendingSwitch({ from: exclude, to: target });
         return;
       }
@@ -239,6 +249,12 @@ export const OrgSsoTab = withPermission(
     const handleConfirmSwitch = async () => {
       if (!pendingSwitch || !currentOrg) return;
       const { from, to } = pendingSwitch;
+
+      if (!isProviderEntitled(to)) {
+        setPendingSwitch(null);
+        openSelectedProvider(to);
+        return;
+      }
 
       if (from === "saml") {
         await updateSamlAsync({
