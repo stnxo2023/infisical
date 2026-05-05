@@ -817,12 +817,19 @@ export const pamAccountServiceFactory = ({
 
       const accountMeta = await pamAccountDAL.findMetadataByAccountIds([account.id]);
 
+      // For domain accounts the subject scopes to {domainName, domainType} (matching
+      // create/list/etc). Using {resourceName, resourceType} would let a role keyed on
+      // a single resource authorize every domain account, and a role keyed on the
+      // domain wouldn't match because the field would be undefined.
+      const domain = isDomainAccount && account.domainId ? await pamDomainDAL.findById(account.domainId) : null;
+
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPamAccountActions.Access,
         subject(ProjectPermissionSub.PamAccounts, {
-          resourceName: resource.name,
           accountName: account.name,
-          resourceType: resource.resourceType,
+          ...(isDomainAccount && domain
+            ? { domainName: domain.name, domainType: domain.domainType }
+            : { resourceName: resource.name, resourceType: resource.resourceType }),
           metadata: accountMeta[account.id] || []
         })
       );
