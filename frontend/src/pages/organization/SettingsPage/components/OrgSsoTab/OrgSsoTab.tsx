@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IdCardIcon, Info, Plus, Trash2 } from "lucide-react";
+import { ArrowLeftRight, IdCardIcon, Info, Plus } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -513,7 +513,7 @@ export const OrgSsoTab = withPermission(
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogMedia>
-                    <Trash2 />
+                    <ArrowLeftRight />
                   </AlertDialogMedia>
                   <AlertDialogTitle>
                     {pendingSwitch
