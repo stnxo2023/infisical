@@ -1377,10 +1377,7 @@ export const pamAccountServiceFactory = ({
     }
 
     if (decryptedResource.resourceType === PamResource.Windows) {
-      const { hostname, ...rest } = decryptedResource.connectionDetails as {
-        hostname: string;
-        [key: string]: unknown;
-      };
+      const { hostname, ...rest } = decryptedResource.connectionDetails;
       return {
         credentials: {
           ...rest,
@@ -1390,7 +1387,8 @@ export const pamAccountServiceFactory = ({
         policyRules,
         projectId: project.id,
         account,
-        sessionStarted
+        sessionStarted,
+        recording: sessionRecordingSecrets
       };
     }
 
