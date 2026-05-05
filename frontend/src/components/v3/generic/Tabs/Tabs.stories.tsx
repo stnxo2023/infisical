@@ -3,13 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CreditCard, Info, Key, Lock, Plus, ScrollText, Settings, User, Users } from "lucide-react";
 
 import { Button } from "../Button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "../Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../Card";
 import { Field, FieldLabel } from "../Field";
 import { Input } from "../Input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Select";

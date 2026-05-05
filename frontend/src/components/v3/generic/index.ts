@@ -30,6 +30,7 @@ export * from "./Separator";
 export * from "./Sheet";
 export * from "./Sidebar";
 export * from "./Skeleton";
+export * from "./Stepper";
 export * from "./Switch";
 export * from "./Table";
 export * from "./Tabs";
