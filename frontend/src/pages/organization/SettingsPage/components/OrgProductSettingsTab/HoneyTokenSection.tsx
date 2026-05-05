@@ -7,8 +7,7 @@ import {
   HoneyTokenConfigStatus,
   HoneyTokenType,
   useGetHoneyTokenConfig,
-  useTestHoneyTokenConnection,
-  useUpsertHoneyTokenConfig
+  useTestHoneyTokenConnection
 } from "@app/hooks/api/honeyToken";
 
 import { HoneyTokenModal } from "./HoneyTokenModal";
@@ -20,7 +19,6 @@ export const HoneyTokenSection = () => {
     retry: false
   });
   const { mutateAsync: testConnection, isPending: isTesting } = useTestHoneyTokenConnection();
-  const { mutateAsync: upsertConfig, isPending: isSaving } = useUpsertHoneyTokenConfig();
 
   const hasConfig = Boolean(existingConfig);
   const isConfigVerified = existingConfig?.status === HoneyTokenConfigStatus.Complete;
@@ -29,19 +27,6 @@ export const HoneyTokenSection = () => {
     try {
       const result = await testConnection(HoneyTokenType.AWS);
       if (result.isConnected) {
-        if (existingConfig?.decryptedConfig) {
-          await upsertConfig({
-            type: HoneyTokenType.AWS,
-            connectionId: existingConfig.connectionId,
-            status: HoneyTokenConfigStatus.Complete,
-            config: {
-              webhookSigningKey: existingConfig.decryptedConfig.webhookSigningKey,
-              stackName: existingConfig.decryptedConfig.stackName,
-              awsRegion: existingConfig.decryptedConfig.awsRegion
-            }
-          });
-        }
-
         createNotification({
           text: `CloudFormation stack "${result.stackName}" is deployed and healthy.`,
           type: "success"
@@ -88,8 +73,8 @@ export const HoneyTokenSection = () => {
               {hasConfig && (
                 <Button
                   variant="outline"
-                  isDisabled={!isAllowed || isTesting || isSaving}
-                  isPending={isTesting || isSaving}
+                  isDisabled={!isAllowed || isTesting}
+                  isPending={isTesting}
                   onClick={handleTestConnection}
                 >
                   Verify Connection

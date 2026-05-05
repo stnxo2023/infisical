@@ -28,7 +28,6 @@ import { useTimedReset, useToggle } from "@app/hooks";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
-  HoneyTokenConfigStatus,
   HoneyTokenType,
   useGetHoneyTokenConfig,
   useTestHoneyTokenConnection,
@@ -147,11 +146,10 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     [awsRegion, stackName, webhookSigningKey, webhookUrl]
   );
 
-  const saveConfig = async (data: FormData, status: HoneyTokenConfigStatus) =>
+  const saveConfig = async (data: FormData) =>
     upsertConfig({
       type: HoneyTokenType.AWS,
       connectionId: data.connectionId,
-      status,
       config: {
         webhookSigningKey: data.webhookSigningKey,
         stackName: data.stackName,
@@ -161,7 +159,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
 
   const onNext = async (data: FormData) => {
     try {
-      await saveConfig(data, HoneyTokenConfigStatus.VerificationPending);
+      await saveConfig(data);
       createNotification({
         text: "Settings saved. Deploy the CloudFormation stack, then click Save.",
         type: "success"
@@ -176,7 +174,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
 
   const onSave = async (data: FormData) => {
     try {
-      await saveConfig(data, HoneyTokenConfigStatus.VerificationPending);
+      await saveConfig(data);
       const result = await testConnection(HoneyTokenType.AWS);
       if (!result.isConnected) {
         createNotification({
@@ -187,8 +185,6 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
         });
         return;
       }
-
-      await saveConfig(data, HoneyTokenConfigStatus.Complete);
       createNotification({
         text: "Honey token settings saved successfully",
         type: "success"

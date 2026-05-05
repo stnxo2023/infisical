@@ -1,4 +1,3 @@
-import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
 import { TAwsHoneyTokenConfig, TAwsHoneyTokenConfigInput } from "../honey-token-types";
 
 export type THoneyTokenConfigRecord = {
@@ -33,7 +32,6 @@ export type TVerifyStackDeploymentInput = {
 export type TUpsertAwsHoneyTokenConfigInput = {
   orgId: string;
   connectionId: string;
-  status: HoneyTokenConfigStatus;
   config: TAwsHoneyTokenConfigInput;
 };
 

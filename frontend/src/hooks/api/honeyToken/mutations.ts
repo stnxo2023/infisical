@@ -12,7 +12,6 @@ export const useUpsertHoneyTokenConfig = () => {
     mutationFn: async (dto: TUpsertHoneyTokenConfigDTO) => {
       const { data } = await apiRequest.put(`/api/v1/honey-tokens/${dto.type}/configs`, {
         connectionId: dto.connectionId,
-        status: dto.status,
         config: dto.config
       });
       return data.config;
@@ -24,6 +23,8 @@ export const useUpsertHoneyTokenConfig = () => {
 };
 
 export const useTestHoneyTokenConnection = () => {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (type: HoneyTokenType) => {
       const { data } = await apiRequest.post<{
@@ -32,6 +33,9 @@ export const useTestHoneyTokenConnection = () => {
         stackName: string;
       }>(`/api/v1/honey-tokens/${type}/configs/test-connection`);
       return data;
+    },
+    onSettled: (_, __, type) => {
+      queryClient.invalidateQueries({ queryKey: honeyTokenKeys.config(type) });
     }
   });
 };

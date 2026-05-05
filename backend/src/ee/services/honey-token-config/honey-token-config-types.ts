@@ -14,7 +14,6 @@ import {
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
-import { HoneyTokenConfigStatus } from "./honey-token-config-enums";
 
 export type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
@@ -27,7 +26,6 @@ export type THoneyTokenConfigServiceFactoryDep = {
 export type THoneyTokenConfigProviderUpsertInput<T extends HoneyTokenType = HoneyTokenType> = {
   orgId: string;
   connectionId: string;
-  status: HoneyTokenConfigStatus;
   config: THoneyTokenConfigByType[T];
 };
 
@@ -51,7 +49,6 @@ export type THoneyTokenConfigServiceUpsertInput<T extends HoneyTokenType = Honey
   orgPermission: OrgServiceActor;
   type: T;
   connectionId: string;
-  status: HoneyTokenConfigStatus;
   config: THoneyTokenConfigByType[T];
 };
 

@@ -25,7 +25,6 @@ export type THoneyTokenConfig = {
 export type TUpsertHoneyTokenConfigDTO = {
   type: HoneyTokenType;
   connectionId: string;
-  status: HoneyTokenConfigStatus;
   config: {
     webhookSigningKey: string;
     stackName?: string;

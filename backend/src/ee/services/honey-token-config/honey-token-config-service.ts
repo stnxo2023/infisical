@@ -42,7 +42,6 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
     orgPermission,
     type,
     connectionId,
-    status,
     config
   }: THoneyTokenConfigServiceUpsertInput<T>) => {
     const { permission } = await deps.permissionService.getOrgPermission({
@@ -69,7 +68,7 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
     }
 
     assertHoneyTokenConnectionType(providerType, appConnection.app);
-    return provider.upsertConfig({ orgId: orgPermission.orgId, connectionId, status, config });
+    return provider.upsertConfig({ orgId: orgPermission.orgId, connectionId, config });
   };
 
   const testConnection = async <T extends HoneyTokenType>({

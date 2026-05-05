@@ -20,6 +20,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../../honey-token-config/honey-token-config-dal";
+import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
 import { TLicenseServiceFactory } from "../../license/license-service";
 import { HoneyTokenType } from "../honey-token-enums";
 import { AwsHoneyTokenConfigSchema } from "../honey-token-types";
@@ -187,7 +188,6 @@ export const honeyTokenAwsConfigProviderFactory = ({
   const upsertConfig = async ({
     orgId,
     connectionId,
-    status,
     config
   }: TUpsertAwsHoneyTokenConfigInput): Promise<THoneyTokenConfigRecord> => {
     const plan = await licenseService.getPlan(orgId);
@@ -205,6 +205,18 @@ export const honeyTokenAwsConfigProviderFactory = ({
     const encryptedConfig = encryptor({
       plainText: Buffer.from(JSON.stringify(validatedConfig))
     }).cipherTextBlob;
+
+    const stackDeployment = await verifyAwsStackDeployment({
+      orgId,
+      connectionId,
+      stackName: validatedConfig.stackName,
+      awsRegion: validatedConfig.awsRegion,
+      appConnectionDAL,
+      kmsService
+    });
+    const derivedStatus = stackDeployment.deployed
+      ? HoneyTokenConfigStatus.Complete
+      : HoneyTokenConfigStatus.VerificationPending;
 
     const existing = await honeyTokenConfigDAL.findOne({
       orgId,
@@ -229,14 +241,14 @@ export const honeyTokenAwsConfigProviderFactory = ({
       return honeyTokenConfigDAL.updateById(existing.id, {
         connectionId,
         encryptedConfig: updatedEncryptedConfig,
-        status
+        status: derivedStatus
       });
     }
     return honeyTokenConfigDAL.create({
       orgId,
       type: HoneyTokenType.AWS,
       connectionId,
-      status,
+      status: derivedStatus,
       encryptedConfig
     });
   };
@@ -265,6 +277,13 @@ export const honeyTokenAwsConfigProviderFactory = ({
       appConnectionDAL,
       kmsService
     });
+
+    await honeyTokenConfigDAL.updateById(config.id, {
+      status: stackDeployment.deployed
+        ? HoneyTokenConfigStatus.Complete
+        : HoneyTokenConfigStatus.VerificationPending
+    });
+
     return {
       isConnected: stackDeployment.deployed,
       status: stackDeployment.status,

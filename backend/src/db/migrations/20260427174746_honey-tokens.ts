@@ -32,8 +32,6 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.uuid("folderId").notNullable();
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
-      t.uuid("connectionId").notNullable();
-      t.foreign("connectionId").references("id").inTable(TableName.AppConnection);
       t.binary("encryptedCredentials").notNullable();
       t.jsonb("secretsMapping").notNullable();
       t.string("tokenIdentifier", 256).nullable();
@@ -67,9 +65,21 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.HoneyTokenEvent);
   }
+
+  if (!(await knex.schema.hasTable(TableName.HoneyTokenSecretMapping))) {
+    await knex.schema.createTable(TableName.HoneyTokenSecretMapping, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("secretId").notNullable().unique();
+      t.foreign("secretId").references("id").inTable(TableName.SecretV2).onDelete("CASCADE");
+      t.uuid("honeyTokenId").notNullable();
+      t.foreign("honeyTokenId").references("id").inTable(TableName.HoneyToken).onDelete("CASCADE");
+      t.unique(["honeyTokenId", "secretId"]);
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTableIfExists(TableName.HoneyTokenSecretMapping);
   await knex.schema.dropTableIfExists(TableName.HoneyTokenEvent);
   await dropOnUpdateTrigger(knex, TableName.HoneyTokenEvent);
   await knex.schema.dropTableIfExists(TableName.HoneyToken);

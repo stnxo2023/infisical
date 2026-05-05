@@ -6,7 +6,6 @@ import {
   THoneyTokenConfigByType,
   THoneyTokenTestConnectionResponseByType
 } from "@app/ee/services/honey-token/honey-token-provider-types";
-import { HoneyTokenConfigStatus } from "@app/ee/services/honey-token-config/honey-token-config-enums";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -37,7 +36,6 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
 }) => {
   const upsertBodySchema = z.object({
     connectionId: z.string().uuid(),
-    status: z.nativeEnum(HoneyTokenConfigStatus),
     config: configSchema
   });
   const routeTestConnectionResponseSchema: z.ZodTypeAny = testConnectionResponseSchema;
@@ -59,13 +57,12 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
       }
     },
     handler: async (req) => {
-      const { connectionId, status, config } = upsertBodySchema.parse(req.body);
+      const { connectionId, config } = upsertBodySchema.parse(req.body);
       const parsedConfig = configSchema.parse(config);
       const savedConfig = await server.services.honeyTokenConfig.upsertConfig({
         orgPermission: req.permission,
         type,
         connectionId,
-        status,
         config: parsedConfig
       });
 
