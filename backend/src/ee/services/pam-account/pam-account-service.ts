@@ -65,7 +65,6 @@ import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-
 import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
 import { PamDomainType } from "../pam-domain/pam-domain-enums";
 import { PAM_DOMAIN_FACTORY_MAP } from "../pam-domain/pam-domain-factory";
-import { TPamProjectRecordingConfigDALFactory } from "../pam-project-recording-config/pam-project-recording-config-dal";
 import { TPamProjectRecordingConfigServiceFactory } from "../pam-project-recording-config/pam-project-recording-config-service";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
@@ -126,7 +125,6 @@ type TPamAccountServiceFactoryDep = {
     "findByAccountId" | "updateById" | "countByAccountIds"
   >;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
-  pamProjectRecordingConfigDAL: Pick<TPamProjectRecordingConfigDALFactory, "findByProjectId">;
   pamProjectRecordingConfigService: Pick<TPamProjectRecordingConfigServiceFactory, "resolveConfigForProject">;
 };
 
@@ -155,7 +153,6 @@ export const pamAccountServiceFactory = ({
   resourceMetadataDAL,
   pamAccountDependenciesDAL,
   keyStore,
-  pamProjectRecordingConfigDAL,
   pamProjectRecordingConfigService
 }: TPamAccountServiceFactoryDep) => {
   // Helper to resolve account parent (resource or domain)
