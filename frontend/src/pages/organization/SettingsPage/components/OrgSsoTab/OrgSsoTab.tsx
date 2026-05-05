@@ -287,7 +287,7 @@ export const OrgSsoTab = withPermission(
       openSelectedProvider(to);
     };
 
-    const createIdentityProviderView = anyProviderAvailable ? (
+    const createIdentityProviderView = (
       <Card>
         <CardHeader className="border-b">
           <CardTitle>
@@ -300,63 +300,65 @@ export const OrgSsoTab = withPermission(
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Empty className="border">
-            <EmptyHeader>
-              <EmptyTitle>No identity providers connected</EmptyTitle>
-              <EmptyDescription>
-                {showEmailDomainAlert
-                  ? "Verify a domain first to add a connection."
-                  : "Connect SAML, OIDC, or LDAP to authenticate members."}
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              {showEmailDomainAlert && (
-                <OrgPermissionCan
-                  I={OrgPermissionEmailDomainActions.Create}
-                  a={OrgPermissionSubjects.EmailDomains}
-                >
-                  {(isAllowed) => (
-                    <Button
-                      variant="org"
-                      isDisabled={!isAllowed}
-                      onClick={() => handlePopUpOpen("addDomain")}
-                    >
-                      <Plus />
-                      Add Domain
-                    </Button>
-                  )}
-                </OrgPermissionCan>
-              )}
-              {!showEmailDomainAlert && hasUnverifiedEmailDomainsOnly && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <Button variant="org" isDisabled>
+          {anyProviderAvailable ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No identity providers connected</EmptyTitle>
+                <EmptyDescription>
+                  {showEmailDomainAlert
+                    ? "Verify a domain first to add a connection."
+                    : "Connect SAML, OIDC, or LDAP to authenticate members."}
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                {showEmailDomainAlert && (
+                  <OrgPermissionCan
+                    I={OrgPermissionEmailDomainActions.Create}
+                    a={OrgPermissionSubjects.EmailDomains}
+                  >
+                    {(isAllowed) => (
+                      <Button
+                        variant="org"
+                        isDisabled={!isAllowed}
+                        onClick={() => handlePopUpOpen("addDomain")}
+                      >
                         <Plus />
-                        Add Provider
+                        Add Domain
                       </Button>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Email domain verification required</TooltipContent>
-                </Tooltip>
-              )}
-              {!showEmailDomainAlert && !hasUnverifiedEmailDomainsOnly && (
-                <Button variant="org" onClick={() => openProviderChooser()}>
-                  <Plus />
-                  Add Provider
-                </Button>
-              )}
-            </EmptyContent>
-          </Empty>
+                    )}
+                  </OrgPermissionCan>
+                )}
+                {!showEmailDomainAlert && hasUnverifiedEmailDomainsOnly && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button variant="org" isDisabled>
+                          <Plus />
+                          Add Provider
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Email domain verification pending</TooltipContent>
+                  </Tooltip>
+                )}
+                {!showEmailDomainAlert && !hasUnverifiedEmailDomainsOnly && (
+                  <Button variant="org" onClick={() => openProviderChooser()}>
+                    <Plus />
+                    Add Provider
+                  </Button>
+                )}
+              </EmptyContent>
+            </Empty>
+          ) : (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>Single Sign-On (SSO) has been disabled</EmptyTitle>
+                <EmptyDescription>Contact your server administrator.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
         </CardContent>
       </Card>
-    ) : (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>Single Sign-On (SSO) has been disabled</EmptyTitle>
-          <EmptyDescription>Contact your server administrator.</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
     );
 
     if (areConfigsLoading) {
