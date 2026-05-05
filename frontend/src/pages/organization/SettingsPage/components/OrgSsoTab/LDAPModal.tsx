@@ -171,17 +171,33 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   };
 
   const handleTestLDAPConnection = async () => {
-    await testLDAPConnection({
-      url: watchUrl,
-      bindDN: watchBindDN,
-      bindPass: watchBindPass,
-      caCert: watchCaCert ?? ""
-    });
+    try {
+      const isConnected = await testLDAPConnection({
+        url: watchUrl,
+        bindDN: watchBindDN,
+        bindPass: watchBindPass,
+        caCert: watchCaCert ?? ""
+      });
 
-    createNotification({
-      text: "Successfully tested the LDAP connection: Bind operation was successful",
-      type: "success"
-    });
+      if (isConnected) {
+        createNotification({
+          text: "Successfully tested the LDAP connection: Bind operation was successful",
+          type: "success"
+        });
+      } else {
+        createNotification({
+          text: "Failed to connect to the LDAP server. Verify the URL, bind DN/password, and CA certificate.",
+          type: "error"
+        });
+      }
+    } catch (err) {
+      createNotification({
+        text:
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          "Failed to test LDAP connection.",
+        type: "error"
+      });
+    }
   };
 
   const isPending = createIsLoading || updateIsLoading;
