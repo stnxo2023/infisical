@@ -742,29 +742,47 @@ export const pamAccountServiceFactory = ({
       throw new NotFoundError({ message: `Resource with name '${inputResourceName}' not found` });
     }
 
-    const localAccount = await pamAccountDAL.findOne({
-      projectId,
-      resourceId: resource.id,
-      name: inputAccountName
-    });
-    const domainAccount = resource.domainId
-      ? await pamAccountDAL.findOne({
-          projectId,
-          domainId: resource.domainId,
-          name: inputAccountName
-        })
-      : null;
+    // Wire format for AD-domain accounts is `<fqdn>:<slug>` (e.g.
+    // 'corp.example.com:administrator'). PAM slugs can't contain ':' so the
+    // separator is unambiguous. Plain `<slug>` routes to the local bucket.
+    const colonIdx = inputAccountName.indexOf(":");
+    const isDomainAccount = colonIdx !== -1;
+    const accountSlug = isDomainAccount ? inputAccountName.slice(colonIdx + 1) : inputAccountName;
+    const fqdnHint = isDomainAccount ? inputAccountName.slice(0, colonIdx) : null;
 
-    // Reject collisions explicitly: 'Administrator' commonly exists in both the
-    // local SAM and AD, and (resourceName, accountName) alone can't distinguish.
-    if (localAccount && domainAccount) {
-      throw new BadRequestError({
-        message: `Both a local and a domain account named '${inputAccountName}' exist on resource '${inputResourceName}'. Rename one to disambiguate.`
+    let account = null as Awaited<ReturnType<typeof pamAccountDAL.findOne>> | null;
+    if (isDomainAccount) {
+      if (!resource.domainId) {
+        throw new BadRequestError({
+          message: `Resource '${inputResourceName}' is not joined to a domain`
+        });
+      }
+      const domain = await pamDomainDAL.findById(resource.domainId);
+      if (!domain) {
+        throw new NotFoundError({ message: `Domain with ID '${resource.domainId}' not found` });
+      }
+      const domainConn = (await decryptDomainConnectionDetails({
+        projectId,
+        encryptedConnectionDetails: domain.encryptedConnectionDetails,
+        kmsService
+      })) as { domain: string };
+      if (domainConn.domain.toLowerCase() !== fqdnHint?.toLowerCase()) {
+        throw new BadRequestError({
+          message: `Resource '${inputResourceName}' is not joined to '${fqdnHint}'`
+        });
+      }
+      account = await pamAccountDAL.findOne({
+        projectId,
+        domainId: resource.domainId,
+        name: accountSlug
+      });
+    } else {
+      account = await pamAccountDAL.findOne({
+        projectId,
+        resourceId: resource.id,
+        name: accountSlug
       });
     }
-
-    const account = localAccount ?? domainAccount;
-    const isDomainAccount = !localAccount && !!domainAccount;
 
     if (!account) {
       throw new NotFoundError({

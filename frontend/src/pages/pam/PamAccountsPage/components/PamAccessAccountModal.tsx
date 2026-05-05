@@ -10,7 +10,11 @@ import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/componen
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
-import { TPamDomainRelatedResource } from "@app/hooks/api/pamDomain";
+import {
+  PamDomainType,
+  TPamDomainRelatedResource,
+  useGetPamDomainById
+} from "@app/hooks/api/pamDomain";
 
 import { PamAwsIamAccessSection } from "./PamAwsIamAccessSection";
 
@@ -82,10 +86,25 @@ export const PamAccessAccountModal = ({
 
   const targetResource = selectedResource ?? account?.resource;
 
+  // Domain accounts need the AD FQDN to disambiguate from a like-named local
+  // account on the same resource. The list-accounts payload only carries the
+  // domain slug; fetch the full domain row to read connectionDetails.domain.
+  const { data: domain } = useGetPamDomainById(
+    account?.domain?.domainType ?? PamDomainType.ActiveDirectory,
+    account?.domainId || undefined,
+    { enabled: !!account?.domainId }
+  );
+
   const command = useMemo(() => {
     if (!account || !targetResource) return "";
+    // For AD-domain accounts the wire identity is `<fqdn>:<slug>` so the
+    // backend routes to the domain bucket; local accounts pass just `<slug>`.
+    const accountArg =
+      account.domainId && domain?.connectionDetails.domain
+        ? `${domain.connectionDetails.domain}:${account.name}`
+        : account.name;
     const base = (verb: string) =>
-      `infisical pam ${verb} access --resource ${targetResource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+      `infisical pam ${verb} access --resource ${targetResource.name} --account ${accountArg} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
 
     switch (targetResource.resourceType) {
       case PamResourceType.Postgres:
@@ -104,7 +123,7 @@ export const PamAccessAccountModal = ({
       default:
         return "";
     }
-  }, [account, targetResource, projectId, cliDuration, siteURL]);
+  }, [account, targetResource, domain, projectId, cliDuration, siteURL]);
 
   if (!account) return null;
 
