@@ -81,7 +81,9 @@ const hasAccountsWithDependencies = (resourceType: PamResourceType) =>
   resourceType === PamResourceType.Windows;
 
 const getAccountType = (account: TPamAccount): string | undefined => {
-  if (account.resource?.resourceType === PamResourceType.Windows) {
+  // AD-domain accounts surfaced on a Windows resource page have
+  // account.resource === null but still carry internalMetadata.accountType.
+  if (account.resource?.resourceType === PamResourceType.Windows || account.domain) {
     return (account as TWindowsAccount).internalMetadata?.accountType;
   }
   return undefined;
