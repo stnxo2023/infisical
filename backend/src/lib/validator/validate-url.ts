@@ -183,11 +183,15 @@ const notFoundError = (hostname: string): NodeJS.ErrnoException => {
   return err;
 };
 
+// v4 by default
+const pickPreferredEntry = (entries: LookupAddress[]): LookupAddress =>
+  entries.find((e) => e.family === 4) ?? entries[0];
+
 const makePinnedLookup = (entries: LookupAddress[]): LookupFunction =>
   ((hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
     // Node may invoke `lookup(hostname, callback)` (2-arg) or `lookup(hostname, options, callback)` (3-arg).
     if (typeof optionsOrCb === "function") {
-      const first: LookupAddress = entries[0];
+      const first = pickPreferredEntry(entries);
       (optionsOrCb as TLookupOneCallback)(null, first.address, first.family);
       return;
     }
@@ -216,7 +220,7 @@ const makePinnedLookup = (entries: LookupAddress[]): LookupFunction =>
     if (opts.all) {
       (maybeCb as TLookupAllCallback)(null, entries);
     } else {
-      const first: LookupAddress = entries[0];
+      const first = pickPreferredEntry(entries);
       (maybeCb as TLookupOneCallback)(null, first.address, first.family);
     }
   }) as LookupFunction;
