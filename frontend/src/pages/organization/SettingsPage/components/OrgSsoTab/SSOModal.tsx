@@ -426,7 +426,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
             <SheetFooter className="justify-between border-t">
               <div className="flex gap-2">
                 <Button type="submit" variant="org" isPending={isPending}>
-                  {!data.isActive ? "Configure SAML" : "Update Configuration"}
+                  {!data?.isActive ? "Configure SAML" : "Update Configuration"}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => handlePopUpClose("addSSO")}>
                   Cancel

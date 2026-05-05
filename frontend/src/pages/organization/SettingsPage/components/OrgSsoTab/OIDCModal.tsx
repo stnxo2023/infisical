@@ -131,8 +131,6 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     }
   });
 
-  console.log("state", formState.errors);
-
   const [isClientIdFocused, setIsClientIdFocused] = useToggle();
   const [isClientSecretFocused, setIsClientSecretFocused] = useToggle();
 
