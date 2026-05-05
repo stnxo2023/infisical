@@ -56,16 +56,16 @@ type Props = {
 const schema = z
   .object({
     configurationType: z.string(),
-    issuer: z.string().nullish(),
-    discoveryURL: z.string().nullish(),
-    authorizationEndpoint: z.string().nullish(),
-    jwksUri: z.string().nullish(),
-    tokenEndpoint: z.string().nullish(),
-    userinfoEndpoint: z.string().nullish(),
+    issuer: z.string().optional(),
+    discoveryURL: z.string().optional(),
+    authorizationEndpoint: z.string().optional(),
+    jwksUri: z.string().optional(),
+    tokenEndpoint: z.string().optional(),
+    userinfoEndpoint: z.string().optional(),
     clientId: z.string().min(1, "Client ID is required"),
     clientSecret: z.string().min(1, "Client Secret is required"),
-    allowedEmailDomains: z.string().nullish(),
-    jwtSignatureAlgorithm: z.nativeEnum(OIDCJWTSignatureAlgorithm).nullish()
+    allowedEmailDomains: z.string().optional(),
+    jwtSignatureAlgorithm: z.nativeEnum(OIDCJWTSignatureAlgorithm).optional()
   })
   .superRefine((data, ctx) => {
     if (data.configurationType === ConfigurationType.CUSTOM) {
