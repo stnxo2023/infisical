@@ -896,10 +896,7 @@ export const pamAccountServiceFactory = ({
       kmsService
     );
 
-    // Temporarily disable access to Windows Server. Cast prevents TS
-    // from narrowing resourceType to "not Windows" so the blocks below
-    // (recording-config check, metadata switch case) stay valid for
-    // when this disable is lifted.
+    // Temporarily disable access to Windows Server
     if ((resourceType as PamResource) === PamResource.Windows) {
       throw new BadRequestError({ message: `Windows resources cannot be accessed at this time` });
     }
