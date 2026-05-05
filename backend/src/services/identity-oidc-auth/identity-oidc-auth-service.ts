@@ -126,6 +126,18 @@ export const identityOidcAuthServiceFactory = ({
         );
         discoveryDoc = response.data;
       } catch (error) {
+        logger.error(
+          {
+            error,
+            errorName: error instanceof Error ? error.name : undefined,
+            errorMessage: error instanceof Error ? error.message : String(error),
+            errorCode: (error as NodeJS.ErrnoException)?.code,
+            errorCause: (error as Error)?.cause,
+            identityId: identity.id,
+            discoveryUrl: identityOidcAuth.oidcDiscoveryUrl
+          },
+          `OIDC discovery document fetch failed [identityId=${identity.id}]`
+        );
         throw new UnauthorizedError({
           message: `Access denied: Failed to fetch OIDC discovery document from ${identityOidcAuth.oidcDiscoveryUrl}. ${error instanceof Error ? error.message : String(error)}`,
           detail: {
@@ -220,6 +232,17 @@ export const identityOidcAuthServiceFactory = ({
             issuer: identityOidcAuth.boundIssuer
           }) as Record<string, string>;
         } catch (error) {
+          logger.error(
+            {
+              error,
+              errorName: error instanceof Error ? error.name : undefined,
+              errorMessage: error instanceof Error ? error.message : String(error),
+              identityId: identity.id,
+              boundIssuer: identityOidcAuth.boundIssuer,
+              kid
+            },
+            `OIDC JWT verification failed [identityId=${identity.id}] [kid=${kid}]`
+          );
           if (error instanceof jwt.JsonWebTokenError) {
             throw new UnauthorizedError({
               message: `Access denied: ${error.message}`,
@@ -243,6 +266,18 @@ export const identityOidcAuthServiceFactory = ({
         try {
           allSigningKeys = await client.getSigningKeys();
         } catch (error) {
+          logger.error(
+            {
+              error,
+              errorName: error instanceof Error ? error.name : undefined,
+              errorMessage: error instanceof Error ? error.message : String(error),
+              errorCode: (error as NodeJS.ErrnoException)?.code,
+              errorCause: (error as Error)?.cause,
+              identityId: identity.id,
+              jwksUri
+            },
+            `OIDC signing keys retrieval failed [identityId=${identity.id}]`
+          );
           throw new UnauthorizedError({
             message: `Access denied: Failed to retrieve signing keys from OIDC provider: ${error instanceof Error ? error.message : String(error)}`,
             detail: {
@@ -302,6 +337,17 @@ export const identityOidcAuthServiceFactory = ({
         }
 
         if (!verified) {
+          logger.error(
+            {
+              error: lastError,
+              errorName: lastError?.name,
+              errorMessage: lastError?.message,
+              identityId: identity.id,
+              boundIssuer: identityOidcAuth.boundIssuer,
+              signingKeysCount: allSigningKeys.length
+            },
+            `OIDC JWT verification failed with all signing keys [identityId=${identity.id}]`
+          );
           throw new UnauthorizedError({
             message: `Access denied: Unable to verify JWT signature with any available signing key. ${lastError ? lastError.message : "Invalid token"}`,
             detail: {
