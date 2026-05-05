@@ -74,7 +74,6 @@ import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
 import { TRedisAccountCredentials } from "../pam-resource/redis/redis-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
 import { TSSHAccountCredentials, TSSHResourceInternalMetadata } from "../pam-resource/ssh/ssh-resource-types";
-import { TWindowsAccountCredentials } from "../pam-resource/windows-server/windows-server-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session/pam-session-recording-secrets";
@@ -896,14 +895,9 @@ export const pamAccountServiceFactory = ({
       kmsService
     );
 
+    // Temporarily disable access to Windows Server
     if (resourceType === PamResource.Windows) {
-      const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(account.projectId);
-      if (!recordingConfig) {
-        throw new BadRequestError({
-          message:
-            "Windows resources require an external session recording configuration. Configure session recording in project settings before accessing Windows accounts."
-        });
-      }
+      throw new BadRequestError({ message: `Windows resources cannot be accessed at this time` });
     }
 
     const user = await userDAL.findById(actor.id);
@@ -1083,19 +1077,6 @@ export const pamAccountServiceFactory = ({
             kmsService,
             projectId
           })) as TSSHAccountCredentials;
-
-          metadata = {
-            username: credentials.username
-          };
-        }
-        break;
-      case PamResource.Windows:
-        {
-          const credentials = (await decryptAccountCredentials({
-            encryptedCredentials: account.encryptedCredentials,
-            kmsService,
-            projectId
-          })) as TWindowsAccountCredentials;
 
           metadata = {
             username: credentials.username
