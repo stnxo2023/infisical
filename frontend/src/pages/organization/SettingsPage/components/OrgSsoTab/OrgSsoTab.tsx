@@ -60,6 +60,7 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import {
+  useCreateSSOConfig,
   useGetEmailDomains,
   useGetLDAPConfig,
   useGetOIDCConfig,
@@ -114,6 +115,7 @@ export const OrgSsoTab = withPermission(
     } | null>(null);
 
     const { mutateAsync: updateSamlAsync } = useUpdateSSOConfig();
+    const { mutateAsync: createSamlAsync, isPending: isCreatingSamlConfig } = useCreateSSOConfig();
     const { mutateAsync: updateOidcAsync } = useUpdateOIDCConfig();
     const { mutateAsync: updateLdapAsync } = useUpdateLDAPConfig();
 
@@ -171,10 +173,21 @@ export const OrgSsoTab = withPermission(
       shouldDisplaySection(LoginMethod.OIDC) ||
       shouldDisplaySection(LoginMethod.LDAP);
 
-    const handleConnectSaml = () => {
+    const handleConnectSaml = async () => {
       if (!subscription?.samlSSO) {
         handlePopUpOpen("upgradePlan", { featureName: "SAML SSO" });
         return;
+      }
+      if (!currentOrg) return;
+      if (!samlConfig) {
+        await createSamlAsync({
+          organizationId: currentOrg.id,
+          authProvider: "okta-saml",
+          isActive: false,
+          entryPoint: "",
+          issuer: "",
+          cert: ""
+        });
       }
       handlePopUpOpen("addSSO");
     };
@@ -512,6 +525,7 @@ export const OrgSsoTab = withPermission(
                   </DialogClose>
                   <Button
                     variant="org"
+                    isPending={isCreatingSamlConfig}
                     isDisabled={!selectedProvider}
                     onClick={handleConnectSelected}
                   >

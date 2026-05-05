@@ -86,7 +86,7 @@ const ssoAuthProviders = [
 const schema = z
   .object({
     authProvider: z.string().min(1, "SSO Type is required"),
-    entryPoint: z.string().min(1, "URL required"),
+    entryPoint: z.string().trim().min(1, "URL required"),
     issuer: z.string().default(""),
     cert: z.string().default("")
   })
