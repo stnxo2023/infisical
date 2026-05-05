@@ -88,7 +88,8 @@ export enum ApiDocsTags {
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
-  Events = "Event Subscriptions"
+  Events = "Event Subscriptions",
+  GatewaysV3 = "Gateways"
 }
 
 export const GROUPS = {
@@ -572,7 +573,10 @@ export const KUBERNETES_AUTH = {
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
     kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
-    caCert: "The PEM-encoded CA cert for the Kubernetes API server.",
+    caCert:
+      "The PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when verifyTlsCertificate is true. Supplying a non-empty caCert always implies verifyTlsCertificate=true; explicitly setting the toggle to false in the same request is rejected.",
+    verifyTlsCertificate:
+      "Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, the connection is still over HTTPS but the API server's certificate is not verified, and caCert must be empty. If omitted, defaults to true when caCert is provided and false otherwise.",
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     tokenReviewMode:
@@ -591,7 +595,10 @@ export const KUBERNETES_AUTH = {
   UPDATE: {
     identityId: "The ID of the machine identity to update the auth method for.",
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
-    caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
+    caCert:
+      "The new PEM-encoded CA certificate used to validate the Kubernetes API server's TLS certificate. Required when verifyTlsCertificate is true. Supplying a non-empty caCert always implies verifyTlsCertificate=true; the update is rejected if the resulting effective state would store a CA together with verifyTlsCertificate=false.",
+    verifyTlsCertificate:
+      "Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, the connection is still over HTTPS but the API server's certificate is not verified, and the resulting effective CA must be empty. If omitted while supplying a non-empty caCert in the same update, the toggle is auto-promoted to true; otherwise the stored value is preserved.",
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
     tokenReviewMode:
@@ -2579,7 +2586,9 @@ export const CertificateAuthorities = {
       maxPathLength:
         "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
       keyAlgorithm:
-        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA."
+        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
+      crlDistributionPointUrls:
+        "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is always included as the primary."
     }
   }
 };
@@ -2721,6 +2730,9 @@ export const AppConnections = {
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
     },
+    DEVIN: {
+      apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
+    },
     GITLAB: {
       instanceUrl: "The GitLab instance URL to connect with.",
       accessToken: "The Access Token used to access GitLab.",
@@ -2807,9 +2819,30 @@ export const AppConnections = {
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
     },
+    OVH: {
+      privateKey:
+        "The PEM-encoded private key issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
+      certificate:
+        "The PEM-encoded public certificate issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
+      okmsDomain: "The OKMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
+      okmsId: "The OKMS instance identifier from the OVH Control Panel, used as a path segment in all API calls."
+    },
+    SNOWFLAKE: {
+      account: "The Snowflake account identifier (e.g., xy12345.us-east-1).",
+      username: "The username (login name) used to authenticate with Snowflake.",
+      password: "The Programmatic Access Token used to authenticate with Snowflake."
+    },
     VENAFI: {
       apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
       region: "The region of your Venafi TLS Protect Cloud instance (e.g., 'us', 'eu')."
+    },
+    VENAFI_TPP: {
+      tppUrl: "The HTTPS URL of the Venafi TPP instance (e.g., 'https://tpp.example.com'). Must use HTTPS.",
+      clientId:
+        "The OAuth client ID registered in the Venafi TPP API Integration. Used for token-based authentication.",
+      username:
+        "The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\\\username', 'username@domain.com', or local usernames.",
+      password: "The password used to authenticate with Venafi TPP."
     }
   }
 };
@@ -2979,7 +3012,10 @@ export const SecretSyncs = {
       teamId: "The ID of the Vercel team to sync secrets to.",
       teamName:
         "The name of the team to sync the secrets to. This is an optional field only intended for display purposes.",
-      targetEnvironments: "An optional array of Vercel environments to add shared environment variables to.",
+      targetEnvironments:
+        "An optional array of Vercel default environments (development, preview, production) to add shared environment variables to.",
+      applyToAllCustomEnvironments:
+        "Whether to apply shared environment variables to all custom environments in the team.",
       targetProjects: "An optional array of Vercel projects to add shared environment variables to.",
       sensitive:
         "Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment."
@@ -3008,6 +3044,9 @@ export const SecretSyncs = {
       mount: "The Hashicorp Vault Secrets Engine Mount to sync secrets to.",
       path: "The Hashicorp Vault path to sync secrets to."
     },
+    OVH: {
+      path: "The path in OVH OKMS where secrets will be stored as key/value pairs."
+    },
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
       buildConfig: "The TeamCity build configuration to sync secrets to."
@@ -3033,6 +3072,9 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    DEVIN: {
+      orgId: "The Devin organization ID to sync secrets to."
     },
     GITLAB: {
       projectId: "The GitLab Project ID to sync secrets to.",
@@ -3110,6 +3152,10 @@ export const SecretSyncs = {
       repositorySlug: "The slug (owner/repo) of the Travis CI repository to sync secrets to.",
       branch:
         "The branch of the Travis CI repository to sync secrets to. If omitted, secrets sync to the repository-level scope."
+    },
+    SNOWFLAKE: {
+      database: "The name of the Snowflake database to sync secrets to.",
+      schema: "The name of the Snowflake schema (within the database) to sync secrets to."
     }
   }
 };
@@ -3261,6 +3307,10 @@ export const SecretRotations = {
       limitReset: "The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).",
       includeByokInLimit:
         "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
+    },
+    SUPABASE_API_KEY: {
+      projectRef: "The reference ID of the Supabase project to rotate the API key for.",
+      keyType: "The type of the API key to rotate (e.g. publishable, secret)."
     }
   },
   SECRETS_MAPPING: {
@@ -3321,6 +3371,9 @@ export const SecretRotations = {
     },
     OPEN_ROUTER_API_KEY: {
       apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
+    },
+    SUPABASE_API_KEY: {
+      apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
     }
   }
 };
@@ -3576,5 +3629,31 @@ export const SECRET_SHARING = {
   },
   DELETE: {
     id: "The ID of the shared secret to delete."
+  }
+} as const;
+
+export const GATEWAYS = {
+  CREATE: {
+    name: "Name of the gateway.",
+    authMethod:
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+  },
+  UPDATE: {
+    authMethod:
+      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+  },
+  AUTH_METHOD: {
+    stsEndpoint: "The endpoint URL for the AWS STS API.",
+    allowedPrincipalArns:
+      "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
+    allowedAccountIds:
+      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
+  },
+  LOGIN: {
+    gatewayId: "The ID of the gateway logging in (AWS method only).",
+    iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
+    iamRequestBody: "The base64-encoded body of the signed STS request.",
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;

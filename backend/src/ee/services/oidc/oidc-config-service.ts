@@ -15,12 +15,15 @@ import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
   matchesAllowedEmailDomain,
+  safeRequest,
   sanitizeEmail,
   validateEmail
 } from "@app/lib/validator";
@@ -207,7 +210,7 @@ export const oidcConfigServiceFactory = ({
       aliasType: UserAliasType.OIDC
     });
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     let user: TUsers;
@@ -419,7 +422,7 @@ export const oidcConfigServiceFactory = ({
       await smtpService
         .sendMail({
           template: SmtpTemplates.EmailVerification,
-          subjectLine: "Infisical confirmation code",
+          subjectLine: `Infisical confirmation code: ${token}`,
           recipients: [user.email],
           substitutions: {
             code: token
@@ -685,8 +688,19 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
-      issuer = await Issuer.discover(oidcCfg.discoveryURL);
+      // Fetch discovery doc via safeRequest so the discovery leg is itself
+      // SSRF-validated and DNS-pinned. We then construct the Issuer manually
+      // instead of letting openid-client do its own (unpinned) HTTP via
+      // `Issuer.discover()`.
+      const { data: meta } = await safeRequest.get<{
+        issuer: string;
+        authorization_endpoint?: string;
+        token_endpoint?: string;
+        userinfo_endpoint?: string;
+        jwks_uri?: string;
+        code_challenge_methods_supported?: string[];
+      }>(oidcCfg.discoveryURL);
+      issuer = new OpenIdIssuer(meta);
     } else {
       if (
         !oidcCfg.issuer ||
@@ -699,9 +713,6 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,

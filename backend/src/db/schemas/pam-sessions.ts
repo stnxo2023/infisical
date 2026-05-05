@@ -34,7 +34,9 @@ export const PamSessionsSchema = z.object({
   aiInsightsStatus: z.string().nullable().optional(),
   aiInsightsError: z.string().nullable().optional(),
   reason: z.string().nullable().optional(),
-  selectedResourceId: z.string().uuid().nullable().optional()
+  selectedResourceId: z.string().uuid().nullable().optional(),
+  encryptedSessionKey: zodBuffer.nullable().optional(),
+  gatewayUploadTokenHash: zodBuffer.nullable().optional()
 });
 
 export type TPamSessions = z.infer<typeof PamSessionsSchema>;
