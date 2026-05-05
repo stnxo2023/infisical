@@ -31,6 +31,7 @@ import { NorthflankSyncDestinationCol } from "./NorthflankSyncDestinationCol";
 import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { OctopusDeploySyncDestinationCol } from "./OctopusDeploySyncDestinationCol";
 import { OnaSyncDestinationCol } from "./OnaSyncDestinationCol";
+import { OvhSyncDestinationCol } from "./OvhSyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
 import { SnowflakeSyncDestinationCol } from "./SnowflakeSyncDestinationCol";
@@ -122,6 +123,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <AzureEntraIdScimSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.ExternalInfisical:
       return <ExternalInfisicalSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.OVH:
+      return <OvhSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Devin:
       return <DevinSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Ona:

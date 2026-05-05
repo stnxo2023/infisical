@@ -2818,6 +2818,14 @@ export const AppConnections = {
     ANTHROPIC: {
       apiKey: "The Anthropic API key used to authenticate with the Anthropic API."
     },
+    OVH: {
+      privateKey:
+        "The PEM-encoded private key issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
+      certificate:
+        "The PEM-encoded public certificate issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
+      okmsDomain: "The OKMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
+      okmsId: "The OKMS instance identifier from the OVH Control Panel, used as a path segment in all API calls."
+    },
     SNOWFLAKE: {
       account: "The Snowflake account identifier (e.g., xy12345.us-east-1).",
       username: "The username (login name) used to authenticate with Snowflake.",
@@ -3034,6 +3042,9 @@ export const SecretSyncs = {
     HC_VAULT: {
       mount: "The Hashicorp Vault Secrets Engine Mount to sync secrets to.",
       path: "The Hashicorp Vault path to sync secrets to."
+    },
+    OVH: {
+      path: "The path in OVH OKMS where secrets will be stored as key/value pairs."
     },
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",

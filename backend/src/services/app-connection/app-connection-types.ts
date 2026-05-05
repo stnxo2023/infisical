@@ -277,6 +277,12 @@ import {
   TValidateOpenRouterConnectionCredentialsSchema
 } from "./open-router";
 import {
+  TOvhConnection,
+  TOvhConnectionConfig,
+  TOvhConnectionInput,
+  TValidateOvhConnectionCredentialsSchema
+} from "./ovh";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -431,6 +437,7 @@ export type TAppConnection = { id: string } & (
   | TDopplerConnection
   | TNetScalerConnection
   | TAnthropicConnection
+  | TOvhConnection
   | TDevinConnection
   | TOnaConnection
   | TDigiCertConnection
@@ -505,6 +512,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDopplerConnectionInput
   | TNetScalerConnectionInput
   | TAnthropicConnectionInput
+  | TOvhConnectionInput
   | TDevinConnectionInput
   | TOnaConnectionInput
   | TDigiCertConnectionInput
@@ -608,6 +616,7 @@ export type TAppConnectionConfig =
   | TDopplerConnectionConfig
   | TNetScalerConnectionConfig
   | TAnthropicConnectionConfig
+  | TOvhConnectionConfig
   | TDevinConnectionConfig
   | TOnaConnectionConfig
   | TDigiCertConnectionConfig
@@ -673,6 +682,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDopplerConnectionCredentialsSchema
   | TValidateNetScalerConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema
+  | TValidateOvhConnectionCredentialsSchema
   | TValidateDevinConnectionCredentialsSchema
   | TValidateOnaConnectionCredentialsSchema
   | TValidateDigiCertConnectionCredentialsSchema

@@ -61,6 +61,7 @@ import { OktaConnectionForm } from "./OktaConnectionForm";
 import { OnaConnectionForm } from "./OnaConnectionForm";
 import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
+import { OVHConnectionForm } from "./OVHConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
@@ -289,6 +290,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.OVH:
+        return <OVHConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Ona:
         return <OnaConnectionForm onSubmit={onSubmit} />;
       case AppConnection.DigiCert:
@@ -512,6 +515,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.OVH:
+        return <OVHConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Ona:
         return <OnaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.DigiCert:

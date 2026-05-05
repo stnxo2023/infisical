@@ -31,6 +31,7 @@ import { NorthflankSyncDestinationSchema } from "./northflank-sync-destination-s
 import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
 import { OctopusDeploySyncDestinationSchema } from "./octopus-deploy-sync-destination-schema";
 import { OnaSyncDestinationSchema } from "./ona-sync-destination-schema";
+import { OvhSyncDestinationSchema } from "./ovh-sync-destination-schema";
 import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
 import { SnowflakeSyncDestinationSchema } from "./snowflake-sync-destination-schema";
@@ -80,6 +81,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   CircleCISyncDestinationSchema,
   AzureEntraIdScimSyncDestinationSchema,
   ExternalInfisicalSyncDestinationSchema,
+  OvhSyncDestinationSchema,
   DevinSyncDestinationSchema,
   OnaSyncDestinationSchema,
   TravisCISyncDestinationSchema,

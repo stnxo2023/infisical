@@ -160,6 +160,7 @@ import {
   TOctopusDeploySyncWithCredentials
 } from "./octopus-deploy";
 import { TOnaSync, TOnaSyncInput, TOnaSyncListItem, TOnaSyncWithCredentials } from "./ona";
+import { TOvhSync, TOvhSyncInput, TOvhSyncListItem, TOvhSyncWithCredentials } from "./ovh";
 import {
   TRailwaySync,
   TRailwaySyncInput,
@@ -237,6 +238,7 @@ export type TSecretSync =
   | TCircleCISync
   | TAzureEntraIdScimSync
   | TExternalInfisicalSync
+  | TOvhSync
   | TDevinSync
   | TOnaSync
   | TTravisCISync
@@ -280,6 +282,7 @@ export type TSecretSyncWithCredentials =
   | TCircleCISyncWithCredentials
   | TAzureEntraIdScimSyncWithCredentials
   | TExternalInfisicalSyncWithCredentials
+  | TOvhSyncWithCredentials
   | TDevinSyncWithCredentials
   | TOnaSyncWithCredentials
   | TTravisCISyncWithCredentials
@@ -323,6 +326,7 @@ export type TSecretSyncInput =
   | TCircleCISyncInput
   | TAzureEntraIdScimSyncInput
   | TExternalInfisicalSyncInput
+  | TOvhSyncInput
   | TDevinSyncInput
   | TOnaSyncInput
   | TTravisCISyncInput
@@ -366,6 +370,7 @@ export type TSecretSyncListItem =
   | TCircleCISyncListItem
   | TAzureEntraIdScimSyncListItem
   | TExternalInfisicalSyncListItem
+  | TOvhSyncListItem
   | TDevinSyncListItem
   | TOnaSyncListItem
   | TTravisCISyncListItem

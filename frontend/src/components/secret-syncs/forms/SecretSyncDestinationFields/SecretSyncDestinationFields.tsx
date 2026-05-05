@@ -34,6 +34,7 @@ import { NorthflankSyncFields } from "./NorthflankSyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { OctopusDeploySyncFields } from "./OctopusDeploySyncFields";
 import { OnaSyncFields } from "./OnaSyncFields";
+import { OvhSyncFields } from "./OvhSyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
 import { SnowflakeSyncFields } from "./SnowflakeSyncFields";
@@ -125,6 +126,8 @@ export const SecretSyncDestinationFields = () => {
       return <AzureEntraIdScimSyncFields />;
     case SecretSync.ExternalInfisical:
       return <ExternalInfisicalSyncFields />;
+    case SecretSync.OVH:
+      return <OvhSyncFields />;
     case SecretSync.Devin:
       return <DevinSyncFields />;
     case SecretSync.Ona:

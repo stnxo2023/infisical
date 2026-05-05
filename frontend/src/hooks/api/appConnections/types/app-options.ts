@@ -247,6 +247,9 @@ export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Anthropic;
 };
 
+export type TOvhConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OVH;
+};
 export type TDevinConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Devin;
 };
@@ -326,6 +329,7 @@ export type TAppConnectionOption =
   | TDopplerConnectionOption
   | TNetScalerConnectionOption
   | TAnthropicConnectionOption
+  | TOvhConnectionOption
   | TDevinConnectionOption
   | TOnaConnectionOption
   | TDigiCertConnectionOption
@@ -391,6 +395,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Doppler]: TDopplerConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
+  [AppConnection.OVH]: TOvhConnectionOption;
   [AppConnection.Devin]: TDevinConnectionOption;
   [AppConnection.Ona]: TOnaConnectionOption;
   [AppConnection.DigiCert]: TDigiCertConnectionOption;

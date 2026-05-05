@@ -455,6 +455,14 @@ export const AppConnectionsBrowser = () => {
       category: "DevOps Tools",
     }, 
     {
+      name: "OVH",
+      slug: "ovh",
+      path: "/integrations/app-connections/ovh",
+      description:
+        "Learn how to connect OVH Cloud to pull secrets from OVH Secret Manager to Infisical.",
+      category: "Cloud Providers",
+    },
+    {
       name: "Travis CI",
       slug: "travis-ci",
       path: "/integrations/app-connections/travis-ci",

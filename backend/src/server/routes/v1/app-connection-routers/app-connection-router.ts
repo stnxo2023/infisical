@@ -145,6 +145,7 @@ import {
   OpenRouterConnectionListItemSchema,
   SanitizedOpenRouterConnectionSchema
 } from "@app/services/app-connection/open-router";
+import { OvhConnectionListItemSchema, SanitizedOvhConnectionSchema } from "@app/services/app-connection/ovh";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
@@ -254,6 +255,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedExternalInfisicalConnectionSchema.options,
   ...SanitizedNetScalerConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
+  ...SanitizedOvhConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
   ...SanitizedDigiCertConnectionSchema.options,
   ...SanitizedTravisCIConnectionSchema.options,
@@ -319,6 +321,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DopplerConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
+  OvhConnectionListItemSchema,
   DevinConnectionListItemSchema,
   OnaConnectionListItemSchema,
   DigiCertConnectionListItemSchema,
