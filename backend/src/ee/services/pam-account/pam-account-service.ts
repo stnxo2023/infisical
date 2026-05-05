@@ -74,6 +74,7 @@ import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
 import { TRedisAccountCredentials } from "../pam-resource/redis/redis-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
 import { TSSHAccountCredentials, TSSHResourceInternalMetadata } from "../pam-resource/ssh/ssh-resource-types";
+import { TWindowsAccountCredentials } from "../pam-resource/windows-server/windows-server-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session/pam-session-recording-secrets";
@@ -1112,6 +1113,19 @@ export const pamAccountServiceFactory = ({
           };
         }
         break;
+      case PamResource.Windows:
+        {
+          const credentials = (await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            kmsService,
+            projectId
+          })) as TWindowsAccountCredentials;
+
+          metadata = {
+            username: credentials.username
+          };
+        }
+        break;
       case PamResource.Kubernetes:
         metadata = {
           resourceName: resource.name,
@@ -1390,14 +1404,8 @@ export const pamAccountServiceFactory = ({
       }
     }
 
-    // Windows connection details store the target as `hostname`; every other
-    // resource type (and the gateway's handler code) reads `host`. Remap
-    // before returning so the gateway never has to special-case it.
     if (decryptedResource.resourceType === PamResource.Windows) {
-      const { hostname, ...rest } = decryptedResource.connectionDetails as {
-        hostname: string;
-        [key: string]: unknown;
-      };
+      const { hostname, ...rest } = decryptedResource.connectionDetails;
 
       // The bridge forwards `domain` to IronRDP for NTLM CredSSP against AD.
       let domainName: string | undefined;
@@ -1424,7 +1432,8 @@ export const pamAccountServiceFactory = ({
         policyRules,
         projectId: project.id,
         account,
-        sessionStarted
+        sessionStarted,
+        recording: sessionRecordingSecrets
       };
     }
 
