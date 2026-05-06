@@ -4,12 +4,12 @@ import path from "node:path";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAnnouncement, TContentfulEntriesResponse } from "./announcement-types";
-import { request } from "@app/lib/config/request";
 
 const CONTENT_TYPE = "featureUpdate";
 const RECENT_LIMIT = 5;
