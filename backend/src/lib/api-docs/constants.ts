@@ -19,9 +19,6 @@ import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/
 const IDENTITY_AUTH_SUB_ORGANIZATION_NAME =
   "When set, this will scope the login session to the specified organization the machine identity has access to. If omitted, the session defaults to the organization where the machine identity was created in.";
 
-export const INCLUDE_HONEY_TOKENS_OVERVIEW_DESC = "Whether to include honey tokens in the overview response.";
-export const INCLUDE_HONEY_TOKENS_DETAILS_DESC = "Whether to include honey tokens in the details response.";
-
 export enum ApiDocsTags {
   Identities = "Identities",
   IdentityTemplates = "Identity Templates",
