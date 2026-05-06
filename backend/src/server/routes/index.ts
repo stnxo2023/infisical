@@ -227,6 +227,7 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import {
@@ -848,6 +849,8 @@ export const registerRoutes = async (
   });
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
+
+  const announcementService = announcementServiceFactory({ userDAL, keyStore });
 
   const clickhouseAuditLogDAL = clickhouse
     ? clickhouseAuditLogDALFactory(clickhouse, db, envConfig.CLICKHOUSE_AUDIT_LOG_TABLE_NAME)
@@ -3374,6 +3377,7 @@ export const registerRoutes = async (
     projectEvents: projectEventsService,
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
+    announcement: announcementService,
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
     pamDomain: pamDomainService,

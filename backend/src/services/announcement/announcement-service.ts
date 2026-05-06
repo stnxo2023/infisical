@@ -1,0 +1,161 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
+import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
+import { NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { TUserDALFactory } from "@app/services/user/user-dal";
+
+import { TAnnouncement, TContentfulEntriesResponse } from "./announcement-types";
+
+const CONTENT_TYPE = "featureUpdate";
+const RECENT_LIMIT = 5;
+const CACHE_TTL_SECONDS = 30 * 60;
+// New users get a 7-day grace period before any announcements surface — avoids
+// hitting them with marketing modals during onboarding.
+const NEW_USER_GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Bundled-mode: if this file exists on disk, the backend serves announcements from it
+// (and any referenced images from BUNDLED_IMAGE_DIR) instead of calling Contentful.
+// Written by `scripts/bake-announcements.ts` during Docker build for self-hosted images.
+export const BUNDLED_DIR = path.resolve(process.cwd(), "dist", "announcement-assets");
+export const BUNDLED_JSON_PATH = path.join(BUNDLED_DIR, "announcements.json");
+export const BUNDLED_IMAGE_DIR = path.join(BUNDLED_DIR, "images");
+
+type TAnnouncementServiceFactoryDep = {
+  userDAL: Pick<TUserDALFactory, "findById" | "updateById">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+};
+
+export type TAnnouncementServiceFactory = ReturnType<typeof announcementServiceFactory>;
+
+export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementServiceFactoryDep) => {
+  let hasLoggedFetchError = false;
+  // null = not yet checked, [] = no bundle present, [...] = bundled announcements
+  let bundled: TAnnouncement[] | null = null;
+  let bundleChecked = false;
+
+  const loadBundled = async (): Promise<TAnnouncement[] | null> => {
+    if (bundleChecked) return bundled;
+    bundleChecked = true;
+    try {
+      const raw = await fs.readFile(BUNDLED_JSON_PATH, "utf8");
+      bundled = JSON.parse(raw) as TAnnouncement[];
+      logger.info(
+        `Loaded ${bundled.length} bundled announcement(s) from ${BUNDLED_JSON_PATH} — Contentful fetches disabled`
+      );
+      return bundled;
+    } catch (err) {
+      const { code } = err as NodeJS.ErrnoException;
+      if (code !== "ENOENT") {
+        logger.warn({ err }, `Failed to read bundled announcements at ${BUNDLED_JSON_PATH}`);
+      }
+      bundled = null;
+      return null;
+    }
+  };
+
+  const fetchRecent = async (): Promise<TAnnouncement[]> => {
+    const appCfg = getConfig();
+
+    if (!appCfg.ANNOUNCEMENTS_ENABLED || !appCfg.CONTENTFUL_SPACE_ID || !appCfg.CONTENTFUL_DELIVERY_TOKEN) {
+      return [];
+    }
+
+    const url = `https://cdn.contentful.com/spaces/${appCfg.CONTENTFUL_SPACE_ID}/environments/${appCfg.CONTENTFUL_ENVIRONMENT}/entries`;
+
+    const { data } = await request.get<TContentfulEntriesResponse>(url, {
+      params: {
+        content_type: CONTENT_TYPE,
+        order: "-fields.published",
+        limit: RECENT_LIMIT,
+        include: 1
+      },
+      headers: {
+        Authorization: `Bearer ${appCfg.CONTENTFUL_DELIVERY_TOKEN}`
+      },
+      timeout: 5000
+    });
+
+    const assetById = new Map<string, string>();
+    for (const asset of data.includes?.Asset ?? []) {
+      const fileUrl = asset.fields?.file?.url;
+      if (fileUrl) {
+        assetById.set(asset.sys.id, fileUrl.startsWith("//") ? `https:${fileUrl}` : fileUrl);
+      }
+    }
+
+    return data.items.flatMap<TAnnouncement>((entry) => {
+      if (!entry?.fields?.title || !entry.fields.body || !entry.fields.published) return [];
+
+      const imageAssetId = entry.fields.image?.sys?.id;
+      const imageUrl = imageAssetId ? (assetById.get(imageAssetId) ?? null) : null;
+
+      return [
+        {
+          id: entry.sys.id,
+          title: entry.fields.title,
+          body: entry.fields.body,
+          imageUrl,
+          link: entry.fields.link ?? null,
+          linkLabel: entry.fields.linkLabel ?? null,
+          published: entry.fields.published
+        }
+      ];
+    });
+  };
+
+  const getAnnouncements = async (): Promise<TAnnouncement[]> => {
+    const appCfg = getConfig();
+    if (!appCfg.ANNOUNCEMENTS_ENABLED) return [];
+
+    const fromBundle = await loadBundled();
+    if (fromBundle) return fromBundle.slice(0, RECENT_LIMIT);
+
+    return withCache({
+      keyStore,
+      key: KeyStorePrefixes.RecentAnnouncements,
+      ttlSeconds: CACHE_TTL_SECONDS,
+      fetcher: fetchRecent
+    });
+  };
+
+  const listRecentAnnouncements = async ({
+    userId
+  }: {
+    userId: string;
+  }): Promise<{ announcements: TAnnouncement[]; lastSeenAnnouncementId: string | null }> => {
+    const user = await userDAL.findById(userId);
+    const lastSeenAnnouncementId = user?.lastSeenAnnouncementId ?? null;
+
+    if (user?.createdAt && Date.now() - new Date(user.createdAt).getTime() < NEW_USER_GRACE_PERIOD_MS) {
+      return { announcements: [], lastSeenAnnouncementId };
+    }
+
+    try {
+      const announcements = await getAnnouncements();
+      hasLoggedFetchError = false;
+      return { announcements, lastSeenAnnouncementId };
+    } catch (err) {
+      if (!hasLoggedFetchError) {
+        logger.warn({ err }, "Failed to fetch announcements — feature will be hidden until next attempt");
+        hasLoggedFetchError = true;
+      }
+      return { announcements: [], lastSeenAnnouncementId };
+    }
+  };
+
+  const markAnnouncementSeen = async ({ userId, announcementId }: { userId: string; announcementId: string }) => {
+    const user = await userDAL.updateById(userId, { lastSeenAnnouncementId: announcementId });
+    if (!user) throw new NotFoundError({ message: "User not found" });
+    return { lastSeenAnnouncementId: user.lastSeenAnnouncementId ?? null };
+  };
+
+  return {
+    listRecentAnnouncements,
+    markAnnouncementSeen
+  };
+};

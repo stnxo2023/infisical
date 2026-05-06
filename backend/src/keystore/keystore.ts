@@ -71,6 +71,7 @@ export const KeyStorePrefixes = {
     `sse-connections:${projectId}:${identityId}` as const,
   ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
     `sse-connections:${projectId}:${identityId}:${connectionId}` as const,
+  RecentAnnouncements: "announcements:recent" as const,
 
   ProjectPermissionMarker: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
     `project-permission-marker:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
