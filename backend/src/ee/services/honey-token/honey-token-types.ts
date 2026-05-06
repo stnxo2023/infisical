@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { isValidAwsRegion } from "@app/lib/aws/region";
+import { slugSchema } from "@app/server/lib/schemas";
 
 import { HoneyTokenEventType, HoneyTokenType } from "./honey-token-enums";
-import { slugSchema } from "@app/server/lib/schemas";
 
 export const AwsHoneyTokenEventMetadataSchema = z.object({
   accessKeyId: z.string(),
