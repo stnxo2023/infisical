@@ -36,14 +36,15 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
     if (isOpen) setIndex(0);
   }, [isOpen]);
 
-  const announcement = announcements[index];
+  const total = announcements.length;
+  const safeIndex = Math.min(index, total - 1);
+  const announcement = announcements[safeIndex];
   if (!announcement) return null;
 
   const ctaLabel = announcement.linkLabel || (announcement.link ? "Learn more" : null);
   const publishedLabel = formatPublished(announcement.published);
-  const total = announcements.length;
-  const hasPrev = index > 0;
-  const hasNext = index < total - 1;
+  const hasPrev = safeIndex > 0;
+  const hasNext = safeIndex < total - 1;
   const showPager = total > 1;
 
   return (
@@ -92,19 +93,19 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
                   variant="ghost"
                   size="xs"
                   aria-label="Previous announcement"
-                  onClick={() => setIndex((i) => Math.max(0, i - 1))}
+                  onClick={() => setIndex(Math.max(0, safeIndex - 1))}
                   isDisabled={!hasPrev}
                 >
                   <ChevronLeft />
                 </IconButton>
                 <span className="tabular-nums">
-                  {index + 1} / {total}
+                  {safeIndex + 1} / {total}
                 </span>
                 <IconButton
                   variant="ghost"
                   size="xs"
                   aria-label="Next announcement"
-                  onClick={() => setIndex((i) => Math.min(total - 1, i + 1))}
+                  onClick={() => setIndex(Math.min(total - 1, safeIndex + 1))}
                   isDisabled={!hasNext}
                 >
                   <ChevronRight />

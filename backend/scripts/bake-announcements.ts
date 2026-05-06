@@ -54,7 +54,11 @@ async function downloadAsset(url: string, assetId: string): Promise<{ filename: 
   }
   const buf = Buffer.from(await res.arrayBuffer());
   const hash = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
-  const ext = path.extname(new URL(url).pathname).toLowerCase() || ".bin";
+  const ext = path.extname(new URL(url).pathname).toLowerCase();
+  if (!ext) {
+    console.warn(`[bake-announcements] skipping ${url}: no file extension`);
+    return null;
+  }
   const filename = `${hash}${ext}`;
   await fs.writeFile(path.join(IMAGE_DIR, filename), buf);
   console.log(`[bake-announcements]   asset ${assetId} -> ${filename} (${buf.length} bytes)`);
@@ -92,10 +96,12 @@ async function main() {
   }
 
   const downloaded = new Map<string, string>(); // assetId -> local filename
-  for (const [assetId, remoteUrl] of assetMap) {
-    const result = await downloadAsset(remoteUrl, assetId);
-    if (result) downloaded.set(assetId, result.filename);
-  }
+  await Promise.all(
+    Array.from(assetMap, async ([assetId, remoteUrl]) => {
+      const result = await downloadAsset(remoteUrl, assetId);
+      if (result) downloaded.set(assetId, result.filename);
+    })
+  );
 
   const announcements = data.items.flatMap((entry) => {
     if (!entry?.fields?.title || !entry.fields.body || !entry.fields.published) return [];

@@ -9,7 +9,7 @@ export const announcementKeys = {
   recent: () => [...announcementKeys.all, "recent"] as const
 };
 
-export const useGetRecentAnnouncements = (enabled = true) => {
+export const useGetRecentAnnouncements = () => {
   return useQuery({
     queryKey: announcementKeys.recent(),
     queryFn: async () => {
@@ -22,7 +22,6 @@ export const useGetRecentAnnouncements = (enabled = true) => {
     // the user picks it up on the next hard reload or new tab.
     staleTime: Infinity,
     refetchOnMount: false,
-    refetchOnReconnect: false,
-    enabled
+    refetchOnReconnect: false
   });
 };

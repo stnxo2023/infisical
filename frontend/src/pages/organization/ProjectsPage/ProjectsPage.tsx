@@ -55,17 +55,17 @@ export const ProjectsPage = () => {
     "upgradePlan"
   ] as const);
 
-  const { data: announcementData } = useGetRecentAnnouncements(!hasChildRoute);
+  const { data: announcementData } = useGetRecentAnnouncements();
   const announcements = announcementData?.announcements;
   const latestAnnouncement = announcements?.[0];
   const { hasUnseen, markSeen } = useAnnouncementSeen();
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
 
+  const shouldAutoOpen = Boolean(latestAnnouncement && hasUnseen(latestAnnouncement.id));
+
   useEffect(() => {
-    if (latestAnnouncement && hasUnseen(latestAnnouncement.id)) {
-      setIsAnnouncementOpen(true);
-    }
-  }, [latestAnnouncement?.id]);
+    if (shouldAutoOpen) setIsAnnouncementOpen(true);
+  }, [shouldAutoOpen]);
 
   const handleAnnouncementOpenChange = (open: boolean) => {
     setIsAnnouncementOpen(open);
