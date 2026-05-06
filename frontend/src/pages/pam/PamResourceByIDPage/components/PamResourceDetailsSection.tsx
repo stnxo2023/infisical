@@ -3,7 +3,14 @@ import { format } from "date-fns";
 import { PencilIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Detail, DetailGroup, DetailLabel, DetailValue, IconButton } from "@app/components/v3";
+import {
+  Badge,
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  IconButton
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import { TPamResource } from "@app/hooks/api/pam";
 import { PamDomainType, useGetPamDomainById } from "@app/hooks/api/pamDomain";
@@ -60,9 +67,11 @@ export const PamResourceDetailsSection = ({ resource, onEdit }: Props) => {
                   domainType: domain.domainType,
                   domainId: domain.id
                 }}
-                className="text-primary hover:underline"
+                className="hover:underline"
               >
-                {domain.name}
+                <Badge variant="info" className="text-xs">
+                  {domain.connectionDetails.domain}
+                </Badge>
               </Link>
             </DetailValue>
           </Detail>
