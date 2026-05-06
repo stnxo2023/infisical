@@ -32,7 +32,7 @@ import {
   ResolvedSecretValuePopover,
   SecretReferenceTree
 } from "@app/components/secrets/SecretReferenceDetails";
-import { DeleteActionModal, Input, Modal, ModalContent } from "@app/components/v2";
+import { Input, Modal, ModalContent } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   AlertDialog,
@@ -310,6 +310,7 @@ export const SecretEditTableRow = ({
   const [isDeleting, setIsDeleting] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [editConfirmation, setEditConfirmation] = useState("");
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
@@ -326,6 +327,10 @@ export const SecretEditTableRow = ({
   useEffect(() => {
     if (!isModalOpen) setDeleteConfirmation("");
   }, [isModalOpen]);
+
+  useEffect(() => {
+    if (!popUp.editSecret.isOpen) setEditConfirmation("");
+  }, [popUp.editSecret.isOpen]);
 
   const originalCommentRef = useRef(comment ?? "");
   const originalTagsRef = useRef(tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? []);
@@ -1765,26 +1770,60 @@ export const SecretEditTableRow = ({
         text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."
       />
 
-      <DeleteActionModal
-        isOpen={popUp.editSecret.isOpen}
-        deleteKey="confirm"
-        buttonColorSchema="secondary"
-        buttonText="Save"
-        subTitle=""
-        title="Do you want to edit this secret?"
-        onChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
-        onDeleteApproved={() => handleEditSecret(popUp?.editSecret?.data)}
-        formContent={
-          importedBy &&
-          importedBy.length > 0 && (
+      <AlertDialog
+        open={popUp.editSecret.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
+      >
+        <AlertDialogContent className="sm:max-w-4xl!">
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <SaveIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Update this secret?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This secret is referenced by other secrets in your project. Saving these changes will
+              update everywhere it&apos;s referenced.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {importedBy && importedBy.length > 0 && (
             <CollapsibleSecretImports
               importedBy={importedBy}
               secretsToDelete={[secretName]}
               onlyReferences
             />
-          )
-        }
-      />
+          )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (editConfirmation === "confirm") handleEditSecret(popUp?.editSecret?.data);
+            }}
+          >
+            <Field>
+              <FieldLabel>
+                Type <span className="font-bold">confirm</span> to proceed
+              </FieldLabel>
+              <FieldContent>
+                <V3Input
+                  value={editConfirmation}
+                  onChange={(e) => setEditConfirmation(e.target.value)}
+                  placeholder="Type confirm here"
+                  autoComplete="off"
+                />
+              </FieldContent>
+            </Field>
+          </form>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="project"
+              onClick={() => handleEditSecret(popUp?.editSecret?.data)}
+              disabled={editConfirmation !== "confirm"}
+            >
+              Save Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </>
   );
