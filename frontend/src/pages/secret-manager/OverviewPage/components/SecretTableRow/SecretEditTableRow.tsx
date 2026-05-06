@@ -35,12 +35,25 @@ import {
 import { DeleteActionModal, Input, Modal, ModalContent } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Field,
+  FieldContent,
+  FieldLabel,
   IconButton,
+  Input as V3Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -296,6 +309,7 @@ export const SecretEditTableRow = ({
 
   const [isDeleting, setIsDeleting] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
@@ -308,6 +322,10 @@ export const SecretEditTableRow = ({
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
   }, []);
+
+  useEffect(() => {
+    if (!isModalOpen) setDeleteConfirmation("");
+  }, [isModalOpen]);
 
   const originalCommentRef = useRef(comment ?? "");
   const originalTagsRef = useRef(tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? []);
@@ -894,13 +912,50 @@ export const SecretEditTableRow = ({
 
   const valueContent = (
     <>
-      <DeleteActionModal
-        isOpen={isModalOpen}
-        onClose={toggleModal}
-        title="Do you want to delete the selected secret?"
-        deleteKey={secretName}
-        onDeleteApproved={handleDeleteSecret}
-      />
+      <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <TrashIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Are you sure you want to delete {secretName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the secret from this environment. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (deleteConfirmation === secretName) handleDeleteSecret();
+            }}
+          >
+            <Field>
+              <FieldLabel>
+                Type <span className="font-bold">{secretName}</span> to confirm
+              </FieldLabel>
+              <FieldContent>
+                <V3Input
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  placeholder={`Type ${secretName} here`}
+                  autoComplete="off"
+                />
+              </FieldContent>
+            </Field>
+          </form>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={handleDeleteSecret}
+              disabled={deleteConfirmation !== secretName || isDeleting}
+            >
+              Delete Secret
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="flex w-full cursor-text items-center space-x-2">
         {secretValueHidden && (
