@@ -13,7 +13,6 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
-import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
 import { AwsConnectionSchema } from "@app/services/app-connection/aws/aws-connection-schemas";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
@@ -205,7 +204,6 @@ export const honeyTokenAwsConfigProviderFactory = ({
     }).cipherTextBlob;
 
     const stackDeployment = await verifyAwsStackDeployment({
-      orgId,
       connectionId,
       stackName: validatedConfig.stackName,
       awsRegion: validatedConfig.awsRegion,
@@ -276,9 +274,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
     });
 
     await honeyTokenConfigDAL.updateById(config.id, {
-      status: stackDeployment.deployed
-        ? HoneyTokenConfigStatus.Complete
-        : HoneyTokenConfigStatus.VerificationPending
+      status: stackDeployment.deployed ? HoneyTokenConfigStatus.Complete : HoneyTokenConfigStatus.VerificationPending
     });
 
     return {
