@@ -14,7 +14,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Checkbox } from "@app/components/v2";
 import { Badge, IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectPermissionHoneyTokenActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
@@ -145,8 +145,8 @@ export const HoneyTokenItem = ({
               <TooltipContent>View details</TooltipContent>
             </Tooltip>
             <ProjectPermissionCan
-              I={ProjectPermissionSecretActions.DescribeAndReadValue}
-              a={ProjectPermissionSub.Secrets}
+              I={ProjectPermissionHoneyTokenActions.ReadCredentials}
+              a={ProjectPermissionSub.HoneyTokens}
               renderTooltip
               allowedLabel="View credentials"
             >
@@ -167,8 +167,8 @@ export const HoneyTokenItem = ({
               )}
             </ProjectPermissionCan>
             <ProjectPermissionCan
-              I={ProjectPermissionSecretActions.Edit}
-              a={ProjectPermissionSub.Secrets}
+              I={ProjectPermissionHoneyTokenActions.Edit}
+              a={ProjectPermissionSub.HoneyTokens}
               renderTooltip
               allowedLabel="Edit"
             >
@@ -190,8 +190,8 @@ export const HoneyTokenItem = ({
             </ProjectPermissionCan>
             {status !== HoneyTokenStatus.Revoked && (
               <ProjectPermissionCan
-                I={ProjectPermissionSecretActions.Delete}
-                a={ProjectPermissionSub.Secrets}
+                I={ProjectPermissionHoneyTokenActions.Revoke}
+                a={ProjectPermissionSub.HoneyTokens}
                 renderTooltip
                 allowedLabel="Revoke"
               >

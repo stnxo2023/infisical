@@ -55,7 +55,7 @@ export const HoneyTokenSection = () => {
             <h3 className="text-lg font-medium text-mineshaft-100">AWS Honey Tokens</h3>
             {hasConfig && (
               <Badge variant={isConfigVerified ? "success" : "warning"}>
-                {isConfigVerified ? "Verified" : "Not verified"}
+                {isConfigVerified ? "Verified" : "Pending Verification"}
               </Badge>
             )}
           </div>

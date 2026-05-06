@@ -6,7 +6,6 @@ import {
   THoneyTokenConfigByType,
   THoneyTokenTestConnectionResponseByType
 } from "@app/ee/services/honey-token/honey-token-provider-types";
-import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -141,8 +140,6 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
       }
     },
     handler: async (req) => {
-      logger.info({ payload: req.body, headers: req.headers, type }, `Honey token trigger received [type=${type}]`);
-
       const { acknowledged } = await server.services.honeyToken.handleTrigger({
         type,
         signature: req.headers["x-infisical-signature"] as string | undefined,

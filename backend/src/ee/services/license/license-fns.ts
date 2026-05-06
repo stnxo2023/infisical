@@ -68,7 +68,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretVersioning: true,
   pitRecovery: false,
   ipAllowlisting: false,
-  rbac: false,
+  rbac: true,
   githubOrgSync: false,
   customRateLimits: false,
   subOrganization: false,
@@ -89,7 +89,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   trial_end: null,
   has_used_trial: true,
   secretApproval: false,
-  secretRotation: false,
+  secretRotation: true,
   caCrl: false,
   instanceUserManagement: false,
   externalKms: false,
@@ -116,8 +116,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   machineIdentityAuthTemplates: false,
   pkiLegacyTemplates: false,
   secretShareExternalBranding: false,
-  honeyTokens: false,
-  honeyTokenLimit: 0
+  honeyTokens: true,
+  honeyTokenLimit: 3
 });
 
 export const setupLicenseRequestWithStore = (

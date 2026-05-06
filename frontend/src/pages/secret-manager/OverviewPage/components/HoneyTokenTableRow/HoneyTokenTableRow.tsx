@@ -25,7 +25,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  ProjectPermissionSecretActions,
+  ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
@@ -113,8 +113,8 @@ export const HoneyTokenTableRow = ({
           <TooltipContent>View details</TooltipContent>
         </Tooltip>
         <ProjectPermissionCan
-          I={ProjectPermissionSecretActions.DescribeAndReadValue}
-          a={ProjectPermissionSub.Secrets}
+          I={ProjectPermissionHoneyTokenActions.ReadCredentials}
+          a={ProjectPermissionSub.HoneyTokens}
         >
           {(isAllowed) => (
             <Tooltip>
@@ -134,8 +134,8 @@ export const HoneyTokenTableRow = ({
           )}
         </ProjectPermissionCan>
         <ProjectPermissionCan
-          I={ProjectPermissionSecretActions.Edit}
-          a={ProjectPermissionSub.Secrets}
+          I={ProjectPermissionHoneyTokenActions.Edit}
+          a={ProjectPermissionSub.HoneyTokens}
           renderTooltip
           allowedLabel="Edit"
         >
@@ -158,8 +158,8 @@ export const HoneyTokenTableRow = ({
         </ProjectPermissionCan>
         {honeyToken.status !== HoneyTokenStatus.Revoked && (
           <ProjectPermissionCan
-            I={ProjectPermissionSecretActions.Delete}
-            a={ProjectPermissionSub.Secrets}
+            I={ProjectPermissionHoneyTokenActions.Revoke}
+            a={ProjectPermissionSub.HoneyTokens}
           >
             {(isAllowed) => (
               <Tooltip>

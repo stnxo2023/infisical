@@ -8,10 +8,11 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -85,6 +86,7 @@ export type THoneyTokenServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -131,6 +133,7 @@ export const honeyTokenServiceFactory = ({
   licenseService,
   kmsService,
   appConnectionDAL,
+  appConnectionService,
   orgDAL,
   projectDAL,
   smtpService,
@@ -153,6 +156,7 @@ export const honeyTokenServiceFactory = ({
     licenseService,
     kmsService,
     appConnectionDAL,
+    appConnectionService,
     orgDAL,
     projectDAL,
     smtpService,
@@ -275,20 +279,21 @@ export const honeyTokenServiceFactory = ({
       });
     }
 
-    const appConnection = await appConnectionDAL.findById(orgConfig.connectionId);
+    const provider = getHoneyTokenProviderDefinition(providerType);
 
-    if (!appConnection) {
-      throw new NotFoundError({
-        message: `Could not find App Connection with ID ${orgConfig.connectionId}`
-      });
-    }
-    // Honey token integrations only support organization-level app connections.
-    if (appConnection.orgId !== actor.orgId || appConnection.projectId != null) {
-      throw new NotFoundError({
-        message: `Could not find App Connection with ID ${orgConfig.connectionId}`
+    const appConnection = await appConnectionService.validateAppConnectionUsageById(
+      provider.connectionApp,
+      { connectionId: orgConfig.connectionId, projectId },
+      actor
+    );
+
+    if (appConnection.projectId) {
+      throw new BadRequestError({
+        message: `Honey token integrations only support organization-level app connections. Please use an organization-level app connection.`
       });
     }
     assertHoneyTokenConnectionType(providerType, appConnection.app);
+
     const { credentials: honeyTokenCredentials, tokenIdentifier } =
       await providerHooks.createCredentials(appConnection);
 
@@ -635,16 +640,23 @@ export const honeyTokenServiceFactory = ({
       throw new BadRequestError({ message: "Honey token configuration is missing for this organization" });
     }
 
-    const appConnection = await appConnectionDAL.findById(orgConfig.connectionId);
-    // Honey token integrations only support organization-level app connections.
-    if (!appConnection || appConnection.orgId !== actor.orgId || appConnection.projectId != null) {
-      throw new ForbiddenRequestError({
-        message: "App connection does not belong to the current organization"
+    const provider = getHoneyTokenProviderDefinition(honeyToken.type);
+    const providerHooks = honeyTokenProviderHooksByType[type];
+
+    const appConnection = await appConnectionService.validateAppConnectionUsageById(
+      provider.connectionApp,
+      { connectionId: orgConfig.connectionId, projectId },
+      actor
+    );
+
+    if (appConnection.projectId) {
+      throw new BadRequestError({
+        message: `Honey token integrations only support organization-level app connections. Please use an organization-level app connection.`
       });
     }
 
     assertHoneyTokenConnectionType(type, appConnection.app);
-    const providerHooks = honeyTokenProviderHooksByType[type];
+
     if (!providerHooks) throw new BadRequestError({ message: "Unsupported honey token type" });
     await providerHooks.revokeCredentials({
       appConnection,
@@ -794,16 +806,7 @@ export const honeyTokenServiceFactory = ({
   };
 
   const getDashboardHoneyTokens = async (
-    {
-      projectId,
-      environments,
-      secretPath,
-      search,
-      orderBy,
-      orderDirection,
-      limit,
-      offset
-    }: THoneyTokenListInput,
+    { projectId, environments, secretPath, search, orderBy, orderDirection, limit, offset }: THoneyTokenListInput,
     actor: OrgServiceActor
   ) => {
     const { permission: readPermission } = await permissionService.getProjectPermission({
@@ -919,6 +922,8 @@ export const honeyTokenServiceFactory = ({
   };
 
   const handleTrigger = async ({ type, signature, payload }: THandleTriggerInput) => {
+    logger.info({ payload, signature, type }, `Honey token trigger received [type=${type}]`);
+
     const providerType = assertSupportedHoneyTokenType(type);
     if (providerType !== HoneyTokenType.AWS) {
       throw new BadRequestError({ message: "Unsupported honey token type" });
@@ -952,14 +957,13 @@ export const honeyTokenServiceFactory = ({
       throw new UnauthorizedError({ message: "Could not infer honey token organization from payload" });
     }
 
-    const tokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(firstAccessKeyId);
-    if (!tokenWithOrg) {
+    const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(firstAccessKeyId);
+    if (!honeyTokenWithOrg) {
       throw new UnauthorizedError({ message: "Could not infer honey token organization from payload" });
     }
-    const { orgId } = tokenWithOrg;
 
     const config = await honeyTokenConfigDAL.findOne({
-      orgId,
+      orgId: honeyTokenWithOrg.orgId,
       type: HoneyTokenType.AWS,
       status: HoneyTokenConfigStatus.Complete
     });
@@ -967,7 +971,10 @@ export const honeyTokenServiceFactory = ({
       throw new NotFoundError({ message: "No honey token configuration found for this organization" });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: honeyTokenWithOrg.orgId
+    });
     const decrypted = decryptor({ cipherTextBlob: config.encryptedConfig });
     const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
 
@@ -991,12 +998,15 @@ export const honeyTokenServiceFactory = ({
       const parsed = AwsHoneyTokenEventMetadataSchema.safeParse(wrapped.event ?? rawEvent);
       if (!parsed.success) {
         logger.warn(
-          { orgId, event: rawEvent, error: parsed.error },
-          `Failed to parse honey token event [orgId=${orgId}]`
+          { orgId: honeyTokenWithOrg.orgId, event: rawEvent, error: parsed.error },
+          `Failed to parse honey token event [orgId=${honeyTokenWithOrg.orgId}]`
         );
         continue;
       }
-      const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(parsed.data.accessKeyId, orgId);
+      const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(
+        parsed.data.accessKeyId,
+        honeyTokenWithOrg.orgId
+      );
       if (!honeyToken) continue;
       if (honeyToken.status === HoneyTokenStatus.Revoked) continue;
 
@@ -1010,7 +1020,7 @@ export const honeyTokenServiceFactory = ({
         TRIGGER_NOTIFICATION_COOLDOWN_MS
       );
       if (updatedToken) {
-        void $sendTriggerNotification({ orgId, honeyToken, eventMetadata: parsed.data });
+        void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata: parsed.data });
       }
     }
     /* eslint-enable no-continue */

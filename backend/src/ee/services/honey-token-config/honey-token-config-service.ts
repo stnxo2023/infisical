@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 
 import { HoneyTokenType } from "../honey-token/honey-token-enums";
 import {
@@ -58,13 +58,23 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
     );
 
     const providerType = assertSupportedHoneyTokenType(type);
+    const providerDefinition = getHoneyTokenProviderDefinition(providerType);
     const provider = honeyTokenConfigProviderByType[providerType];
+
     if (!provider) {
       throw new BadRequestError({ message: "Unsupported honey token type" });
     }
-    const appConnection = await deps.appConnectionDAL.findById(connectionId);
-    if (!appConnection || appConnection.orgId !== orgPermission.orgId) {
-      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+
+    const appConnection = await deps.appConnectionService.validateAppConnectionUsageById(
+      providerDefinition.connectionApp,
+      { connectionId, projectId: orgPermission.orgId },
+      orgPermission
+    );
+
+    if (appConnection.projectId) {
+      throw new BadRequestError({
+        message: `Honey token integrations only support organization-level app connections. Please use an organization-level app connection.`
+      });
     }
 
     assertHoneyTokenConnectionType(providerType, appConnection.app);

@@ -13,6 +13,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
+import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
 import { AwsConnectionSchema } from "@app/services/app-connection/aws/aws-connection-schemas";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
@@ -55,14 +56,12 @@ const parseAwsConnectionConfig = (decryptedConnection: unknown): TAwsConnectionC
 };
 
 export const verifyAwsStackDeployment = async ({
-  orgId,
   connectionId,
   stackName,
   awsRegion,
   appConnectionDAL,
   kmsService
 }: {
-  orgId: string;
   connectionId: string;
   stackName: string;
   awsRegion: string;
@@ -71,8 +70,7 @@ export const verifyAwsStackDeployment = async ({
 }): Promise<{ deployed: boolean; status: string | null }> => {
   try {
     const appConnection = await appConnectionDAL.findById(connectionId);
-    // Honey token integrations only support organization-level app connections.
-    if (!appConnection || appConnection.orgId !== orgId || appConnection.projectId != null) {
+    if (!appConnection) {
       return { deployed: false, status: null };
     }
 
@@ -270,7 +268,6 @@ export const honeyTokenAwsConfigProviderFactory = ({
     const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
 
     const stackDeployment = await verifyAwsStackDeployment({
-      orgId,
       connectionId: config.connectionId,
       stackName: storedConfig.stackName,
       awsRegion: storedConfig.awsRegion,

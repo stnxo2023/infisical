@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { TAppConnections } from "@app/db/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 
 import type {
   THoneyTokenConfigProvider,
@@ -14,13 +14,13 @@ import type { THoneyTokenServiceFactoryDep } from "./honey-token-service";
 export type THoneyTokenDeploymentStatus = { deployed: boolean; status: string | null };
 
 export type THoneyTokenProviderHooks = {
-  createCredentials: (appConnection: TAppConnections) => Promise<{
+  createCredentials: (appConnection: TAppConnection) => Promise<{
     credentials: Record<string, string>;
     tokenIdentifier: string;
   }>;
-  revokeCredentials: (input: { appConnection: TAppConnections; credentials: Record<string, string> }) => Promise<void>;
+  revokeCredentials: (input: { appConnection: TAppConnection; credentials: Record<string, string> }) => Promise<void>;
   verifyDeployment?: (input: {
-    appConnection: TAppConnections;
+    appConnection: TAppConnection;
     orgId: string;
     encryptedConfig?: Buffer | null;
     connectionId: string;

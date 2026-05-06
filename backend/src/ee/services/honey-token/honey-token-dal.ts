@@ -2,8 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { HoneyTokensSchema, THoneyTokens } from "@app/db/schemas/honey-tokens";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type THoneyTokenDALFactory = ReturnType<typeof honeyTokenDALFactory>;
 
@@ -69,38 +68,25 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number(result?.count ?? 0);
   };
 
-  const findOneByTokenIdentifierAndOrgId = async (
-    tokenIdentifier: string,
-    orgId: string,
-    tx?: Knex
-  ): Promise<THoneyTokens | null> => {
-    const row: unknown = await (tx || db.replicaNode())(TableName.HoneyToken)
+  const findOneByTokenIdentifierAndOrgId = async (tokenIdentifier: string, orgId: string, tx?: Knex) => {
+    const row = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.HoneyToken}.tokenIdentifier`, tokenIdentifier)
       .andWhere(`${TableName.Project}.orgId`, orgId)
-      .select(`${TableName.HoneyToken}.*`)
+      .select(selectAllTableCols(TableName.HoneyToken))
       .first();
 
-    return row ? HoneyTokensSchema.parse(row) : null;
+    return row ?? null;
   };
 
-  const findOneByTokenIdentifier = async (
-    tokenIdentifier: string,
-    tx?: Knex
-  ): Promise<{ honeyToken: THoneyTokens; orgId: string } | null> => {
-    const row: unknown = await (tx || db.replicaNode())(TableName.HoneyToken)
+  const findOneByTokenIdentifier = async (tokenIdentifier: string, tx?: Knex) => {
+    const row = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.HoneyToken}.tokenIdentifier`, tokenIdentifier)
-      .select(`${TableName.HoneyToken}.*`, db.ref("orgId").withSchema(TableName.Project).as("orgId"))
+      .select(selectAllTableCols(TableName.HoneyToken), db.ref("orgId").withSchema(TableName.Project).as("orgId"))
       .first();
 
-    if (!row) return null;
-    const parsedRow = HoneyTokensSchema.extend({ orgId: HoneyTokensSchema.shape.id }).parse(row);
-
-    return {
-      honeyToken: HoneyTokensSchema.parse(parsedRow),
-      orgId: parsedRow.orgId
-    };
+    return row ?? null;
   };
 
   const countByOrgId = async (orgId: string, tx?: Knex) => {
@@ -115,16 +101,11 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number(result?.count ?? 0);
   };
 
-  const tryMarkTriggered = async (
-    tokenIdentifier: string,
-    cooldownMs: number,
-    tx?: Knex
-  ): Promise<THoneyTokens | null> => {
-    const COOLDOWN_INTERVAL_MS = cooldownMs;
+  const tryMarkTriggered = async (tokenIdentifier: string, cooldownMs: number, tx?: Knex) => {
     const now = new Date();
-    const cooldownThreshold = new Date(now.getTime() - COOLDOWN_INTERVAL_MS);
+    const cooldownThreshold = new Date(now.getTime() - cooldownMs);
 
-    const rows = await (tx || db)(TableName.HoneyToken)
+    const [row] = await (tx || db)(TableName.HoneyToken)
       .where({ tokenIdentifier })
       .andWhere("status", "!=", "revoked")
       .andWhere((qb) => {
@@ -136,8 +117,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       })
       .returning("*");
 
-    const parsedRows = HoneyTokensSchema.array().parse(rows);
-    return parsedRows.length > 0 ? parsedRows[0] : null;
+    return row ?? null;
   };
 
   const createSecretMappings = async (honeyTokenId: string, secretIds: string[], tx?: Knex) => {

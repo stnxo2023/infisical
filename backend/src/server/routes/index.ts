@@ -958,14 +958,6 @@ export const registerRoutes = async (
     membershipGroupDAL
   });
 
-  const honeyTokenConfigService = honeyTokenConfigServiceFactory({
-    honeyTokenConfigDAL,
-    permissionService,
-    kmsService,
-    licenseService,
-    appConnectionDAL
-  });
-
   // ldapService is created after loginService (below) due to dependency on processProviderCallback
 
   const telemetryService = telemetryServiceFactory({
@@ -1640,36 +1632,6 @@ export const registerRoutes = async (
     snapshotSecretV2BridgeDAL,
     secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL
   });
-  const honeyTokenService = honeyTokenServiceFactory({
-    honeyTokenDAL,
-    honeyTokenConfigDAL,
-    honeyTokenEventDAL,
-    permissionService,
-    licenseService,
-    kmsService,
-    appConnectionDAL,
-    orgDAL,
-    projectDAL,
-    smtpService,
-    folderDAL,
-    projectBotService,
-    secretDAL: secretV2BridgeDAL,
-    secretVersionDAL: secretVersionV2BridgeDAL,
-    secretVersionTagDAL: secretVersionTagV2BridgeDAL,
-    secretTagDAL,
-    folderCommitService,
-    resourceMetadataDAL,
-    snapshotService,
-    secretQueueService
-  });
-
-  const webhookService = webhookServiceFactory({
-    permissionService,
-    webhookDAL,
-    projectEnvDAL,
-    projectDAL,
-    kmsService
-  });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
   const secretValidationRuleService = secretValidationRuleServiceFactory({
@@ -2341,6 +2303,47 @@ export const registerRoutes = async (
     projectDAL,
     appConnectionCredentialRotationService,
     identityUaDAL
+  });
+
+  const honeyTokenConfigService = honeyTokenConfigServiceFactory({
+    honeyTokenConfigDAL,
+    permissionService,
+    kmsService,
+    licenseService,
+    appConnectionDAL,
+    appConnectionService
+  });
+
+  const honeyTokenService = honeyTokenServiceFactory({
+    honeyTokenDAL,
+    honeyTokenConfigDAL,
+    honeyTokenEventDAL,
+    permissionService,
+    licenseService,
+    kmsService,
+    appConnectionDAL,
+    orgDAL,
+    projectDAL,
+    smtpService,
+    folderDAL,
+    projectBotService,
+    secretDAL: secretV2BridgeDAL,
+    secretVersionDAL: secretVersionV2BridgeDAL,
+    secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+    secretTagDAL,
+    folderCommitService,
+    resourceMetadataDAL,
+    snapshotService,
+    secretQueueService,
+    appConnectionService
+  });
+
+  const webhookService = webhookServiceFactory({
+    permissionService,
+    webhookDAL,
+    projectEnvDAL,
+    projectDAL,
+    kmsService
   });
 
   const secretSyncService = secretSyncServiceFactory({

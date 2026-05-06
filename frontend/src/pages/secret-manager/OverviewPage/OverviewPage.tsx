@@ -797,11 +797,6 @@ const OverviewPageContent = () => {
 
   const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
 
-  console.log("[HoneyTokenDrawer] render", {
-    detailsDrawerHoneyTokenId,
-    routerSearchHoneyTokenId: routerSearch.honeyTokenId
-  });
-
   // Auto-open honey token drawer when linked via notification/email
   useEffect(() => {
     console.log("[HoneyTokenDrawer] useEffect fired", { honeyTokenId: routerSearch.honeyTokenId });

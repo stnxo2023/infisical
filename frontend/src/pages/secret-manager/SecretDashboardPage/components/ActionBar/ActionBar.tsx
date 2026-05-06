@@ -215,6 +215,8 @@ export const ActionBar = ({
     (secret) => secret.isHoneyTokenSecret
   );
 
+  console.log("[ActionBar] selectedSecrets", selectedSecrets);
+
   const { permission } = useProjectPermission();
   const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
     ExternalMigrationProviders.Vault

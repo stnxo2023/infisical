@@ -6,7 +6,7 @@ import { RemindersSchema } from "@app/db/schemas/reminders";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
-import { DASHBOARD, INCLUDE_HONEY_TOKENS_DETAILS_DESC, INCLUDE_HONEY_TOKENS_OVERVIEW_DESC } from "@app/lib/api-docs";
+import { DASHBOARD } from "@app/lib/api-docs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
@@ -109,7 +109,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
         includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecretRotations),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets),
-        includeHoneyTokens: booleanSchema.describe(INCLUDE_HONEY_TOKENS_OVERVIEW_DESC)
+        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeHoneyTokens)
       }),
       response: {
         200: z.object({
@@ -138,6 +138,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secrets: secretRawSchema
             .omit({ secretValue: true })
             .extend({
+              isHoneyTokenSecret: z.boolean().optional(),
               isEmpty: z.boolean(),
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
@@ -704,7 +705,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeImports),
         includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecretRotations),
-        includeHoneyTokens: booleanSchema.describe(INCLUDE_HONEY_TOKENS_DETAILS_DESC)
+        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeHoneyTokens)
       }),
       response: {
         200: z.object({
@@ -742,6 +743,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secrets: secretRawSchema
             .omit({ secretValue: true })
             .extend({
+              isHoneyTokenSecret: z.boolean().optional(),
               isEmpty: z.boolean(),
               secretReminderRecipients: z
                 .object({
@@ -1289,6 +1291,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secrets: secretRawSchema
             .omit({ secretValue: true })
             .extend({
+              isHoneyTokenSecret: z.boolean().optional(),
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
@@ -1718,7 +1721,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 slug: z.string()
               }),
               folderId: z.string().optional(),
-              secrets: secretRawSchema.omit({ secretValue: true }).extend({ isEmpty: z.boolean() }).array()
+              secrets: secretRawSchema
+                .omit({ secretValue: true })
+                .extend({ isEmpty: z.boolean(), isHoneyTokenSecret: z.boolean().optional() })
+                .array()
             })
             .array()
         })

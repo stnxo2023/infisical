@@ -543,10 +543,14 @@ export const secretV2BridgeServiceFactory = ({
       });
       if (!sharedSecretToModify)
         throw new NotFoundError({ message: `Secret with name ${inputSecret.secretName} not found` });
-      if (sharedSecretToModify.isHoneyTokenSecret)
-        throw new BadRequestError({ message: "Cannot update honey token secrets" });
-      if (sharedSecretToModify.isRotatedSecret && inputSecret.newSecretName)
-        throw new BadRequestError({ message: "Cannot update rotated secret name" });
+      if (sharedSecretToModify.isHoneyTokenSecret || sharedSecretToModify.isRotatedSecret) {
+        if (inputSecret.newSecretName || inputSecret.secretValue) {
+          throw new BadRequestError({
+            message: `Cannot update ${sharedSecretToModify.isHoneyTokenSecret ? "honey token" : "rotated"} secret name or value`
+          });
+        }
+      }
+
       secretId = sharedSecretToModify.id;
       secret = sharedSecretToModify;
     }
@@ -2210,12 +2214,6 @@ export const secretV2BridgeServiceFactory = ({
         const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdateInDB, (i) => i.key);
         const secretsToCreate = secretsToUpdate.filter((el) => !secretsToUpdateInDBGroupedByKey?.[el.secretKey]);
         secretsToUpdate = secretsToUpdate.filter((el) => secretsToUpdateInDBGroupedByKey?.[el.secretKey]);
-        const honeyTokenSecretsToUpdate = secretsToUpdateInDB.filter((el) => el.isHoneyTokenSecret);
-        if (honeyTokenSecretsToUpdate.length) {
-          throw new BadRequestError({
-            message: `Cannot update honey token secrets: ${honeyTokenSecretsToUpdate.map((el) => el.key).join(", ")}`
-          });
-        }
 
         secretsToUpdateInDB.forEach((el) => {
           ForbiddenError.from(permission).throwUnlessCan(
@@ -2227,6 +2225,19 @@ export const secretV2BridgeServiceFactory = ({
               secretTags: el.tags.map((i) => i.slug)
             })
           );
+
+          if (el.isHoneyTokenSecret) {
+            const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
+
+            if (input) {
+              if (input.newSecretName) {
+                delete input.newSecretName;
+              }
+              if (input.secretValue !== undefined) {
+                delete input.secretValue;
+              }
+            }
+          }
 
           if (el.isRotatedSecret) {
             const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);

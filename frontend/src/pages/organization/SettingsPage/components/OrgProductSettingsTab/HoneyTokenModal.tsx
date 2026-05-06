@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faEye, faEyeSlash, faTerminal } from "@fortawesome/free-solid-svg-icons";
@@ -40,12 +42,6 @@ const CF_TEMPLATE_URL =
 const DEFAULT_STACK_NAME = "infisical-honey-tokens";
 const DEFAULT_AWS_REGION = "us-east-1";
 const WEBHOOK_SIGNING_KEY_BYTES = 32;
-
-const generateWebhookSigningKey = () => {
-  const randomBytes = new Uint8Array(WEBHOOK_SIGNING_KEY_BYTES);
-  window.crypto.getRandomValues(randomBytes);
-  return Array.from(randomBytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-};
 
 const schema = z.object({
   connectionId: z.string().min(1, "AWS Connection is required"),
@@ -120,7 +116,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     } else {
       reset({
         connectionId: "",
-        webhookSigningKey: generateWebhookSigningKey(),
+        webhookSigningKey: crypto.randomBytes(WEBHOOK_SIGNING_KEY_BYTES).toString("hex"),
         stackName: DEFAULT_STACK_NAME,
         awsRegion: DEFAULT_AWS_REGION
       });
@@ -189,6 +185,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
         text: "Honey token settings saved successfully",
         type: "success"
       });
+      onOpenChange(false);
     } catch {
       createNotification({
         text: "Failed to save honey token settings",

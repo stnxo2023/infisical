@@ -296,8 +296,7 @@ export enum ProjectPermissionHoneyTokenActions {
   Create = "create",
   Edit = "edit",
   Reset = "reset",
-  Revoke = "revoke",
-  Delete = "delete"
+  Revoke = "revoke"
 }
 
 export enum ProjectPermissionApprovalRequestActions {

@@ -392,8 +392,6 @@ const DrawerContent = ({
 export const HoneyTokenDetailsDrawer = ({ projectId, honeyTokenId, onClose }: Props) => {
   const isOpen = Boolean(honeyTokenId);
 
-  console.log("[HoneyTokenDetailsDrawer] render", { honeyTokenId, isOpen, projectId });
-
   return (
     <Sheet
       open={isOpen}

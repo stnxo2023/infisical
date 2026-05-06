@@ -1396,6 +1396,7 @@ export const DASHBOARD = {
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
+    includeHoneyTokens: "Whether to include honey tokens in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeSecretRotations: "Whether to include project secret rotations in the response."
   },
@@ -1413,7 +1414,8 @@ export const DASHBOARD = {
     includeFolders: "Whether to include project folders in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
-    includeSecretRotations: "Whether to include secret rotations in the response."
+    includeSecretRotations: "Whether to include secret rotations in the response.",
+    includeHoneyTokens: "Whether to include honey tokens in the response."
   }
 } as const;
 

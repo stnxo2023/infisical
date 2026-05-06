@@ -47,7 +47,6 @@ export const honeyTokenAwsProviderHooksFactory = ({
       : null;
 
     return verifyAwsStackDeployment({
-      orgId,
       connectionId,
       stackName: config?.stackName ?? "infisical-honey-tokens",
       awsRegion: config?.awsRegion ?? "us-east-1",

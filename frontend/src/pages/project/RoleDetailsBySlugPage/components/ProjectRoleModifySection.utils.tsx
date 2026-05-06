@@ -71,8 +71,7 @@ const HoneyTokenPolicyActionSchema = z.object({
   [ProjectPermissionHoneyTokenActions.Create]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Edit]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Reset]: z.boolean().optional(),
-  [ProjectPermissionHoneyTokenActions.Revoke]: z.boolean().optional(),
-  [ProjectPermissionHoneyTokenActions.Delete]: z.boolean().optional()
+  [ProjectPermissionHoneyTokenActions.Revoke]: z.boolean().optional()
 });
 
 const CertificatePolicyActionSchema = z.object({
@@ -1437,7 +1436,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
         const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
         const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
-        const canDelete = action.includes(ProjectPermissionHoneyTokenActions.Delete);
 
         if (!formVal[subject]) formVal[subject] = [{}];
 
@@ -1448,7 +1446,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         if (canEdit) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Edit] = true;
         if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
         if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
-        if (canDelete) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Delete] = true;
         return;
       }
 
@@ -1738,7 +1735,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
       const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
       const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
-      const canDelete = action.includes(ProjectPermissionHoneyTokenActions.Delete);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
@@ -1749,7 +1745,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canEdit) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Edit] = true;
       if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
       if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Delete] = true;
       return;
     }
 
@@ -2512,11 +2507,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Revoke",
         value: ProjectPermissionHoneyTokenActions.Revoke,
         description: "Revoke honey tokens and credentials"
-      },
-      {
-        label: "Delete",
-        value: ProjectPermissionHoneyTokenActions.Delete,
-        description: "Delete honey token records"
       }
     ]
   },

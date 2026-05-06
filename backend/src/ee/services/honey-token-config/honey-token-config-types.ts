@@ -1,5 +1,6 @@
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import {
@@ -21,6 +22,7 @@ export type THoneyTokenConfigServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
 };
 
 export type THoneyTokenConfigProviderUpsertInput<T extends HoneyTokenType = HoneyTokenType> = {

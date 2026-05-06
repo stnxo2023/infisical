@@ -163,7 +163,6 @@ export const secretRawSchema = z.object({
     .optional()
     .nullable(),
   isRotatedSecret: z.boolean().optional(),
-  isHoneyTokenSecret: z.boolean().optional(),
   rotationId: z.string().uuid().nullish()
 });
 

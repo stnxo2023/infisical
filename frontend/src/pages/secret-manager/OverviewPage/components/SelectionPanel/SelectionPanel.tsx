@@ -83,6 +83,7 @@ export const SelectionPanel = ({
   const isHoneyTokenSelected = Object.values(selectedEntries.secret).some((record) =>
     Object.values(record).some((secret) => secret.isHoneyTokenSecret)
   );
+
   const selectedCount =
     selectedFolderCount + selectedKeysCount + selectedRotationCount + selectedHoneyTokenCount;
 
@@ -299,10 +300,11 @@ export const SelectionPanel = ({
   const areFoldersSelected = Boolean(Object.keys(selectedEntries[EntryType.FOLDER]).length);
   const areRotationsSelected = selectedRotationCount > 0;
 
-  const isMoveDisabled = areFoldersSelected || isHoneyTokenSelected;
+  const isMoveDisabled =
+    areFoldersSelected || isHoneyTokenSelected || Boolean(selectedHoneyTokenCount);
   let moveDisabledReason = "Moving folders is not supported";
-  if (!areFoldersSelected && isHoneyTokenSelected) {
-    moveDisabledReason = "Moving honey token secrets is not supported";
+  if ((!areFoldersSelected && isHoneyTokenSelected) || Boolean(selectedHoneyTokenCount)) {
+    moveDisabledReason = "Moving honey tokens is not supported";
   }
 
   const isDeleteDisabled = areRotationsSelected || isManagedSecretSelected;
