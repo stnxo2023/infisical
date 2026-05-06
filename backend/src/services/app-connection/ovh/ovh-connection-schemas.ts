@@ -14,7 +14,13 @@ import { OVHConnectionMethod } from "./ovh-connection-enums";
 export const OvhConnectionCertificateCredentialsSchema = z.object({
   privateKey: z.string().trim().min(1, "Private key required").describe(AppConnections.CREDENTIALS.OVH.privateKey),
   certificate: z.string().trim().min(1, "Certificate required").describe(AppConnections.CREDENTIALS.OVH.certificate),
-  okmsDomain: z.string().trim().min(1, "OKMS domain required").describe(AppConnections.CREDENTIALS.OVH.okmsDomain),
+  okmsDomain: z
+    .string()
+    .trim()
+    .min(1, "OKMS domain required")
+    .url("OKMS domain must be a valid URL (e.g. https://example.com)")
+    .refine((val) => new URL(val).protocol === "https:", { message: "OKMS domain must use https" })
+    .describe(AppConnections.CREDENTIALS.OVH.okmsDomain),
   okmsId: z.string().trim().min(1, "OKMS ID required").describe(AppConnections.CREDENTIALS.OVH.okmsId)
 });
 
