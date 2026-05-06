@@ -13,7 +13,7 @@ import { TAnnouncement, TContentfulEntriesResponse } from "./announcement-types"
 
 const CONTENT_TYPE = "featureUpdate";
 const RECENT_LIMIT = 5;
-const CACHE_TTL_SECONDS = 30 * 60;
+const CACHE_TTL_SECONDS = 60 * 60;
 // New users get a 7-day grace period before any announcements surface — avoids
 // hitting them with marketing modals during onboarding.
 const NEW_USER_GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
