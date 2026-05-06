@@ -43,6 +43,8 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -99,6 +101,7 @@ type TOidcConfigServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -122,7 +125,8 @@ export const oidcConfigServiceFactory = ({
   auditLogService,
   kmsService,
   loginService,
-  emailDomainDAL
+  emailDomainDAL,
+  telemetryService
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -257,6 +261,7 @@ export const oidcConfigServiceFactory = ({
         return foundUser;
       });
     } else {
+      let isNewUser = false;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -279,6 +284,7 @@ export const oidcConfigServiceFactory = ({
             },
             tx
           );
+          isNewUser = true;
         }
 
         userAlias = await userAliasDAL.create(
@@ -329,6 +335,19 @@ export const oidcConfigServiceFactory = ({
 
         return newUser;
       });
+
+      if (isNewUser) {
+        void telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.UserSignedUp,
+          distinctId: user.username ?? "",
+          organizationId: orgId,
+          properties: {
+            username: user.username,
+            email: user.email ?? "",
+            signupMethod: "oidc"
+          }
+        });
+      }
     }
 
     if (manageGroupMemberships) {
