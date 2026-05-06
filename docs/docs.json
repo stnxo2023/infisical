@@ -527,8 +527,13 @@
                     "group": "Honey Tokens",
                     "pages": [
                       "documentation/platform/honey-tokens/overview",
-                      "documentation/platform/honey-tokens/setup",
-                      "documentation/platform/honey-tokens/usage"
+                      {
+                        "group": "AWS",
+                        "pages": [
+                          "documentation/platform/honey-tokens/aws/setup",
+                          "documentation/platform/honey-tokens/aws/usage"
+                        ]
+                      }
                     ]
                   },
                   "documentation/platform/webhooks",
