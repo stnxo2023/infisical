@@ -29,6 +29,19 @@ const formatPublished = (iso: string) => {
   return Number.isNaN(date.getTime()) ? null : dateFormatter.format(date);
 };
 
+// Belt to the server-side allowlist: refuse anything that isn't an http(s) URL
+// so a stale self-hosted bundle can't sneak a `javascript:` href into <a>.
+const ALLOWED_LINK_PROTOCOLS = new Set(["http:", "https:"]);
+const safeLink = (link: string | null): string | null => {
+  if (!link) return null;
+  try {
+    const { protocol } = new URL(link, window.location.origin);
+    return ALLOWED_LINK_PROTOCOLS.has(protocol) ? link : null;
+  } catch {
+    return null;
+  }
+};
+
 export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props) => {
   const [index, setIndex] = useState(0);
 
@@ -41,7 +54,8 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
   const announcement = announcements[safeIndex];
   if (!announcement) return null;
 
-  const ctaLabel = announcement.linkLabel || (announcement.link ? "Learn more" : null);
+  const safeHref = safeLink(announcement.link);
+  const ctaLabel = announcement.linkLabel || (safeHref ? "Learn more" : null);
   const publishedLabel = formatPublished(announcement.published);
   const hasPrev = safeIndex > 0;
   const hasNext = safeIndex < total - 1;
@@ -74,9 +88,9 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
             <DialogDescription className="my-4 whitespace-pre-line text-foreground/75">
               {announcement.body}
             </DialogDescription>
-            {announcement.link && ctaLabel && (
+            {safeHref && ctaLabel && (
               <a
-                href={announcement.link}
+                href={safeHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex w-fit items-center gap-1.5 text-sm text-white underline"

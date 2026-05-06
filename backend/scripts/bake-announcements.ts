@@ -24,6 +24,22 @@ const OUT_DIR = path.resolve(process.cwd(), "dist", "announcement-assets");
 const IMAGE_DIR = path.join(OUT_DIR, "images");
 const JSON_PATH = path.join(OUT_DIR, "announcements.json");
 
+// SVG is intentionally excluded — same-origin SVG can carry inline <script> and
+// would execute in the app origin if a user navigates to the asset URL directly.
+const ALLOWED_IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+const ALLOWED_IMAGE_MIMES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+const ALLOWED_LINK_PROTOCOLS = new Set(["http:", "https:"]);
+
+const sanitizeLink = (link: string | null | undefined): string | null => {
+  if (!link) return null;
+  try {
+    const { protocol } = new URL(link);
+    return ALLOWED_LINK_PROTOCOLS.has(protocol) ? link : null;
+  } catch {
+    return null;
+  }
+};
+
 type ContentfulAsset = {
   sys: { id: string };
   fields: { file?: { url?: string; contentType?: string } };
@@ -46,7 +62,20 @@ type ContentfulResponse = {
   includes?: { Asset?: ContentfulAsset[] };
 };
 
-async function downloadAsset(url: string, assetId: string): Promise<{ filename: string; bytes: number } | null> {
+async function downloadAsset(
+  url: string,
+  assetId: string,
+  contentType: string | undefined
+): Promise<{ filename: string; bytes: number } | null> {
+  const ext = path.extname(new URL(url).pathname).toLowerCase();
+  if (!ALLOWED_IMAGE_EXTS.has(ext)) {
+    console.warn(`[bake-announcements] skipping ${url}: extension ${ext || "(none)"} not allowed`);
+    return null;
+  }
+  if (contentType && !ALLOWED_IMAGE_MIMES.has(contentType.toLowerCase())) {
+    console.warn(`[bake-announcements] skipping ${url}: content-type ${contentType} not allowed`);
+    return null;
+  }
   const res = await fetch(url);
   if (!res.ok) {
     console.warn(`[bake-announcements] failed to download ${url}: ${res.status}`);
@@ -54,11 +83,6 @@ async function downloadAsset(url: string, assetId: string): Promise<{ filename: 
   }
   const buf = Buffer.from(await res.arrayBuffer());
   const hash = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
-  const ext = path.extname(new URL(url).pathname).toLowerCase();
-  if (!ext) {
-    console.warn(`[bake-announcements] skipping ${url}: no file extension`);
-    return null;
-  }
   const filename = `${hash}${ext}`;
   await fs.writeFile(path.join(IMAGE_DIR, filename), buf);
   console.log(`[bake-announcements]   asset ${assetId} -> ${filename} (${buf.length} bytes)`);
@@ -88,17 +112,20 @@ async function main() {
 
   await fs.mkdir(IMAGE_DIR, { recursive: true });
 
-  const assetMap = new Map<string, string>(); // assetId -> remote URL
+  const assetMap = new Map<string, { url: string; contentType: string | undefined }>();
   for (const asset of data.includes?.Asset ?? []) {
     const remoteUrl = asset.fields?.file?.url;
     if (!remoteUrl) continue;
-    assetMap.set(asset.sys.id, remoteUrl.startsWith("//") ? `https:${remoteUrl}` : remoteUrl);
+    assetMap.set(asset.sys.id, {
+      url: remoteUrl.startsWith("//") ? `https:${remoteUrl}` : remoteUrl,
+      contentType: asset.fields?.file?.contentType
+    });
   }
 
   const downloaded = new Map<string, string>(); // assetId -> local filename
   await Promise.all(
-    Array.from(assetMap, async ([assetId, remoteUrl]) => {
-      const result = await downloadAsset(remoteUrl, assetId);
+    Array.from(assetMap, async ([assetId, { url: remoteUrl, contentType }]) => {
+      const result = await downloadAsset(remoteUrl, assetId, contentType);
       if (result) downloaded.set(assetId, result.filename);
     })
   );
@@ -113,7 +140,7 @@ async function main() {
         title: entry.fields.title,
         body: entry.fields.body,
         imageUrl: filename ? `/api/v1/announcement/assets/${filename}` : null,
-        link: entry.fields.link ?? null,
+        link: sanitizeLink(entry.fields.link),
         linkLabel: entry.fields.linkLabel ?? null,
         published: entry.fields.published
       }

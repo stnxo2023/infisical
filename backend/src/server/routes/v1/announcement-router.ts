@@ -26,8 +26,7 @@ const MIME_BY_EXT: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".webp": "image/webp",
-  ".gif": "image/gif",
-  ".svg": "image/svg+xml"
+  ".gif": "image/gif"
 };
 
 export const registerAnnouncementRouter = async (server: FastifyZodProvider) => {
@@ -116,6 +115,7 @@ export const registerAnnouncementRouter = async (server: FastifyZodProvider) => 
       return reply
         .type(MIME_BY_EXT[ext] ?? "application/octet-stream")
         .header("cache-control", "public, max-age=31536000, immutable")
+        .header("x-content-type-options", "nosniff")
         .send(createReadStream(filePath));
     }
   });

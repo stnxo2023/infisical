@@ -28,6 +28,20 @@ export const BUNDLED_DIR = path.resolve(process.cwd(), "dist", "announcement-ass
 export const BUNDLED_JSON_PATH = path.join(BUNDLED_DIR, "announcements.json");
 export const BUNDLED_IMAGE_DIR = path.join(BUNDLED_DIR, "images");
 
+// Strip any `link` field that isn't an http(s)/mailto URL so a malicious or
+// misconfigured Contentful entry can't deliver a `javascript:` href to the
+// rendered <a> in the announcement modal.
+const ALLOWED_LINK_PROTOCOLS = new Set(["http:", "https:"]);
+const sanitizeLink = (link: string | null | undefined): string | null => {
+  if (!link) return null;
+  try {
+    const { protocol } = new URL(link);
+    return ALLOWED_LINK_PROTOCOLS.has(protocol) ? link : null;
+  } catch {
+    return null;
+  }
+};
+
 type TAnnouncementServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
@@ -50,10 +64,13 @@ export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementS
       try {
         const raw = await fs.readFile(BUNDLED_JSON_PATH, "utf8");
         const parsed = JSON.parse(raw) as TAnnouncement[];
+        // Re-sanitize at load time so an older self-hosted bundle (baked before
+        // the bake-time link allowlist was added) can't carry an unsafe href.
+        const sanitized = parsed.map((a) => ({ ...a, link: sanitizeLink(a.link) }));
         logger.info(
-          `Loaded ${parsed.length} bundled announcement(s) from ${BUNDLED_JSON_PATH} — Contentful fetches disabled`
+          `Loaded ${sanitized.length} bundled announcement(s) from ${BUNDLED_JSON_PATH} — Contentful fetches disabled`
         );
-        return parsed;
+        return sanitized;
       } catch (err) {
         const { code } = err as NodeJS.ErrnoException;
         if (code !== "ENOENT") {
@@ -110,7 +127,7 @@ export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementS
             title: entry.fields.title,
             body: entry.fields.body,
             imageUrl,
-            link: entry.fields.link ?? null,
+            link: sanitizeLink(entry.fields.link),
             linkLabel: entry.fields.linkLabel ?? null,
             published: entry.fields.published
           }
