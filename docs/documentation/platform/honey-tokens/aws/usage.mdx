@@ -79,11 +79,13 @@ When someone uses a honey token's credentials to make any AWS API call, Infisica
 
 Open a honey token's detail page to see a chronological log of all trigger events since the last reset. Each event shows the AWS API call, source IP, region, and timestamp.
 
-{/* <!-- Screenshot: The honey token detail page showing the events list --> */}
+![Honey Token View Details](/images/platform/honey-tokens/honey-token-view-details.png)
 
 ### Resetting a Triggered Token
 
 If a honey token is in **Triggered** status and you've addressed the incident, click **Reset** to return it to **Active** status. This hides previous events from the event log view (events are still stored in the database) and re-enables email notifications.
+
+![Honey Token Events](/images/platform/honey-tokens/honey-token-reset.png)
 
 ### Revoking a Honey Token
 
@@ -93,3 +95,5 @@ To permanently deactivate a honey token, click **Revoke**. This will:
 - Mark the honey token as **Revoked**
 
 Revocation is irreversible.
+
+![Honey Token Events](/images/platform/honey-tokens/honey-token-revoke.png)
