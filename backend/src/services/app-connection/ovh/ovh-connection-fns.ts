@@ -1,9 +1,12 @@
+import https from "https";
+
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
+import { validateSsrfUrl } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { OVHConnectionMethod } from "./ovh-connection-enums";
-import { TOvhConnectionConfig } from "./ovh-connection-types";
+import { TOvhConnection, TOvhConnectionConfig } from "./ovh-connection-types";
 
 export const getOvhConnectionListItem = () => {
   return {
@@ -13,13 +16,25 @@ export const getOvhConnectionListItem = () => {
   };
 };
 
+export const getOvhHttpsAgent = (connection: Pick<TOvhConnection, "credentials"> | TOvhConnectionConfig) => {
+  const { privateKey, certificate } = connection.credentials;
+
+  return new https.Agent({
+    key: privateKey,
+    cert: certificate
+  });
+};
+
 export const validateOvhConnectionCredentials = async (config: TOvhConnectionConfig) => {
-  const { okmsDomain, okmsId, privateKey, certificate } = config.credentials;
+  const { okmsDomain, okmsId } = config.credentials;
+
+  await validateSsrfUrl(okmsDomain);
+
+  const httpsAgent = getOvhHttpsAgent(config);
 
   try {
-    await safeRequest.get(`${okmsDomain}/api/${encodeURIComponent(okmsId)}/v1/servicekey`, {
-      key: privateKey,
-      cert: certificate,
+    await request.get(`${okmsDomain}/api/${encodeURIComponent(okmsId)}/v1/servicekey`, {
+      httpsAgent,
       timeout: 15000,
       validateStatus: (status) => status === 200
     });

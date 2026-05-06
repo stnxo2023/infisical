@@ -1,7 +1,10 @@
 import { isAxiosError } from "axios";
+import https from "https";
 
+import { request } from "@app/lib/config/request";
 import { deepEqual } from "@app/lib/fn/object";
-import { safeRequest } from "@app/lib/validator";
+import { validateSsrfUrl } from "@app/lib/validator";
+import { getOvhHttpsAgent } from "@app/services/app-connection/ovh";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -59,15 +62,14 @@ const readSecret = async (
   okmsDomain: string,
   okmsId: string,
   path: string,
-  privateKey: string,
-  certificate: string
+  httpsAgent: https.Agent
 ): Promise<TOvhSecretRead> => {
   try {
-    const { data } = await safeRequest.get<TOvhGetSecretResponse>(
+    await validateSsrfUrl(okmsDomain);
+    const { data } = await request.get<TOvhGetSecretResponse>(
       `${getSecretUrl(okmsDomain, okmsId, path)}?includeData=true`,
       {
-        key: privateKey,
-        cert: certificate,
+        httpsAgent,
         timeout: REQUEST_TIMEOUT_MS
       }
     );
@@ -89,15 +91,14 @@ const createSecret = async (
   okmsId: string,
   path: string,
   data: Record<string, string>,
-  privateKey: string,
-  certificate: string
-) =>
-  safeRequest.post(
+  httpsAgent: https.Agent
+) => {
+  await validateSsrfUrl(okmsDomain);
+  return request.post(
     `${okmsDomain}/api/${encodeURIComponent(okmsId)}/v2/secret`,
     { path, version: { data } },
     {
-      key: privateKey,
-      cert: certificate,
+      httpsAgent,
       timeout: REQUEST_TIMEOUT_MS,
       headers: {
         "Content-Type": "application/json",
@@ -105,6 +106,7 @@ const createSecret = async (
       }
     }
   );
+};
 
 const updateSecret = async (
   okmsDomain: string,
@@ -112,17 +114,16 @@ const updateSecret = async (
   path: string,
   data: Record<string, string>,
   cas: number | null,
-  privateKey: string,
-  certificate: string
+  httpsAgent: https.Agent
 ) => {
+  await validateSsrfUrl(okmsDomain);
   const base = getSecretUrl(okmsDomain, okmsId, path);
   const url = cas !== null ? `${base}?cas=${cas}` : base;
-  return safeRequest.put(
+  return request.put(
     url,
     { version: { data } },
     {
-      key: privateKey,
-      cert: certificate,
+      httpsAgent,
       timeout: REQUEST_TIMEOUT_MS,
       headers: {
         "Content-Type": "application/json",
@@ -142,22 +143,19 @@ const writeSecretBundle = async (
 ) => {
   const { connection, destinationConfig } = secretSync;
   const path = String(destinationConfig.path);
-  const { okmsDomain, okmsId, privateKey, certificate } = connection.credentials;
+  const { okmsDomain, okmsId } = connection.credentials;
+  const httpsAgent = getOvhHttpsAgent(connection);
 
   try {
-    const {
-      exists,
-      data: existingData,
-      currentVersion
-    } = await readSecret(okmsDomain, okmsId, path, privateKey, certificate);
+    const { exists, data: existingData, currentVersion } = await readSecret(okmsDomain, okmsId, path, httpsAgent);
     const desiredData = buildDesiredBundle(existingData);
 
     if (deepEqual(existingData, desiredData)) return;
 
     if (exists) {
-      await updateSecret(okmsDomain, okmsId, path, desiredData, currentVersion, privateKey, certificate);
+      await updateSecret(okmsDomain, okmsId, path, desiredData, currentVersion, httpsAgent);
     } else {
-      await createSecret(okmsDomain, okmsId, path, desiredData, privateKey, certificate);
+      await createSecret(okmsDomain, okmsId, path, desiredData, httpsAgent);
     }
   } catch (error) {
     throw new SecretSyncError({ error: sanitizeOvhError(error) });
@@ -193,10 +191,11 @@ export const OvhSyncFns = {
   getSecrets: async (secretSync: TOvhSyncWithCredentials): Promise<TSecretMap> => {
     const { connection, destinationConfig } = secretSync;
     const path = String(destinationConfig.path);
-    const { okmsDomain, okmsId, privateKey, certificate } = connection.credentials;
+    const { okmsDomain, okmsId } = connection.credentials;
+    const httpsAgent = getOvhHttpsAgent(connection);
 
     try {
-      const { data } = await readSecret(okmsDomain, okmsId, path, privateKey, certificate);
+      const { data } = await readSecret(okmsDomain, okmsId, path, httpsAgent);
       return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, { value }]));
     } catch (error) {
       throw new SecretSyncError({ error: sanitizeOvhError(error) });

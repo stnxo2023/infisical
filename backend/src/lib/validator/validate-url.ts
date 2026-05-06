@@ -258,17 +258,6 @@ type TBuildAgentOptions = {
    * addresses or non-DNS subjects (e.g. AD CS web enrollment).
    */
   checkServerIdentity?: https.AgentOptions["checkServerIdentity"];
-  /**
-   * mTLS client private key (PEM). Forwarded to https.Agent. Only applied to
-   * HTTPS. Pair with `cert`. Required for endpoints that authenticate the
-   * client via certificate (e.g. OVH OKMS).
-   */
-  key?: string | Buffer;
-  /**
-   * mTLS client certificate (PEM). Forwarded to https.Agent. Only applied to
-   * HTTPS. Pair with `key`.
-   */
-  cert?: string | Buffer;
 };
 
 const hasAgentCustomization = (opts: TBuildAgentOptions): boolean =>
@@ -277,9 +266,7 @@ const hasAgentCustomization = (opts: TBuildAgentOptions): boolean =>
   opts.ca !== undefined ||
   opts.servername !== undefined ||
   opts.keepAlive !== undefined ||
-  opts.checkServerIdentity !== undefined ||
-  opts.key !== undefined ||
-  opts.cert !== undefined;
+  opts.checkServerIdentity !== undefined;
 
 const buildPinnedAgent = (
   validated: TValidatedHost | undefined,
@@ -304,9 +291,7 @@ const buildPinnedAgent = (
       ...(opts.ca !== undefined && { ca: opts.ca }),
       ...(opts.rejectUnauthorized !== undefined && { rejectUnauthorized: opts.rejectUnauthorized }),
       ...(opts.servername !== undefined && { servername: opts.servername }),
-      ...(opts.checkServerIdentity !== undefined && { checkServerIdentity: opts.checkServerIdentity }),
-      ...(opts.key !== undefined && { key: opts.key }),
-      ...(opts.cert !== undefined && { cert: opts.cert })
+      ...(opts.checkServerIdentity !== undefined && { checkServerIdentity: opts.checkServerIdentity })
     };
     return new https.Agent(httpsOpts);
   }
@@ -349,8 +334,6 @@ type TBuildSsrfSafeAgentOptions = {
   servername?: string;
   keepAlive?: boolean;
   checkServerIdentity?: https.AgentOptions["checkServerIdentity"];
-  key?: string | Buffer;
-  cert?: string | Buffer;
 };
 
 /**
@@ -371,17 +354,8 @@ export const buildSsrfSafeAgent = async (
   url: string,
   options: TBuildSsrfSafeAgentOptions = {}
 ): Promise<http.Agent | https.Agent | undefined> => {
-  const {
-    allowPrivateIps,
-    addressFamily,
-    ca,
-    rejectUnauthorized,
-    servername,
-    keepAlive,
-    checkServerIdentity,
-    key,
-    cert
-  } = options;
+  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, keepAlive, checkServerIdentity } =
+    options;
   const validated = await validateSsrfUrl(url, { allowPrivateIps });
   const { protocol } = new URL(url);
   return buildPinnedAgent(validated, protocol, {
@@ -390,9 +364,7 @@ export const buildSsrfSafeAgent = async (
     rejectUnauthorized,
     servername,
     keepAlive,
-    checkServerIdentity,
-    key,
-    cert
+    checkServerIdentity
   });
 };
 
@@ -421,18 +393,6 @@ type TSafeRequestExtras = {
    * (e.g. Kubernetes API servers). Defaults to the URL hostname if unset.
    */
   servername?: string;
-  /**
-   * mTLS client private key (PEM). Forwarded to the per-request https.Agent
-   * so it composes with the pinned lookup. Only applied to HTTPS URLs. Pair
-   * with `cert`. Required for endpoints that authenticate the client via
-   * certificate (e.g. OVH OKMS).
-   */
-  key?: string | Buffer;
-  /**
-   * mTLS client certificate (PEM). Forwarded to the per-request https.Agent.
-   * Only applied to HTTPS URLs. Pair with `key`.
-   */
-  cert?: string | Buffer;
 };
 
 type TSafeRequestConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent" | "maxRedirects" | "url" | "method">;
@@ -466,18 +426,11 @@ const dispatch = async <T>(
   data: unknown,
   options: TSafeRequestConfig & TSafeRequestExtras = {}
 ) => {
-  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, key, cert, ...axiosOpts } = options;
+  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, ...axiosOpts } = options;
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
   const validated = await validateSsrfUrl(effectiveUrl, { allowPrivateIps });
   const { protocol } = new URL(effectiveUrl);
-  const agent = buildPinnedAgent(validated, protocol, {
-    addressFamily,
-    ca,
-    rejectUnauthorized,
-    servername,
-    key,
-    cert
-  });
+  const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
 
   return request.request<T>({
     ...axiosOpts,
@@ -491,18 +444,11 @@ const dispatch = async <T>(
 };
 
 const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
-  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, key, cert, url, ...axiosOpts } = config;
+  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, url, ...axiosOpts } = config;
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
   const validated = await validateSsrfUrl(effectiveUrl, { allowPrivateIps });
   const { protocol } = new URL(effectiveUrl);
-  const agent = buildPinnedAgent(validated, protocol, {
-    addressFamily,
-    ca,
-    rejectUnauthorized,
-    servername,
-    key,
-    cert
-  });
+  const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
 
   return request.request<T>({
     ...axiosOpts,
