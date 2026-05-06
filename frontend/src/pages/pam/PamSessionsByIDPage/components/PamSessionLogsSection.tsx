@@ -1,6 +1,7 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { ExternalLinkIcon, Loader2Icon } from "lucide-react";
 
+import { Lottie } from "@app/components/v2";
 import { Button } from "@app/components/v3";
 import {
   PamResourceType,
@@ -17,9 +18,9 @@ import { CommandLogView } from "./CommandLogView";
 import { HttpEventView } from "./HttpEventView";
 import { TerminalEventView } from "./TerminalEventView";
 
-// The IronRDP decoder WASM is ~MB-scale; load it only when an RDP session is
-// actually being viewed. The dynamic import keeps it out of the main bundle.
-const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
+// Lazy-load to keep the WASM decoder out of the main bundle.
+const importRdpReplayView = () => import("./RdpReplayView/RdpReplayView");
+const RdpReplayView = lazy(importRdpReplayView);
 
 type Props = {
   session: TPamSession;
@@ -53,10 +54,23 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
   const isRdpSession = session.resourceType === PamResourceType.Windows;
   const hasLogs = logs.length > 0;
 
+  // Warm the lazy chunk so Suspense doesn't fall back on first mount.
+  useEffect(() => {
+    if (isRdpSession) {
+      void importRdpReplayView();
+    }
+  }, [isRdpSession]);
+
   return (
-    <div className="flex h-full w-full flex-col gap-4 rounded-lg border border-border bg-container p-4">
+    <div
+      className={`flex w-full flex-col gap-4 rounded-lg border border-border bg-container p-4 ${
+        isRdpSession ? "" : "h-full"
+      }`}
+    >
       <div className="flex items-center gap-3 border-b border-border pb-4">
-        <h3 className="text-lg font-medium text-foreground">Session Logs</h3>
+        <h3 className="text-lg font-medium text-foreground">
+          {isRdpSession ? "Session Recording" : "Session Logs"}
+        </h3>
         {isActive && (
           <span className="flex animate-pulse items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
             <span className="size-1.5 animate-pulse rounded-full bg-success" />
@@ -65,7 +79,7 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
         )}
       </div>
 
-      {isLoading && !hasLogs && (
+      {isLoading && !hasLogs && !isRdpSession && (
         <div className="flex grow items-center justify-center">
           <div className="flex items-center gap-2 text-sm text-muted">
             <Loader2Icon className="size-4 animate-spin" />
@@ -79,20 +93,38 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
       )}
       {isSSHSession && hasLogs && <TerminalEventView events={logs as TTerminalEvent[]} />}
       {isHttpSession && hasLogs && <HttpEventView events={logs as THttpEvent[]} />}
-      {isRdpSession && hasLogs && (
-        <Suspense
-          fallback={
-            <div className="flex grow items-center justify-center">
-              <div className="flex items-center gap-2 text-sm text-muted">
-                <Loader2Icon className="size-4 animate-spin" />
-                <span>Loading RDP replay player...</span>
+      {isRdpSession &&
+        (hasLogs ? (
+          <Suspense
+            fallback={
+              <div className="flex grow flex-col items-center justify-center gap-2">
+                <Lottie
+                  isAutoPlay
+                  icon="infisical_loading"
+                  className="pointer-events-none size-12"
+                />
+                <span className="text-sm text-muted">Loading session recording</span>
               </div>
-            </div>
-          }
-        >
-          <RdpReplayView events={logs as TTerminalEvent[]} />
-        </Suspense>
-      )}
+            }
+          >
+            <RdpReplayView
+              events={logs as TTerminalEvent[]}
+              isStreaming={isLoading}
+              totalDurationMs={
+                isLegacyOrNoChunks ? undefined : playback.totalDurationMs
+              }
+            />
+          </Suspense>
+        ) : isLoading ? (
+          <div className="flex grow flex-col items-center justify-center gap-2">
+            <Lottie
+              isAutoPlay
+              icon="infisical_loading"
+              className="pointer-events-none size-12"
+            />
+            <span className="text-sm text-muted">Loading session recording</span>
+          </div>
+        ) : null)}
       {isAwsIamSession && (
         <div className="flex grow items-center justify-center text-muted">
           <div className="text-center">

@@ -1,16 +1,3 @@
-/**
- * RDP replay player.
- *
- * Consumes RDP-tagged events drained from the gateway tap (see
- * cli packages/pam/handlers/rdp/proxy.go) and drives a canvas at real
- * timings. Frame decoding is delegated to the WASM module at
- * @app/lib/ironrdp-decoder, which wraps IronRDP's ActiveStage + DecodedImage.
- *
- * Control surface is deliberately minimal: play / pause / restart + tick
- * callback. Seek is not supported (frames are deltas; real seek would need
- * keyframes or a reset-then-fast-forward pass).
- */
-
 import wasmInit, { InitOutput, RdpDecoder } from "@app/lib/ironrdp-decoder/infisical_rdp_decoder";
 
 export type RdpEventType = "keyboard" | "unicode" | "mouse" | "target_frame";
@@ -18,17 +5,12 @@ export type RdpEventType = "keyboard" | "unicode" | "mouse" | "target_frame";
 export type RdpEvent = {
   type: RdpEventType;
   elapsedMs: number;
-  // keyboard
   scancode?: number;
-  // unicode
   codePoint?: number;
-  // mouse
   x?: number;
   y?: number;
   wheelDelta?: number;
-  // common
   flags?: number;
-  // target_frame
   action?: "x224" | "fastpath";
   payload?: Uint8Array;
 };
@@ -36,6 +18,8 @@ export type RdpEvent = {
 type PlayerCallbacks = {
   onTick: (currentMs: number) => void;
   onEnded: () => void;
+  onContentBoundsChange: (width: number, height: number) => void;
+  onBuffering: (buffering: boolean) => void;
 };
 
 let wasmReady: Promise<InitOutput> | null = null;
@@ -64,6 +48,18 @@ export class RdpReplayPlayer {
   private wallStart: number | null = null;
 
   private raf: number | null = null;
+
+  // Stays true while buffering so an append can auto-resume playback.
+  private wantPlay = false;
+
+  private streamComplete = false;
+
+  private buffering = false;
+
+  // Running max of blitted rects; discovers the real desktop size.
+  private contentMaxX = 0;
+
+  private contentMaxY = 0;
 
   private constructor(
     events: RdpEvent[],
@@ -102,30 +98,47 @@ export class RdpReplayPlayer {
   }
 
   get isPlaying(): boolean {
-    return this.raf !== null;
+    return this.wantPlay;
+  }
+
+  get isBuffering(): boolean {
+    return this.buffering;
   }
 
   play = () => {
-    if (this.raf !== null) return;
-    if (this.index >= this.events.length) return;
-    this.wallStart = performance.now() - this.clockMs;
-    this.tick();
+    if (this.wantPlay) return;
+    // Play after end-of-stream replays from t=0.
+    if (this.streamComplete && this.index >= this.events.length) {
+      this.resetForReplay();
+    }
+    this.wantPlay = true;
+    if (this.index >= this.events.length) {
+      this.setBuffering(true);
+      return;
+    }
+    this.startRaf();
   };
 
   pause = () => {
-    if (this.raf === null) return;
-    cancelAnimationFrame(this.raf);
-    this.raf = null;
-    this.wallStart = null;
+    this.wantPlay = false;
+    this.stopRaf();
+    this.setBuffering(false);
   };
 
   restart = () => {
-    this.pause();
+    this.resetForReplay();
+    this.wantPlay = false;
+  };
+
+  // Shared between restart() and the play()-after-end auto-replay path.
+  private resetForReplay = () => {
+    this.stopRaf();
+    this.setBuffering(false);
     this.index = 0;
     this.clockMs = 0;
-    // A restart needs a fresh decoder state -- frames are deltas, so
-    // replaying from T=0 against a non-fresh decoder would reuse already
-    // applied delta state on top of the still-present pixels.
+    this.contentMaxX = 0;
+    this.contentMaxY = 0;
+    // Frames are deltas, so replaying needs a fresh decoder state.
     this.decoder.free();
     this.decoder = new RdpDecoder(this.canvas.width, this.canvas.height);
     this.ctx.fillStyle = "#000";
@@ -133,13 +146,54 @@ export class RdpReplayPlayer {
     this.callbacks.onTick(0);
   };
 
+  // Caller must preserve global elapsedMs ordering across calls.
+  appendEvents = (more: RdpEvent[]) => {
+    if (more.length === 0) return;
+    this.events.push(...more);
+    if (this.buffering && this.wantPlay) {
+      this.setBuffering(false);
+      this.startRaf();
+    }
+  };
+
+  markStreamComplete = () => {
+    if (this.streamComplete) return;
+    this.streamComplete = true;
+    if (this.buffering) {
+      this.setBuffering(false);
+      this.wantPlay = false;
+      this.callbacks.onEnded();
+    }
+  };
+
   dispose = () => {
-    this.pause();
+    this.stopRaf();
+    this.wantPlay = false;
+    this.buffering = false;
     try {
       this.decoder.free();
     } catch {
       /* ignore */
     }
+  };
+
+  private startRaf = () => {
+    if (this.raf !== null) return;
+    this.wallStart = performance.now() - this.clockMs;
+    this.tick();
+  };
+
+  private stopRaf = () => {
+    if (this.raf === null) return;
+    cancelAnimationFrame(this.raf);
+    this.raf = null;
+    this.wallStart = null;
+  };
+
+  private setBuffering = (value: boolean) => {
+    if (this.buffering === value) return;
+    this.buffering = value;
+    this.callbacks.onBuffering(value);
   };
 
   private tick = () => {
@@ -157,7 +211,12 @@ export class RdpReplayPlayer {
     if (this.index >= this.events.length) {
       this.raf = null;
       this.wallStart = null;
-      this.callbacks.onEnded();
+      if (this.streamComplete) {
+        this.wantPlay = false;
+        this.callbacks.onEnded();
+      } else {
+        this.setBuffering(true);
+      }
       return;
     }
 
@@ -170,19 +229,14 @@ export class RdpReplayPlayer {
         if (ev.payload) this.feedFrame(ev);
         break;
       case "mouse":
+        // Server only sends PositionPointer for its own moves; drive cursor from input.
         if (ev.x !== undefined && ev.y !== undefined) {
-          // Drive the server-rendered pointer sprite from recorded mouse
-          // input. Windows only sends PositionPointer PDUs for server-
-          // initiated cursor moves; normal movement is resolved client-side,
-          // so replay has to replay it the same way.
           const count = this.decoder.move_pointer(ev.x, ev.y);
           if (count > 0) this.blitDirtyRects(count);
         }
         break;
       case "keyboard":
       case "unicode":
-        // V1 renders frames only; recorded input is in the event stream
-        // but not surfaced in the player UI.
         break;
       default:
         break;
@@ -190,9 +244,7 @@ export class RdpReplayPlayer {
   };
 
   private blitDirtyRects = (count: number) => {
-    // Construct a view over the WASM-side framebuffer. We re-create the view
-    // each call because wasm-bindgen can reallocate linear memory on growth,
-    // which would invalidate any cached pointer/length pair.
+    // Re-view: wasm-bindgen may reallocate linear memory between calls.
     const ptr = this.decoder.buffer_ptr();
     const len = this.decoder.buffer_len();
     const width = this.decoder.width();
@@ -200,21 +252,35 @@ export class RdpReplayPlayer {
     const fb = new Uint8ClampedArray(this.wasm.memory.buffer, ptr, len);
     const fullImage = new ImageData(fb, width, height);
 
+    let boundsExpanded = false;
     for (let i = 0; i < count; i += 1) {
       const r = this.decoder.dirty_rect(i);
       if (!r) continue;
-      // 8-arg putImageData clips to (dx, dy, dw, dh) rect of the source.
       this.ctx.putImageData(fullImage, 0, 0, r.x, r.y, r.w, r.h);
+      const right = r.x + r.w;
+      const bottom = r.y + r.h;
+      if (right > this.contentMaxX) {
+        this.contentMaxX = right;
+        boundsExpanded = true;
+      }
+      if (bottom > this.contentMaxY) {
+        this.contentMaxY = bottom;
+        boundsExpanded = true;
+      }
       r.free();
+    }
+    if (boundsExpanded) {
+      this.callbacks.onContentBoundsChange(this.contentMaxX, this.contentMaxY);
     }
   };
 
   private feedFrame = (ev: RdpEvent) => {
     if (!ev.payload) return;
-    const action = ev.action === "x224" ? 0 : 1;
+    // X.224 activation PDUs corrupt ActiveStage state; FastPath alone is enough.
+    if (ev.action === "x224") return;
     let count: number;
     try {
-      count = this.decoder.feed(action, ev.payload);
+      count = this.decoder.feed(1, ev.payload);
     } catch {
       return;
     }
@@ -230,12 +296,7 @@ const decodeBase64ToUint8 = (b64: string): Uint8Array => {
   return out;
 };
 
-/**
- * Parse a TerminalEvent (channelType "rdp") into an RdpEvent, or null if
- * the entry isn't a recognized RDP envelope. The gateway emits each event
- * as base64-encoded JSON inside `data`; see the rdp*Envelope types in cli
- * packages/pam/handlers/rdp/proxy.go for the wire shape.
- */
+// Wire shape: base64 JSON. See rdp*Envelope in cli/.../rdp/proxy.go.
 export const parseRdpLogEntry = (entry: unknown): RdpEvent | null => {
   const e = entry as { data?: string; channelType?: string };
   if (e?.channelType !== "rdp" || typeof e.data !== "string") return null;

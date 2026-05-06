@@ -897,9 +897,9 @@ export const pamAccountServiceFactory = ({
     );
 
     // Temporarily disable access to Windows Server
-    if ((resourceType as PamResource) === PamResource.Windows) {
-      throw new BadRequestError({ message: `Windows resources cannot be accessed at this time` });
-    }
+    // if ((resourceType as PamResource) === PamResource.Windows) {
+    //   throw new BadRequestError({ message: `Windows resources cannot be accessed at this time` });
+    // }
 
     if (resourceType === PamResource.Windows) {
       const recordingConfig = await pamProjectRecordingConfigDAL.findByProjectId(account.projectId);
