@@ -67,7 +67,6 @@ export const PamResourceDetailsSection = ({ resource, onEdit }: Props) => {
                   domainType: domain.domainType,
                   domainId: domain.id
                 }}
-                className="hover:underline"
               >
                 <Badge variant="info" className="text-xs">
                   {domain.connectionDetails.domain}
