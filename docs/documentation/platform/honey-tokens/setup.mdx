@@ -80,6 +80,15 @@ description: "One-time organization setup for AWS honey tokens."
 
     ![Deploy CloudFormation Stack Command](/images/platform/honey-tokens/cloudformation-deploy.png)
   </Step>
+  <Step title="Verify deployment">
+    After the CloudFormation stack finishes deploying, click **Verify connection** in the **AWS Honey Tokens** section.
+
+    ![Click Verify connection](/images/platform/honey-tokens/verify-connection-click.png)
+
+    Once verification succeeds, confirm the status badge is updated to **Verified**.
+
+    ![Verified status badge](/images/platform/honey-tokens/verify-connection-verified-badge.png)
+  </Step>
 </Steps>
 
 ## Manage
@@ -95,15 +104,6 @@ Use **Manage** any time you need to update:
 
 In the modal, you can also copy the pre-filled AWS CLI command under **Deploy CloudFormation Stack** and run it to create the stack.
 
-## Test Connection
-
-Once the CloudFormation stack is deployed, click **Test Connection** in the **AWS Honey Tokens** section.
-
-![Test Connection](/images/platform/honey-tokens/test-connection.png)
-
-- A success result means the stack is deployed and healthy.
-- If it fails, verify the stack exists and is ready, then check AWS App Connection permissions.
-
 You can also verify directly in AWS CLI:
 
 ```bash
@@ -112,4 +112,4 @@ aws cloudformation describe-stacks \
   --query "Stacks[0].StackStatus"
 ```
 
-Setup is complete. You can now [create honey tokens](/documentation/platform/honey-tokens/usage) in any project.
+You can only [create honey tokens](/documentation/platform/honey-tokens/usage) after the stack status is **Verified**.
