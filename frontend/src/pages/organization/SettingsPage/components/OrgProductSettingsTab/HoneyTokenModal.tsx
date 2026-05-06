@@ -55,7 +55,7 @@ const schema = z.object({
     .string()
     .min(1, "Webhook Signing Key is required")
     .regex(/^[a-fA-F0-9]+$/, "Signing key must be a hex string"),
-  stackName: slugSchema({max: 128, field: 'stackName'}),
+  stackName: slugSchema({ max: 128, field: "stackName" }),
   awsRegion: z
     .string()
     .trim()
