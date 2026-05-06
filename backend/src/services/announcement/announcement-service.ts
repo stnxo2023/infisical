@@ -6,10 +6,10 @@ import { withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { safeRequest } from "@app/lib/validator";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAnnouncement, TContentfulEntriesResponse } from "./announcement-types";
+import { request } from "@app/lib/config/request";
 
 const CONTENT_TYPE = "featureUpdate";
 const RECENT_LIMIT = 5;
@@ -92,7 +92,7 @@ export const announcementServiceFactory = ({ userDAL, keyStore }: TAnnouncementS
     const url = `https://cdn.contentful.com/spaces/${appCfg.CONTENTFUL_SPACE_ID}/environments/${appCfg.CONTENTFUL_ENVIRONMENT}/entries`;
 
     try {
-      const { data } = await safeRequest.get<TContentfulEntriesResponse>(url, {
+      const { data } = await request.get<TContentfulEntriesResponse>(url, {
         params: {
           content_type: CONTENT_TYPE,
           order: "-fields.published",
