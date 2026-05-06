@@ -19,7 +19,6 @@ export const OvhConnectionCertificateCredentialsSchema = z.object({
     .trim()
     .min(1, "OKMS domain required")
     .url("OKMS domain must be a valid URL (e.g. https://example.com)")
-    .refine((val) => new URL(val).protocol === "https:", { message: "OKMS domain must use https" })
     .describe(AppConnections.CREDENTIALS.OVH.okmsDomain),
   okmsId: z.string().trim().min(1, "OKMS ID required").describe(AppConnections.CREDENTIALS.OVH.okmsId)
 });
