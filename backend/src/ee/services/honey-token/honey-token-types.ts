@@ -39,7 +39,7 @@ export const AwsHoneyTokenConfigSchema = z.object({
     .string()
     .min(1)
     .regex(/^[a-fA-F0-9]+$/, "Signing key must be a hex string"),
-  stackName: slugSchema({ max: 64, field: "stackName" }).default("infisical-honey-tokens"),
+  stackName: slugSchema({ max: 128, field: "stackName" }).default("infisical-honey-tokens"),
   awsRegion: z.string().min(1).default("us-east-1").refine(isValidAwsRegion, "Invalid AWS region")
 });
 
