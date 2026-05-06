@@ -36,6 +36,7 @@ import {
   useTestHoneyTokenConnection,
   useUpsertHoneyTokenConfig
 } from "@app/hooks/api/honeyToken";
+import { slugSchema } from "@app/lib/schemas";
 
 const CF_TEMPLATE_URL =
   "https://infisical-static-assets.s3.us-east-1.amazonaws.com/honey-tokens/honey-tokens-v1.yaml";
@@ -54,15 +55,7 @@ const schema = z.object({
     .string()
     .min(1, "Webhook Signing Key is required")
     .regex(/^[a-fA-F0-9]+$/, "Signing key must be a hex string"),
-  stackName: z
-    .string()
-    .trim()
-    .min(1, "Stack name is required")
-    .max(128)
-    .regex(
-      /^[a-zA-Z][a-zA-Z0-9-]*$/,
-      "Stack name must start with a letter and contain only letters, numbers, and hyphens"
-    ),
+  stackName: slugSchema({max: 128, field: 'stackName'}),
   awsRegion: z
     .string()
     .trim()

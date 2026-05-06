@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isValidAwsRegion } from "@app/lib/aws/region";
 
 import { HoneyTokenEventType, HoneyTokenType } from "./honey-token-enums";
+import { slugSchema } from "@app/server/lib/schemas";
 
 export const AwsHoneyTokenEventMetadataSchema = z.object({
   accessKeyId: z.string(),
@@ -38,14 +39,7 @@ export const AwsHoneyTokenConfigSchema = z.object({
     .string()
     .min(1)
     .regex(/^[a-fA-F0-9]+$/, "Signing key must be a hex string"),
-  stackName: z
-    .string()
-    .min(1)
-    .max(128)
-    .regex(
-      /^[a-zA-Z][a-zA-Z0-9-]*$/,
-      "Stack name must start with a letter and contain only letters, numbers, and hyphens"
-    )
+  stackName: slugSchema({max: 64, field: 'stackName'})
     .default("infisical-honey-tokens"),
   awsRegion: z
     .string()
