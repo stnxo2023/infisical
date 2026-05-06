@@ -526,6 +526,19 @@
                       "documentation/platform/dynamic-secrets/vertica"
                     ]
                   },
+                  {
+                    "group": "Honey Tokens",
+                    "pages": [
+                      "documentation/platform/honey-tokens/overview",
+                      {
+                        "group": "AWS",
+                        "pages": [
+                          "documentation/platform/honey-tokens/aws/setup",
+                          "documentation/platform/honey-tokens/aws/usage"
+                        ]
+                      }
+                    ]
+                  },
                   "documentation/platform/webhooks",
                   "documentation/platform/secret-validation-rules"
                 ]

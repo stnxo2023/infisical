@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import {
@@ -801,7 +802,12 @@ export enum EventType {
   GATEWAY_POOL_UPDATE = "gateway-pool-update",
   GATEWAY_POOL_DELETE = "gateway-pool-delete",
   GATEWAY_POOL_ADD_MEMBER = "gateway-pool-add-member",
-  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member"
+  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member",
+
+  // Honey Tokens
+  CREATE_HONEY_TOKEN = "create-honey-token",
+  UPDATE_HONEY_TOKEN = "update-honey-token",
+  REVOKE_HONEY_TOKEN = "revoke-honey-token"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -6366,6 +6372,39 @@ interface GatewayPoolRemoveMemberEvent {
   };
 }
 
+interface CreateHoneyTokenEvent {
+  type: EventType.CREATE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface UpdateHoneyTokenEvent {
+  type: EventType.UPDATE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface RevokeHoneyTokenEvent {
+  type: EventType.REVOKE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -6944,4 +6983,7 @@ export type Event =
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent
   | GatewayPoolAddMemberEvent
-  | GatewayPoolRemoveMemberEvent;
+  | GatewayPoolRemoveMemberEvent
+  | CreateHoneyTokenEvent
+  | UpdateHoneyTokenEvent
+  | RevokeHoneyTokenEvent;

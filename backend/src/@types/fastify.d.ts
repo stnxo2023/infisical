@@ -23,6 +23,8 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
+import { THoneyTokenServiceFactory } from "@app/ee/services/honey-token/honey-token-service";
+import { THoneyTokenConfigServiceFactory } from "@app/ee/services/honey-token-config/honey-token-config-service";
 import { TIdentityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template";
 import { TInsightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
@@ -375,6 +377,8 @@ declare module "fastify" {
       gatewayPool: TGatewayPoolServiceFactory;
       resourceAuthMethod: TResourceAuthMethodServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
+      honeyTokenConfig: THoneyTokenConfigServiceFactory;
+      honeyToken: THoneyTokenServiceFactory;
       folderCommit: TFolderCommitServiceFactory;
       pit: TPitServiceFactory;
       secretScanningV2: TSecretScanningV2ServiceFactory;

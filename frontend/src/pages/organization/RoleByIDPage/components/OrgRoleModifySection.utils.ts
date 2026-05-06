@@ -10,6 +10,7 @@ import {
   OrgPermissionBillingActions,
   OrgPermissionEmailDomainActions,
   OrgPermissionGroupActions,
+  OrgPermissionHoneyTokenActions,
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
@@ -48,6 +49,12 @@ const emailDomainPermissionSchema = z
     [OrgPermissionEmailDomainActions.Create]: z.boolean().optional(),
     [OrgPermissionEmailDomainActions.VerifyDomain]: z.boolean().optional(),
     [OrgPermissionEmailDomainActions.Delete]: z.boolean().optional()
+  })
+  .optional();
+
+const honeyTokenPermissionSchema = z
+  .object({
+    [OrgPermissionHoneyTokenActions.Setup]: z.boolean().optional()
   })
   .optional();
 
@@ -206,7 +213,8 @@ export const formSchema = z.object({
       "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema,
       "sub-organization": subOrganizationPermissionSchema,
-      "email-domains": emailDomainPermissionSchema
+      "email-domains": emailDomainPermissionSchema,
+      "honey-tokens": honeyTokenPermissionSchema
     })
     .optional()
 });
