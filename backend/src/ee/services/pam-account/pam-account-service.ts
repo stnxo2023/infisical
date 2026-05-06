@@ -756,8 +756,14 @@ export const pamAccountServiceFactory = ({
       });
     }
 
-    let account = null as Awaited<ReturnType<typeof pamAccountDAL.findOne>> | null;
-    if (isDomainAccount) {
+    const lookupAccount = async () => {
+      if (!isDomainAccount) {
+        return pamAccountDAL.findOne({
+          projectId,
+          resourceId: resource.id,
+          name: accountSlug
+        });
+      }
       if (!resource.domainId) {
         throw new BadRequestError({
           message: `Resource '${inputResourceName}' is not joined to a domain`
@@ -777,18 +783,13 @@ export const pamAccountServiceFactory = ({
           message: `Resource '${inputResourceName}' is not joined to '${fqdnHint}'`
         });
       }
-      account = await pamAccountDAL.findOne({
+      return pamAccountDAL.findOne({
         projectId,
         domainId: resource.domainId,
         name: accountSlug
       });
-    } else {
-      account = await pamAccountDAL.findOne({
-        projectId,
-        resourceId: resource.id,
-        name: accountSlug
-      });
-    }
+    };
+    const account = await lookupAccount();
 
     if (!account) {
       throw new NotFoundError({
