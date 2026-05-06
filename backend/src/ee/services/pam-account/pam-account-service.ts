@@ -750,6 +750,12 @@ export const pamAccountServiceFactory = ({
     const accountSlug = isDomainAccount ? inputAccountName.slice(colonIdx + 1) : inputAccountName;
     const fqdnHint = isDomainAccount ? inputAccountName.slice(0, colonIdx) : null;
 
+    if (isDomainAccount && resource.resourceType !== PamResource.Windows) {
+      throw new BadRequestError({
+        message: `Domain account access is only supported for Windows resources`
+      });
+    }
+
     let account = null as Awaited<ReturnType<typeof pamAccountDAL.findOne>> | null;
     if (isDomainAccount) {
       if (!resource.domainId) {
@@ -787,12 +793,6 @@ export const pamAccountServiceFactory = ({
     if (!account) {
       throw new NotFoundError({
         message: `Account with name '${inputAccountName}' not found for resource '${inputResourceName}'`
-      });
-    }
-
-    if (isDomainAccount && resource.resourceType !== PamResource.Windows) {
-      throw new BadRequestError({
-        message: `Domain account access is only supported for Windows resources`
       });
     }
 
