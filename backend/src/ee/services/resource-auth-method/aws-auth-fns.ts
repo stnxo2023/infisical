@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { isValidAwsRegion } from "@app/lib/aws/region";
 import { request } from "@app/lib/config/request";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -25,13 +26,6 @@ const awsRegionFromHeader = (authorizationHeader: string): string | null => {
     return null;
   }
   return null;
-};
-
-const validRegionPattern = new RE2("^[a-z0-9-]+$");
-
-const isValidAwsRegion = (region: string | null): boolean => {
-  if (typeof region !== "string" || region.length === 0 || region.length > 20) return false;
-  return validRegionPattern.test(region);
 };
 
 type TVerifyStsCallerInput = {
