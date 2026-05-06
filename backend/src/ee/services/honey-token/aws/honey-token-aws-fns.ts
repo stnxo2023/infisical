@@ -7,12 +7,12 @@ import {
   IAMClient
 } from "@aws-sdk/client-iam";
 
-import { TAppConnections } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
+import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
 import { AwsConnectionSchema } from "@app/services/app-connection/aws/aws-connection-schemas";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
@@ -99,15 +99,8 @@ export const verifyAwsStackDeployment = async ({
   }
 };
 
-export const createAwsIamHoneyTokenCredentials = async ({
-  appConnection,
-  kmsService
-}: {
-  appConnection: TAppConnections;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-}) => {
-  const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
-  const awsConfig = parseAwsConnectionConfig(decryptedConnection);
+export const createAwsIamHoneyTokenCredentials = async ({ appConnection }: { appConnection: TAppConnection }) => {
+  const awsConfig = parseAwsConnectionConfig(appConnection);
   const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
   const iam = new IAMClient({ credentials: awsCredentials, region });
 
@@ -128,17 +121,14 @@ export const createAwsIamHoneyTokenCredentials = async ({
 
 export const revokeAwsIamHoneyTokenCredentials = async ({
   appConnection,
-  kmsService,
   iamUserName,
   accessKeyId
 }: {
-  appConnection: TAppConnections;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  appConnection: TAppConnection;
   iamUserName: string;
   accessKeyId: string;
 }) => {
-  const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
-  const awsConfig = parseAwsConnectionConfig(decryptedConnection);
+  const awsConfig = parseAwsConnectionConfig(appConnection);
   const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
   const iam = new IAMClient({ credentials: awsCredentials, region });
 

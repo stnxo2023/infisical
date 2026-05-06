@@ -22,8 +22,7 @@ export const honeyTokenAwsProviderHooksFactory = ({
 }: THoneyTokenAwsProviderHookFactoryDep): THoneyTokenProviderHooks => ({
   createCredentials: (appConnection) =>
     createAwsIamHoneyTokenCredentials({
-      appConnection,
-      kmsService
+      appConnection
     }).then((credentials) => ({
       credentials,
       tokenIdentifier: credentials.accessKeyId
@@ -31,7 +30,6 @@ export const honeyTokenAwsProviderHooksFactory = ({
   revokeCredentials: ({ appConnection, credentials }) =>
     revokeAwsIamHoneyTokenCredentials({
       appConnection,
-      kmsService,
       iamUserName: credentials.iamUserName,
       accessKeyId: credentials.accessKeyId
     }),
