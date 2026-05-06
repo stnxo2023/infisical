@@ -767,11 +767,11 @@ export const pamAccountServiceFactory = ({
       if (!domain) {
         throw new NotFoundError({ message: `Domain with ID '${resource.domainId}' not found` });
       }
-      const domainConn = (await decryptDomainConnectionDetails({
+      const domainConn = await decryptDomainConnectionDetails({
         projectId,
         encryptedConnectionDetails: domain.encryptedConnectionDetails,
         kmsService
-      })) as { domain: string };
+      });
       if (domainConn.domain.toLowerCase() !== fqdnHint?.toLowerCase()) {
         throw new BadRequestError({
           message: `Resource '${inputResourceName}' is not joined to '${fqdnHint}'`
@@ -1439,11 +1439,11 @@ export const pamAccountServiceFactory = ({
         if (!domain) {
           throw new NotFoundError({ message: `Domain with ID '${account.domainId}' not found` });
         }
-        const domainConnectionDetails = (await decryptDomainConnectionDetails({
+        const domainConnectionDetails = await decryptDomainConnectionDetails({
           projectId: session.projectId,
           encryptedConnectionDetails: domain.encryptedConnectionDetails,
           kmsService
-        })) as { domain: string };
+        });
         domainName = domainConnectionDetails.domain;
       }
 
