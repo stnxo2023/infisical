@@ -30,7 +30,12 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects,
+  useOrganization
+} from "@app/context";
 import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
   getUserTablePreference,
@@ -465,7 +470,10 @@ export const MyProjectView = ({
         </div>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
           {(isOldProjectV1Allowed) => (
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+            <OrgPermissionCan
+              I={OrgPermissionProjectActions.Create}
+              an={OrgPermissionSubjects.Project}
+            >
               {(isAllowed) => (
                 <Button
                   isDisabled={!isAllowed && !isOldProjectV1Allowed}

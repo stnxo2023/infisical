@@ -97,6 +97,11 @@ export enum OrgPermissionHoneyTokenActions {
   Setup = "setup"
 }
 
+export enum OrgPermissionProjectActions {
+  Create = "create",
+  RequestAccess = "request-access"
+}
+
 export enum OrgPermissionAdminConsoleAction {
   AccessAllProjects = "access-all-projects"
 }
@@ -158,7 +163,7 @@ export type AppConnectionSubjectFields = {
 
 export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
-  | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
+  | [OrgPermissionProjectActions, OrgPermissionSubjects.Project]
   | [OrgPermissionActions.Read, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]

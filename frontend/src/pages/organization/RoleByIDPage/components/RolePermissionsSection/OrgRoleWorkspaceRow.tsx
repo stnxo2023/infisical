@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
+import { OrgPermissionProjectActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
 import { TFormSchema } from "../OrgRoleModifySection.utils";
@@ -20,7 +21,10 @@ enum Permission {
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [{ action: "create", label: "Create projects" }] as const;
+const PERMISSION_ACTIONS = [
+  { action: OrgPermissionProjectActions.Create, label: "Create projects" },
+  { action: OrgPermissionProjectActions.RequestAccess, label: "Request project access" }
+] as const;
 
 export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
@@ -32,7 +36,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
   });
 
   const selectedPermissionCategory = useMemo(() => {
-    if (rule?.create) {
+    if (rule?.create || rule?.["request-access"]) {
       return Permission.Custom;
     }
     return Permission.NoAccess;
@@ -60,7 +64,11 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
     setIsCustom.off();
 
     if (val === Permission.NoAccess) {
-      setValue("permissions.project", { create: false }, { shouldDirty: true });
+      setValue(
+        "permissions.project",
+        { create: false, "request-access": false },
+        { shouldDirty: true }
+      );
     }
   };
 

@@ -30,7 +30,12 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects,
+  useOrganization
+} from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
@@ -220,7 +225,10 @@ export const AllProjectView = ({
         </div>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
           {(isOldProjectPermissionAllowed) => (
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+            <OrgPermissionCan
+              I={OrgPermissionProjectActions.Create}
+              an={OrgPermissionSubjects.Project}
+            >
               {(isAllowed) => (
                 <Button
                   isDisabled={!isAllowed && !isOldProjectPermissionAllowed}
@@ -337,13 +345,19 @@ export const AllProjectView = ({
                         Join as Admin
                       </Button>
                     ) : (
-                      <Button
-                        size="xs"
-                        variant="outline_bg"
-                        onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
+                      <OrgPermissionCan
+                        I={OrgPermissionProjectActions.RequestAccess}
+                        an={OrgPermissionSubjects.Project}
+                        passThrough={false}
                       >
-                        Request Access
-                      </Button>
+                        <Button
+                          size="xs"
+                          variant="outline_bg"
+                          onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
+                        >
+                          Request Access
+                        </Button>
+                      </OrgPermissionCan>
                     )
                   }
                 </OrgPermissionCan>
