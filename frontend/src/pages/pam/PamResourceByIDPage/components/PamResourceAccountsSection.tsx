@@ -556,7 +556,10 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                           // Domain-account access uses `${fqdn}:${slug}` as the
                           // approval-layer identity. Block until the domain
                           // query lands so the preflight matches the backend.
-                          isDisabled={!!account.domainId && (isDomainPending || !domainData?.connectionDetails.domain)}
+                          isDisabled={
+                            !!account.domainId &&
+                            (isDomainPending || !domainData?.connectionDetails.domain)
+                          }
                           onClick={(e) => {
                             e.stopPropagation();
                             accessAccount(account);
