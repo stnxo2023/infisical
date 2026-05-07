@@ -765,10 +765,10 @@ export const honeyTokenServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
-    ForbiddenError.from(readPermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionSub.HoneyTokens
-    );
+
+    if (readPermission.cannot(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens)) {
+      return 0;
+    }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return 0;
@@ -817,10 +817,10 @@ export const honeyTokenServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
-    ForbiddenError.from(readPermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionSub.HoneyTokens
-    );
+
+    if (readPermission.cannot(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens)) {
+      return [];
+    }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return [];
