@@ -3,6 +3,7 @@ import { Client, ClientChannel } from "ssh2";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -206,20 +207,20 @@ export const hpIloRotationFactory: TRotationFactory<
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = HpIloRotationMethod.LoginAsRoot } = parameters;
 
+  const sshConfig: TSshConnectionConfig = {
+    method: connection.method,
+    app: connection.app,
+    orgId: connection.orgId,
+    gatewayId: connection.gatewayId,
+    credentials: connection.credentials
+  } as TSshConnectionConfig;
+
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
     const newPassword = generatePassword(passwordRequirements ?? HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS);
 
     const isSelfRotation = rotationMethod === HpIloRotationMethod.LoginAsTarget;
     if (username === connection.credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
-
-    const sshConfig: TSshConnectionConfig = {
-      method: connection.method,
-      app: connection.app,
-      orgId: connection.orgId,
-      gatewayId: connection.gatewayId,
-      credentials: connection.credentials
-    } as TSshConnectionConfig;
 
     if (isSelfRotation && currentPassword) {
       await rotateIloPasswordAsTarget(sshConfig, gatewayV2Service, username, currentPassword, newPassword);
@@ -267,10 +268,17 @@ export const hpIloRotationFactory: TRotationFactory<
     ];
   };
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    THpIloRotationGeneratedCredentials
+  > = async ({ username: activeUsername, password }) => {
+    await verifyIloPassword(sshConfig, gatewayV2Service, activeUsername, password);
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };
