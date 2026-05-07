@@ -159,16 +159,7 @@ export const ChangeEmailSection = () => {
       return;
     }
 
-    try {
-      await updateUserEmail({ newEmail: pendingEmail, otpCode: typedOTP });
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || "Invalid verification code";
-      createNotification({ text: errorMessage, type: "error" });
-      if (errorMessage.includes("Invalid verification code")) {
-        resetFlow();
-      }
-      return;
-    }
+    await updateUserEmail({ newEmail: pendingEmail, otpCode: typedOTP });
 
     createNotification({
       text: "Email updated successfully. You will be redirected to login.",
