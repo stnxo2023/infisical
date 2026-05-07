@@ -35,6 +35,7 @@ import {
   SECRET_ROTATION_NAME_MAP
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import {
+  TCheckSecretRotationV2Credentials,
   TCreateSecretRotationV2DTO,
   TDeleteSecretRotationV2DTO,
   TFindSecretRotationV2ByIdDTO,
@@ -1477,6 +1478,112 @@ export const secretRotationV2ServiceFactory = ({
     }
   };
 
+  const checkSecretRotationCredentials = async (
+    { rotationId, type, auditLogInfo }: TCheckSecretRotationV2Credentials,
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretRotation)
+      throw new BadRequestError({
+        message:
+          "Failed to check secret rotation credentials due to plan restriction. Upgrade plan to check secret rotation credentials."
+      });
+
+    const secretRotation = await secretRotationV2DAL.findById(rotationId);
+
+    if (!secretRotation)
+      throw new NotFoundError({
+        message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
+      });
+
+    const { projectId, connection, encryptedGeneratedCredentials, activeIndex, folderId } = secretRotation;
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+      getSecretRotationSubject(secretRotation)
+    );
+
+    if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
+      throw new BadRequestError({
+        message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
+      });
+
+    const isRotationOccurring = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretRotationLock(secretRotation.id)));
+
+    if (isRotationOccurring)
+      throw new BadRequestError({ message: `A rotation is in progress. Please try again shortly.` });
+
+    const appConnection = await decryptAppConnection(connection, kmsService);
+
+    const generatedCredentials = await decryptSecretRotationCredentials({
+      projectId,
+      encryptedGeneratedCredentials,
+      kmsService
+    });
+
+    const activeCredentials = generatedCredentials?.[activeIndex];
+
+    if (!activeCredentials)
+      throw new BadRequestError({ message: "No active credentials are available to check for this rotation." });
+
+    const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type as SecretRotation](
+      {
+        ...secretRotation,
+        connection: appConnection
+      } as TSecretRotationV2WithConnection,
+      appConnectionDAL,
+      kmsService,
+      gatewayService,
+      gatewayV2Service
+    );
+
+    if (!rotationFactory.checkActiveCredentials)
+      throw new BadRequestError({
+        message: `Credential check is not yet supported for ${SECRET_ROTATION_NAME_MAP[type]} Rotations.`
+      });
+
+    let success = true;
+    let errorMessage: string | undefined;
+
+    try {
+      await rotationFactory.checkActiveCredentials(activeCredentials);
+    } catch (err) {
+      success = false;
+      errorMessage = (err as Error).message;
+    }
+
+    await auditLogService.createAuditLog({
+      ...(auditLogInfo ?? { actor: { type: ActorType.PLATFORM, metadata: {} } }),
+      projectId,
+      event: {
+        type: EventType.SECRET_ROTATION_CHECK_CREDENTIALS,
+        metadata: {
+          type,
+          rotationId,
+          connectionId: connection.id,
+          folderId,
+          success,
+          errorMessage
+        }
+      }
+    });
+
+    if (!success)
+      throw new BadRequestError({
+        message: errorMessage ?? "Active credentials are no longer valid."
+      });
+  };
+
   const getDashboardSecretRotationCount = async (
     { projectId, environments, secretPath, search }: TGetDashboardSecretRotationV2Count,
     actor: OrgServiceActor
@@ -1912,6 +2019,7 @@ export const secretRotationV2ServiceFactory = ({
     getDashboardSecretRotationCount,
     getDashboardSecretRotations,
     getQuickSearchSecretRotations,
-    reconcileLocalAccountRotation
+    reconcileLocalAccountRotation,
+    checkSecretRotationCredentials
   };
 };

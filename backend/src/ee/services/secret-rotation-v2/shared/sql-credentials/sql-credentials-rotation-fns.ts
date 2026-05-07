@@ -3,6 +3,7 @@ import { Knex } from "knex";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -210,10 +211,17 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     return secrets;
   };
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TSqlCredentialsRotationGeneratedCredentials
+  > = async (activeCredentials) => {
+    await $validateCredentials(activeCredentials);
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

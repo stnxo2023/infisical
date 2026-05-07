@@ -248,6 +248,8 @@ export type TFindSecretRotationV2ByIdDTO = {
 
 export type TRotateSecretRotationV2 = TFindSecretRotationV2ByIdDTO & { auditLogInfo: AuditLogInfo };
 
+export type TCheckSecretRotationV2Credentials = TFindSecretRotationV2ByIdDTO & { auditLogInfo: AuditLogInfo };
+
 export type TRotateAtUtc = { hours: number; minutes: number };
 
 export type TFindSecretRotationV2ByNameDTO = {
@@ -379,6 +381,10 @@ export type TRotationFactoryGetSecretsPayload<T extends TSecretRotationV2Generat
   generatedCredentials: T[number]
 ) => { key: string; value: string }[];
 
+export type TRotationFactoryCheckActiveCredentials<T extends TSecretRotationV2GeneratedCredentials> = (
+  activeCredentials: T[number]
+) => Promise<void>;
+
 export type TRotationFactory<
   T extends TSecretRotationV2WithConnection,
   C extends TSecretRotationV2GeneratedCredentials,
@@ -394,4 +400,5 @@ export type TRotationFactory<
   revokeCredentials: TRotationFactoryRevokeCredentials<C>;
   rotateCredentials: TRotationFactoryRotateCredentials<C>;
   getSecretsPayload: TRotationFactoryGetSecretsPayload<C>;
+  checkActiveCredentials?: TRotationFactoryCheckActiveCredentials<C>;
 };
