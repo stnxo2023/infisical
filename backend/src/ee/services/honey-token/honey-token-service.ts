@@ -24,13 +24,13 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { HoneyTokenConfigStatus } from "../honey-token-config/honey-token-config-enums";
