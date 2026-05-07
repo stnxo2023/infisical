@@ -71,7 +71,8 @@ export enum OrgPermissionGatewayActions {
   ListGateways = "list-gateways",
   EditGateways = "edit-gateways",
   DeleteGateways = "delete-gateways",
-  AttachGateways = "attach-gateways"
+  AttachGateways = "attach-gateways",
+  RevokeGatewayAccess = "revoke-gateway-access"
 }
 
 export enum OrgPermissionGatewayPoolActions {
@@ -125,6 +126,10 @@ export enum OrgPermissionEmailDomainActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionHoneyTokenActions {
+  Setup = "setup"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Project = "project",
@@ -153,7 +158,8 @@ export enum OrgPermissionSubjects {
   Relay = "relay",
   SecretShare = "secret-share",
   SubOrganization = "sub-organization",
-  EmailDomains = "email-domains"
+  EmailDomains = "email-domains",
+  HoneyTokens = "honey-tokens"
 }
 
 export type AppConnectionSubjectFields = {
@@ -194,7 +200,8 @@ export type OrgPermissionSet =
   | [OrgPermissionMachineIdentityAuthTemplateActions, OrgPermissionSubjects.MachineIdentityAuthTemplate]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
-  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains];
+  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
+  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -357,6 +364,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionEmailDomainActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.HoneyTokens).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionHoneyTokenActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ]);
 
@@ -471,6 +484,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionGatewayActions.EditGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.DeleteGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.RevokeGatewayAccess, OrgPermissionSubjects.Gateway);
 
   can(OrgPermissionGatewayPoolActions.ListGatewayPools, OrgPermissionSubjects.GatewayPool);
   can(OrgPermissionGatewayPoolActions.CreateGatewayPools, OrgPermissionSubjects.GatewayPool);
@@ -513,6 +527,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionEmailDomainActions.Create, OrgPermissionSubjects.EmailDomains);
   can(OrgPermissionEmailDomainActions.VerifyDomain, OrgPermissionSubjects.EmailDomains);
   can(OrgPermissionEmailDomainActions.Delete, OrgPermissionSubjects.EmailDomains);
+  can(OrgPermissionHoneyTokenActions.Setup, OrgPermissionSubjects.HoneyTokens);
 
   return rules;
 };

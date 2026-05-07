@@ -218,7 +218,9 @@ export enum TableName {
   OrgGatewayConfigV2 = "org_gateway_config_v2",
   Relay = "relays",
   GatewayV2 = "gateways_v2",
-  GatewayEnrollmentTokens = "gateway_enrollment_tokens",
+  ResourceAuthMethod = "resource_auth_methods",
+  ResourceAwsAuth = "resource_aws_auths",
+  ResourceTokenAuth = "resource_token_auths",
   GatewayPool = "gateway_pools",
   GatewayPoolMembership = "gateway_pool_memberships",
 
@@ -291,6 +293,12 @@ export enum TableName {
 
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules",
+
+  // Honey Tokens
+  HoneyTokenConfig = "honey_token_configs",
+  HoneyToken = "honey_tokens",
+  HoneyTokenEvent = "honey_token_events",
+  HoneyTokenSecretMapping = "honey_token_secret_mappings",
 
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",

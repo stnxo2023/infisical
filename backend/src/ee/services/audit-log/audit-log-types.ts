@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import {
@@ -790,12 +791,23 @@ export enum EventType {
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLL = "gateway-enroll",
 
+  // Resource Auth Methods
+  RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
+  RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
+  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
+
   // Gateway Pools
   GATEWAY_POOL_CREATE = "gateway-pool-create",
   GATEWAY_POOL_UPDATE = "gateway-pool-update",
   GATEWAY_POOL_DELETE = "gateway-pool-delete",
   GATEWAY_POOL_ADD_MEMBER = "gateway-pool-add-member",
-  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member"
+  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member",
+
+  // Honey Tokens
+  CREATE_HONEY_TOKEN = "create-honey-token",
+  UPDATE_HONEY_TOKEN = "update-honey-token",
+  REVOKE_HONEY_TOKEN = "revoke-honey-token"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -6264,6 +6276,58 @@ interface GatewayEnrollEvent {
   };
 }
 
+type ResourceAuthMethodKind = "aws" | "token";
+
+interface ResourceAuthMethodLoginEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    methodConfigId: string;
+    principalArn?: string;
+    accountId?: string;
+    enrollmentTokenId?: string;
+  };
+}
+
+interface ResourceAuthMethodLoginFailedEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    reasonCode: string;
+    message: string;
+    principalArn?: string;
+    accountId?: string;
+  };
+}
+
+interface ResourceAuthMethodUpdateEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    methodConfigId: string;
+    stsEndpoint?: string;
+    allowedPrincipalArns?: string;
+    allowedAccountIds?: string;
+  };
+}
+
+interface ResourceAuthMethodRevokeEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_REVOKE;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    gatewayName: string;
+    deletedTokenCount: number;
+  };
+}
+
 interface GatewayPoolCreateEvent {
   type: EventType.GATEWAY_POOL_CREATE;
   metadata: {
@@ -6305,6 +6369,39 @@ interface GatewayPoolRemoveMemberEvent {
     poolName: string;
     gatewayId: string;
     gatewayName: string;
+  };
+}
+
+interface CreateHoneyTokenEvent {
+  type: EventType.CREATE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface UpdateHoneyTokenEvent {
+  type: EventType.UPDATE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface RevokeHoneyTokenEvent {
+  type: EventType.REVOKE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
   };
 }
 
@@ -6878,8 +6975,15 @@ export type Event =
   | GatewayCreateEvent
   | GatewayEnrollmentTokenCreateEvent
   | GatewayEnrollEvent
+  | ResourceAuthMethodLoginEvent
+  | ResourceAuthMethodLoginFailedEvent
+  | ResourceAuthMethodUpdateEvent
+  | ResourceAuthMethodRevokeEvent
   | GatewayPoolCreateEvent
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent
   | GatewayPoolAddMemberEvent
-  | GatewayPoolRemoveMemberEvent;
+  | GatewayPoolRemoveMemberEvent
+  | CreateHoneyTokenEvent
+  | UpdateHoneyTokenEvent
+  | RevokeHoneyTokenEvent;

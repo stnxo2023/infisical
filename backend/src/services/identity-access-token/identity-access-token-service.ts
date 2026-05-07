@@ -16,6 +16,7 @@ import {
   assertRevocableClaims,
   computeIssuedTtl,
   hasFullRenewClaims,
+  hasLegacyTokenWithoutExpExceededMaxAge,
   hasNonWildcardTrustedIps,
   parseUsesRemaining,
   resolveTtlInputs,
@@ -67,7 +68,7 @@ type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   identityAccessTokenRevocationDAL: TIdentityAccessTokenRevocationDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "getTrustedIpsByAuthMethod" | "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership" | "findOne">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "incrementBy" | "setItemWithExpiry">;
 };
 
@@ -216,7 +217,13 @@ export const identityAccessTokenServiceFactory = ({
     if (!row || row.isAccessTokenRevoked) {
       throw new UnauthorizedError({ message: "Cannot renew revoked or unknown access token" });
     }
-    const fallbackOrgId = decoded.orgId ?? row.identityOrgId ?? "";
+
+    const scopeOrgId = row.subOrganizationId || row.identityOrgId;
+    const identityOrgDetails = await orgDAL.findOne({ id: scopeOrgId });
+    const isSubOrg = Boolean(identityOrgDetails.rootOrgId);
+    const rootOrgId = isSubOrg ? identityOrgDetails.rootOrgId || identityOrgDetails.id : identityOrgDetails.id;
+    const parentOrgId = identityOrgDetails.parentOrgId || rootOrgId;
+
     return {
       authMethod: row.authMethod as IdentityAuthMethod,
       accessTokenTTL: row.accessTokenTTL,
@@ -226,9 +233,9 @@ export const identityAccessTokenServiceFactory = ({
       // legacy lifetime carries over without a free renewal-time extension.
       creationEpoch: Math.floor(row.createdAt.getTime() / 1000),
       identityName: row.identityName ?? decoded.identityName ?? "",
-      orgId: fallbackOrgId,
-      rootOrgId: decoded.rootOrgId ?? fallbackOrgId,
-      parentOrgId: decoded.parentOrgId ?? fallbackOrgId,
+      orgId: decoded?.orgId || scopeOrgId,
+      rootOrgId: decoded.rootOrgId ?? rootOrgId,
+      parentOrgId: decoded.parentOrgId ?? parentOrgId,
       clientSecretId: decoded.clientSecretId ?? "",
       numUsesLimit: row.accessTokenNumUsesLimit,
       identityAuth: decoded.identityAuth
@@ -256,11 +263,17 @@ export const identityAccessTokenServiceFactory = ({
         }
       : await loadLegacyTokenSource(token);
 
-    // Legacy tokens (pre-redesign) were signed without `expiresIn` so the JWT
-    // has no `exp`. For those, enforce the `iat + MAX_AGE` ceiling here.
+    // Legacy tokens (pre-redesign) may have no `exp`. Start the max-age clock
+    // at the enforcement deployment date so old tokens get a communication window.
     // New tokens always have `exp`; jwt.verify already rejected expired ones.
     const issuedAtMs = token.iat * 1000;
-    if (typeof token.exp !== "number" && Date.now() > issuedAtMs + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000) {
+    if (
+      hasLegacyTokenWithoutExpExceededMaxAge({
+        exp: token.exp,
+        enforcedAt: appCfg.LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT,
+        maxAgeSeconds: appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
+      })
+    ) {
       throw new UnauthorizedError({ message: "Identity access token exceeded max age, please re-authenticate" });
     }
 
@@ -336,10 +349,15 @@ export const identityAccessTokenServiceFactory = ({
     const appCfg = getConfig();
     const decodedToken = assertMinimalRenewClaims(verifyAccessTokenJwt(accessToken));
 
-    // Single-JWT max age. New-format validation enforces this on the hot path
-    // via the same check; mirror it here so legacy JWTs (which were signed
-    // with arbitrarily long expiresIn) can't renew themselves indefinitely.
-    if (decodedToken.iat * 1000 + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000 < Date.now()) {
+    // Single-JWT max age for legacy tokens without exp. New-format validation
+    // uses JWT exp; no-exp legacy tokens get a deployment-anchored grace window.
+    if (
+      hasLegacyTokenWithoutExpExceededMaxAge({
+        exp: decodedToken.exp,
+        enforcedAt: appCfg.LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT,
+        maxAgeSeconds: appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
+      })
+    ) {
       throw new UnauthorizedError({ message: "Identity access token exceeded max age, please re-authenticate" });
     }
 
