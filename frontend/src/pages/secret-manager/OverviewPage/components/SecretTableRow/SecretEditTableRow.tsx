@@ -838,16 +838,16 @@ export const SecretEditTableRow = ({
   );
 
   const handleDeleteSecret = useCallback(async () => {
+    if (isDeleting) return;
     setIsDeleting.on();
-    setIsModalOpen(false);
-
     try {
       await onSecretDelete(environment, secretName, secretId);
       reset({ value: null });
+      setIsModalOpen(false);
     } finally {
       setIsDeleting.off();
     }
-  }, [onSecretDelete, environment, secretName, secretId, reset, setIsDeleting]);
+  }, [isDeleting, onSecretDelete, environment, secretName, secretId, reset, setIsDeleting]);
 
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   const canCreate = permission.can(
@@ -960,7 +960,10 @@ export const SecretEditTableRow = ({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              onClick={handleDeleteSecret}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteSecret();
+              }}
               disabled={deleteConfirmation !== secretName || isDeleting}
             >
               Delete Secret
@@ -1823,7 +1826,10 @@ export const SecretEditTableRow = ({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="project"
-              onClick={() => handleEditSecret(popUp?.editSecret?.data)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleEditSecret(popUp?.editSecret?.data);
+              }}
               disabled={editConfirmation !== "confirm" || isEditing}
             >
               Save Changes
