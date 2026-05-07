@@ -90,9 +90,6 @@ const PageContent = () => {
 
   const { data: account, isPending } = useGetPamAccountById(accountId);
 
-  // Domain accounts use the AD FQDN to disambiguate from a like-named local
-  // account. Fetch the full domain row for connectionDetails.domain so the
-  // approval-layer identity matches what the backend computes.
   const { data: domain } = useGetPamDomainById(
     (account?.domain?.domainType as PamDomainType) ?? PamDomainType.ActiveDirectory,
     account?.domainId || undefined,
@@ -378,8 +375,6 @@ const PageContent = () => {
           domainType={account.domain.domainType}
           domainId={account.domain.id}
           onSelect={async (resource) => {
-            // Domain accounts pass `<fqdn>:<slug>` to the approval layer so a
-            // like-named local-account grant can't authorize this access.
             const accountIdentity = domain?.connectionDetails.domain
               ? `${domain.connectionDetails.domain}:${account.name}`
               : account.name;

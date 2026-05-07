@@ -756,11 +756,8 @@ export const pamAccountServiceFactory = ({
       });
     }
 
-    // Returns the account row plus the canonical identity to feed the approval
-    // layer. For domain accounts we prefix with the FQDN from the domain row
-    // (not the caller's hint) so casing is normalized and grants/policies
-    // created against domain accounts can't be matched by a same-named local
-    // grant (which would otherwise let one grant authorize both buckets).
+    // accountIdentity is fed to the approval layer; the FQDN prefix on domain
+    // accounts prevents a like-named local-account grant from matching.
     const lookupAccount = async () => {
       if (!isDomainAccount) {
         const localAccount = await pamAccountDAL.findOne({

@@ -10,10 +10,7 @@ export const PamSessionCommandLogSchema = z.object({
   timestamp: z.coerce.date()
 });
 
-// Terminal-channel event types. SSH uses input / output / resize / error.
-// "rdp" tags an RDP-tap event whose `data` field carries an RDP-specific
-// JSON envelope (target_frame / keyboard / unicode / mouse) -- the player on
-// the frontend decodes that envelope after AAD-bound chunk decryption.
+// "rdp" events carry a JSON envelope in `data` (target_frame / keyboard / unicode / mouse).
 export const TerminalEventTypeSchema = z.enum(["input", "output", "resize", "error", "rdp"]);
 
 export const TerminalChannelTypeSchema = z.nativeEnum(TerminalChannelType);
