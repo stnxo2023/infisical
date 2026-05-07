@@ -151,9 +151,7 @@ export const useReconcileLocalAccountRotation = () => {
 export const useCheckSecretRotationV2Credentials = () => {
   return useMutation({
     mutationFn: async ({ type, rotationId }: TCheckSecretRotationV2CredentialsDTO) => {
-      await apiRequest.post(
-        `/api/v2/secret-rotations/${type}/${rotationId}/check-credentials`
-      );
+      await apiRequest.post(`/api/v2/secret-rotations/${type}/${rotationId}/check-credentials`);
     }
   });
 };

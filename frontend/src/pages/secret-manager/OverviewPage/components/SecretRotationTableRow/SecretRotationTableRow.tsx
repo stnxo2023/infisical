@@ -7,6 +7,7 @@ import {
   EditIcon,
   HandshakeIcon,
   InfoIcon,
+  LoaderCircleIcon,
   RefreshCwIcon,
   TrashIcon,
   XIcon
@@ -136,7 +137,7 @@ export const SecretRotationTableRow = ({
           })}
         >
           {(isAllowed) => {
-            const isCheckingThisRotation = checkingRotationId === secretRotation.id;
+            const isCheckingRotation = checkingRotationId === secretRotation.id;
             return (
               <Tooltip>
                 <TooltipTrigger>
@@ -145,12 +146,12 @@ export const SecretRotationTableRow = ({
                     size="xs"
                     className={twMerge(
                       "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
-                      isCheckingThisRotation && "w-7 animate-spin"
+                      isCheckingRotation && "w-7"
                     )}
                     isDisabled={!isAllowed || Boolean(checkingRotationId)}
                     onClick={() => handleCheckActiveCredentials(secretRotation)}
                   >
-                    <Check />
+                    {isCheckingRotation ? <LoaderCircleIcon className="animate-spin" /> : <Check />}
                   </IconButton>
                 </TooltipTrigger>
                 <TooltipContent>Check Credentials</TooltipContent>
