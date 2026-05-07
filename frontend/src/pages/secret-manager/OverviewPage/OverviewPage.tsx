@@ -3157,28 +3157,14 @@ const OverviewPageContent = () => {
                                 handlePopUpOpen("deleteSecretRotation", secretRotation)
                               }
                               onCheckActiveCredentials={async (secretRotation) => {
-                                try {
-                                  await checkSecretRotationCredentials({
-                                    rotationId: secretRotation.id,
-                                    type: secretRotation.type
-                                  });
-                                  createNotification({
-                                    type: "success",
-                                    text: "Active credentials are still valid"
-                                  });
-                                } catch (err) {
-                                  let errorText = "Failed to check active credentials";
-                                  if (err instanceof AxiosError) {
-                                    const message = (
-                                      err.response?.data as { message?: string } | undefined
-                                    )?.message;
-                                    if (message) errorText = message;
-                                  }
-                                  createNotification({
-                                    type: "error",
-                                    text: errorText
-                                  });
-                                }
+                                await checkSecretRotationCredentials({
+                                  rotationId: secretRotation.id,
+                                  type: secretRotation.type
+                                });
+                                createNotification({
+                                  type: "success",
+                                  text: "Active credentials are still valid"
+                                });
                               }}
                             />
                           ))}
