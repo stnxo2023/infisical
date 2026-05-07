@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -9,6 +10,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import {
   getSupabaseAuthHeaders,
   getSupabaseInstanceUrl
@@ -147,10 +149,33 @@ export const supabaseApiKeyRotationFactory: TRotationFactory<
     apiKey
   }) => [{ key: secretsMapping.apiKey, value: apiKey }];
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TSupabaseApiKeyRotationGeneratedCredentials
+  > = async ({ apiKey }) => {
+    // Project URL follows Supabase Cloud pattern. Self-hosted instances expose project APIs
+    // on user-defined hosts that are not derivable from projectRef alone.
+    const projectUrl = `https://${projectRef}.supabase.co`;
+    await blockLocalAndPrivateIpAddresses(projectUrl);
+
+    try {
+      await request.get(`${projectUrl}/auth/v1/settings`, {
+        headers: {
+          apikey: apiKey,
+          Authorization: `Bearer ${apiKey}`
+        }
+      });
+    } catch (error: unknown) {
+      throw new BadRequestError({
+        message: `Supabase API key verification failed: ${createErrorMessage(error)}`
+      });
+    }
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

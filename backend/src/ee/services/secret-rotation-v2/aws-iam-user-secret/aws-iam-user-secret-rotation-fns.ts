@@ -2,6 +2,7 @@ import {
   type AccessKeyMetadata,
   CreateAccessKeyCommand,
   DeleteAccessKeyCommand,
+  GetUserCommand,
   IAMClient,
   ListAccessKeysCommand
 } from "@aws-sdk/client-iam";
@@ -12,6 +13,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret/aws-iam-user-secret-rotation-types";
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -120,10 +122,31 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     return secrets;
   };
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TAwsIamUserSecretRotationGeneratedCredentials
+  > = async ({ accessKeyId, secretAccessKey }) => {
+    const { region: resolvedRegion } = await getAwsConnectionConfig(connection, region);
+    const iam = new IAMClient({
+      credentials: { accessKeyId, secretAccessKey },
+      region: resolvedRegion
+    });
+
+    try {
+      await iam.send(new GetUserCommand({}));
+    } catch (err) {
+      const errName = (err as { name?: string }).name;
+      // AccessDenied means the credentials authenticated successfully but the IAM user
+      // lacks iam:GetUser on themselves — the credential is still valid for our purposes.
+      if (errName === "AccessDenied") return;
+      throw err;
+    }
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

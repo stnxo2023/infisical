@@ -268,9 +268,10 @@ export const hpIloRotationFactory: TRotationFactory<
     ];
   };
 
-  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
-    THpIloRotationGeneratedCredentials
-  > = async ({ username: activeUsername, password }) => {
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<THpIloRotationGeneratedCredentials> = async ({
+    username: activeUsername,
+    password
+  }) => {
     await verifyIloPassword(sshConfig, gatewayV2Service, activeUsername, password);
   };
 
