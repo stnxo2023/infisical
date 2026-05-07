@@ -130,7 +130,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
     setAppliedMetadataEntries([]);
   };
 
-  const { data: domainData } = useGetPamDomainById(
+  const { data: domainData, isPending: isDomainPending } = useGetPamDomainById(
     PamDomainType.ActiveDirectory,
     resource.domainId || undefined,
     { enabled: !!resource.domainId }
@@ -553,6 +553,10 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                         <Button
                           variant="ghost"
                           size="xs"
+                          // Domain-account access uses `${fqdn}:${slug}` as the
+                          // approval-layer identity. Block until the domain
+                          // query lands so the preflight matches the backend.
+                          isDisabled={!!account.domainId && (isDomainPending || !domainData?.connectionDetails.domain)}
                           onClick={(e) => {
                             e.stopPropagation();
                             accessAccount(account);

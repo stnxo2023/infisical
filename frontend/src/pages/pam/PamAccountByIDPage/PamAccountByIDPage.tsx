@@ -90,7 +90,7 @@ const PageContent = () => {
 
   const { data: account, isPending } = useGetPamAccountById(accountId);
 
-  const { data: domain } = useGetPamDomainById(
+  const { data: domain, isPending: isDomainPending } = useGetPamDomainById(
     (account?.domain?.domainType as PamDomainType) ?? PamDomainType.ActiveDirectory,
     account?.domainId || undefined,
     { enabled: !!account?.domainId }
@@ -243,7 +243,13 @@ const PageContent = () => {
             I={ProjectPermissionPamAccountActions.Access}
             a={ProjectPermissionSub.PamAccounts}
           >
-            <Button variant="neutral" onClick={handleAccess}>
+            <Button
+              variant="neutral"
+              // Domain-account access uses `${fqdn}:${slug}` as the
+              // approval-layer identity. Block until the domain query lands.
+              isDisabled={isDomainAccount && (isDomainPending || !domain?.connectionDetails.domain)}
+              onClick={handleAccess}
+            >
               <LogInIcon />
               Access
             </Button>

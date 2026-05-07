@@ -50,6 +50,9 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
   const [isBuffering, setIsBuffering] = useState(false);
   const [lastSeenEventMs, setLastSeenEventMs] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Re-triggers the events / isStreaming effects once the async WASM init
+  // resolves; ref assignment alone wouldn't schedule a render.
+  const [playerReady, setPlayerReady] = useState(false);
   // nonce remounts AnimatePresence on rapid toggles so the pulse restarts.
   const [feedback, setFeedback] = useState<{
     icon: "play" | "pause";
@@ -82,6 +85,17 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
 
+    // RDP frames are deltas; bail before creating the player if the initial
+    // event range already includes a corrupt-chunk marker (the events effect
+    // below only checks events past lastParsedIndexRef).
+    for (let i = 0; i < events.length; i += 1) {
+      const ev = events[i];
+      if (isBrokenChunkMarker(ev)) {
+        setError(`Chunk ${ev.chunkIndex}: ${ev.message}`);
+        return undefined;
+      }
+    }
+
     const initial = parseRange(events, 0, events.length);
     lastParsedIndexRef.current = events.length;
     if (initial.length > 0) setLastSeenEventMs(initial[initial.length - 1].elapsedMs);
@@ -101,6 +115,10 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
           return;
         }
         playerRef.current = player;
+        // Trigger the events / isStreaming effects to handle any state that
+        // accumulated during the async init (events that arrived, isStreaming
+        // that flipped to false).
+        setPlayerReady(true);
       })
       .catch((e: unknown) => {
         setError(e instanceof Error ? e.message : "Failed to initialize RDP replay player");
@@ -138,13 +156,13 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
       player.appendEvents(more);
       setLastSeenEventMs(more[more.length - 1].elapsedMs);
     }
-  }, [events]);
+  }, [events, playerReady]);
 
   useEffect(() => {
     if (!isStreaming && playerRef.current) {
       playerRef.current.markStreamComplete();
     }
-  }, [isStreaming]);
+  }, [isStreaming, playerReady]);
 
   useEffect(() => {
     writeProgress(currentMsRef.current);
