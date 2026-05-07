@@ -863,6 +863,7 @@ export const secretSyncQueueFactory = ({
 
       await auditLogService.createAuditLog({
         projectId: secretSync.projectId,
+        orgId: secretSync.connection.orgId,
         ...(auditLogInfo ?? {
           actor: {
             type: ActorType.PLATFORM,
