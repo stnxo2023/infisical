@@ -165,6 +165,7 @@ import {
   SecretRotation as SecretRotationV2,
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
+import { useCheckSecretRotationV2Credentials } from "@app/hooks/api/secretRotationsV2/mutations";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import {
@@ -677,6 +678,7 @@ const OverviewPageContent = () => {
   const { mutateAsync: deleteSecretImport } = useDeleteSecretImport();
   const { mutate: updateSecretImport } = useUpdateSecretImport();
   const { mutateAsync: deleteWsEnvironment } = useDeleteWsEnvironment();
+  const { mutateAsync: checkSecretRotationCredentials } = useCheckSecretRotationV2Credentials();
 
   // Batch mode state and hooks
   const [isOverviewBatchMode, setIsOverviewBatchMode] = useState(
@@ -3154,6 +3156,12 @@ const OverviewPageContent = () => {
                               onDelete={(secretRotation) =>
                                 handlePopUpOpen("deleteSecretRotation", secretRotation)
                               }
+                              onCheckActiveCredentials={async (secretRotation) => {
+                                await checkSecretRotationCredentials({
+                                  rotationId: secretRotation.id,
+                                  type: secretRotation.type
+                                });
+                              }}
                             />
                           ))}
                           {honeyTokenNames.map((honeyTokenName, index) => (

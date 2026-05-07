@@ -265,3 +265,8 @@ export type TReconcileLocalAccountRotationResponse = {
   reconciled: boolean;
   secretRotation: TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation | THpIloRotation;
 };
+
+export type TCheckSecretRotationV2CredentialsDTO = {
+  rotationId: string;
+  type: SecretRotation;
+};
