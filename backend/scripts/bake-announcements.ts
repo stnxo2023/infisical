@@ -29,6 +29,9 @@ const JSON_PATH = path.join(OUT_DIR, "announcements.json");
 const ALLOWED_IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 const ALLOWED_IMAGE_MIMES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 const ALLOWED_LINK_PROTOCOLS = new Set(["http:", "https:"]);
+// Contentful's image CDN. Anything else means a misconfigured/tampered entry
+// — refuse rather than embed unknown bytes in self-hosted images.
+const ALLOWED_IMAGE_HOSTS = new Set(["images.ctfassets.net"]);
 
 const sanitizeLink = (link: string | null | undefined): string | null => {
   if (!link) return null;
@@ -67,7 +70,12 @@ async function downloadAsset(
   assetId: string,
   contentType: string | undefined
 ): Promise<{ filename: string; bytes: number } | null> {
-  const ext = path.extname(new URL(url).pathname).toLowerCase();
+  const parsed = new URL(url);
+  if (!ALLOWED_IMAGE_HOSTS.has(parsed.hostname)) {
+    console.warn(`[bake-announcements] skipping ${url}: host ${parsed.hostname} not allowed`);
+    return null;
+  }
+  const ext = path.extname(parsed.pathname).toLowerCase();
   if (!ALLOWED_IMAGE_EXTS.has(ext)) {
     console.warn(`[bake-announcements] skipping ${url}: extension ${ext || "(none)"} not allowed`);
     return null;
