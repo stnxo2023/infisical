@@ -59,6 +59,7 @@ type Props = {
   isAddingProjectsAllowed: boolean;
   projectListView: ProjectListView;
   onProjectListViewChange: (value: ProjectListView) => void;
+  showAllProjects?: boolean;
 };
 
 enum ProjectOrderBy {
@@ -75,7 +76,8 @@ export const MyProjectView = ({
   onUpgradePlan,
   isAddingProjectsAllowed,
   projectListView,
-  onProjectListViewChange
+  onProjectListViewChange,
+  showAllProjects
 }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -368,7 +370,11 @@ export const MyProjectView = ({
   return (
     <div>
       <div className="flex w-full flex-row flex-wrap gap-2 md:flex-nowrap md:gap-0">
-        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+        <ProjectListToggle
+          value={projectListView}
+          onChange={onProjectListViewChange}
+          showAllProjects={showAllProjects}
+        />
         <Input
           className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50/60 duration-200 focus:bg-mineshaft-700/80"
           containerClassName="w-full ml-2"
