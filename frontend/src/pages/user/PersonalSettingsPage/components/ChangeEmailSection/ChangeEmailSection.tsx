@@ -101,15 +101,7 @@ export const ChangeEmailSection = () => {
       return;
     }
 
-    try {
-      await requestEmailChangeOTP({ newEmail });
-    } catch (err: any) {
-      createNotification({
-        text: err?.response?.data?.message || "Failed to request verification code",
-        type: "error"
-      });
-      return;
-    }
+    await requestEmailChangeOTP({ newEmail });
 
     setPendingEmail(newEmail);
     setTypedOTP("");
@@ -130,16 +122,7 @@ export const ChangeEmailSection = () => {
       return;
     }
 
-    try {
-      await verifyCurrentEmailOTP({ otpCode: typedOTP });
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || "Invalid verification code";
-      createNotification({ text: errorMessage, type: "error" });
-      if (errorMessage.includes("Invalid verification code")) {
-        resetFlow();
-      }
-      return;
-    }
+    await verifyCurrentEmailOTP({ otpCode: typedOTP });
 
     setTypedOTP("");
     setOtpStep("newEmail");
