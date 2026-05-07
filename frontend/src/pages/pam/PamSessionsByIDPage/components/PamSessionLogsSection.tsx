@@ -110,18 +110,12 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
             <RdpReplayView
               events={logs as TTerminalEvent[]}
               isStreaming={isLoading}
-              totalDurationMs={
-                isLegacyOrNoChunks ? undefined : playback.totalDurationMs
-              }
+              totalDurationMs={isLegacyOrNoChunks ? undefined : playback.totalDurationMs}
             />
           </Suspense>
         ) : isLoading ? (
           <div className="flex grow flex-col items-center justify-center gap-2">
-            <Lottie
-              isAutoPlay
-              icon="infisical_loading"
-              className="pointer-events-none size-12"
-            />
+            <Lottie isAutoPlay icon="infisical_loading" className="pointer-events-none size-12" />
             <span className="text-sm text-muted">Loading session recording</span>
           </div>
         ) : null)}

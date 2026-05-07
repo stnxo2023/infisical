@@ -120,10 +120,7 @@ export const useDecryptedSessionLogs = (
 
       const projectId = bundle.projectId ?? "";
       const sortedChunks = [...bundle.chunks].sort((a, b) => a.chunkIndex - b.chunkIndex);
-      const totalDurationMs = sortedChunks.reduce(
-        (max, c) => Math.max(max, c.endElapsedMs),
-        0
-      );
+      const totalDurationMs = sortedChunks.reduce((max, c) => Math.max(max, c.endElapsedMs), 0);
 
       if (sortedChunks.length > PAM_PLAYBACK_MAX_CHUNKS) {
         if (!cancelled) {

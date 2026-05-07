@@ -37,11 +37,7 @@ type Props = {
   totalDurationMs?: number;
 };
 
-export const RdpReplayView = ({
-  events,
-  isStreaming = false,
-  totalDurationMs
-}: Props) => {
+export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: Props) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const playerRef = useRef<RdpReplayPlayer | null>(null);
   const lastParsedIndexRef = useRef(0);
@@ -59,8 +55,7 @@ export const RdpReplayView = ({
     icon: "play" | "pause";
     nonce: number;
   } | null>(null);
-  const totalMs =
-    totalDurationMs && totalDurationMs > 0 ? totalDurationMs : lastSeenEventMs;
+  const totalMs = totalDurationMs && totalDurationMs > 0 ? totalDurationMs : lastSeenEventMs;
   const [contentBounds, setContentBounds] = useState({
     width: CANVAS_W,
     height: CANVAS_H
@@ -205,7 +200,7 @@ export const RdpReplayView = ({
         type="button"
         onClick={onPlayPause}
         aria-label={isPlaying ? "Pause" : "Play"}
-        className="group relative flex cursor-pointer items-center justify-center overflow-hidden rounded-md border border-border bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
+        className="group relative flex cursor-pointer items-center justify-center overflow-hidden rounded-md border border-border bg-black focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none"
         style={{ aspectRatio: `${OUTER_ASPECT_W} / ${OUTER_ASPECT_H}` }}
       >
         <div
@@ -274,7 +269,7 @@ export const RdpReplayView = ({
             style={{ width: "0%" }}
           />
         </div>
-        <span ref={timeTextRef} className="font-mono text-xs tabular-nums text-muted">
+        <span ref={timeTextRef} className="font-mono text-xs text-muted tabular-nums">
           {formatMs(0)} / {formatMs(totalMs)}
         </span>
         <IconButton
