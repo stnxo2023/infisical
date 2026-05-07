@@ -308,6 +308,7 @@ export const SecretEditTableRow = ({
   const { mutateAsync: updateSecretV3, isPending: isUpdatingMultiline } = useUpdateSecretV3();
 
   const [isDeleting, setIsDeleting] = useToggle();
+  const [isEditing, setIsEditing] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [editConfirmation, setEditConfirmation] = useState("");
@@ -796,23 +797,29 @@ export const SecretEditTableRow = ({
     secretValue: string;
     newKey?: string;
   }) => {
-    await onSecretUpdate({
-      env: environment,
-      key: secretName,
-      value: secretValue,
-      secretValueHidden,
-      type: SecretType.Shared,
-      secretId,
-      newSecretName: newKey
-    });
-    if (!secretValueHidden) {
-      originalValueRef.current = secretValue;
+    if (isEditing) return;
+    setIsEditing.on();
+    try {
+      await onSecretUpdate({
+        env: environment,
+        key: secretName,
+        value: secretValue,
+        secretValueHidden,
+        type: SecretType.Shared,
+        secretId,
+        newSecretName: newKey
+      });
+      if (!secretValueHidden) {
+        originalValueRef.current = secretValue;
+      }
+      reset({
+        value: secretValue,
+        ...(isSingleEnvView ? { key: newKey || secretName } : {})
+      });
+      handlePopUpClose("editSecret");
+    } finally {
+      setIsEditing.off();
     }
-    reset({
-      value: secretValue,
-      ...(isSingleEnvView ? { key: newKey || secretName } : {})
-    });
-    handlePopUpClose("editSecret");
   };
 
   const canReadSecretValue = hasSecretReadValueOrDescribePermission(
@@ -1817,7 +1824,7 @@ export const SecretEditTableRow = ({
             <AlertDialogAction
               variant="project"
               onClick={() => handleEditSecret(popUp?.editSecret?.data)}
-              disabled={editConfirmation !== "confirm"}
+              disabled={editConfirmation !== "confirm" || isEditing}
             >
               Save Changes
             </AlertDialogAction>
