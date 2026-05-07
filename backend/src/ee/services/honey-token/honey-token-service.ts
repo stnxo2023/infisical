@@ -29,6 +29,8 @@ import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { HoneyTokenConfigStatus } from "../honey-token-config/honey-token-config-enums";
@@ -106,6 +108,7 @@ export type THoneyTokenServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 type TSendTriggerNotificationInput = {
@@ -146,7 +149,8 @@ export const honeyTokenServiceFactory = ({
   folderCommitService,
   resourceMetadataDAL,
   snapshotService,
-  secretQueueService
+  secretQueueService,
+  telemetryService
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({
     honeyTokenDAL,
@@ -169,7 +173,8 @@ export const honeyTokenServiceFactory = ({
     folderCommitService,
     resourceMetadataDAL,
     snapshotService,
-    secretQueueService
+    secretQueueService,
+    telemetryService
   });
 
   const create = async (
@@ -1019,6 +1024,18 @@ export const honeyTokenServiceFactory = ({
         parsed.data.accessKeyId,
         TRIGGER_NOTIFICATION_COOLDOWN_MS
       );
+      void telemetryService
+        .sendPostHogEvents({
+          event: PostHogEventTypes.HoneyTokenTriggered,
+          distinctId: `honey-token-${honeyToken.id}`,
+          organizationId: honeyTokenWithOrg.orgId,
+          properties: {
+            honeyTokenId: honeyToken.id,
+            type: honeyToken.type,
+            projectId: honeyToken.projectId
+          }
+        })
+        .catch(() => {});
       if (updatedToken) {
         void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata: parsed.data });
       }

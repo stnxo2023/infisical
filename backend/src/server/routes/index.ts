@@ -2375,7 +2375,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     snapshotService,
     secretQueueService,
-    appConnectionService
+    appConnectionService,
+    telemetryService
   });
 
   const webhookService = webhookServiceFactory({
