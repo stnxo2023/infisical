@@ -99,6 +99,12 @@ export const auditLogQueueServiceFactory = async ({
       if (!orgId) {
         // TODO(akhilmhdh): use caching here in dal to avoid db calls
         project = await projectDAL.findById(projectId!);
+        if (!project) {
+          logger.error(
+            `audit-log-queue: projecet was deleted, skipping [jobId=${job.id}] [projectId=${projectId}] [event=${job.data.event?.type}]`
+          );
+          return;
+        }
         orgId = project.orgId;
       }
 
