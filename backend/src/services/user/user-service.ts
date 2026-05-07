@@ -298,6 +298,10 @@ export const userServiceFactory = ({
       const user = await userDAL.findById(userId, tx);
       if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "UpdateUserEmail" });
 
+      if (user.authMethods?.includes(AuthMethod.LDAP)) {
+        throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "UpdateUserEmail" });
+      }
+
       const hasScimRestriction = await checkUserScimRestriction(userId, tx);
       if (hasScimRestriction) {
         throw new BadRequestError({

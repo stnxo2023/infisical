@@ -122,7 +122,14 @@ export const ChangeEmailSection = () => {
       return;
     }
 
-    await verifyCurrentEmailOTP({ otpCode: typedOTP });
+    try {
+      await verifyCurrentEmailOTP({ otpCode: typedOTP });
+    } catch {
+      // The OTP token is single-use (triesLeft = 1) — any failure consumes it server-side,
+      // so the user must restart the flow to request a fresh code.
+      resetFlow();
+      return;
+    }
 
     setTypedOTP("");
     setOtpStep("newEmail");
@@ -142,7 +149,12 @@ export const ChangeEmailSection = () => {
       return;
     }
 
-    await updateUserEmail({ newEmail: pendingEmail, otpCode: typedOTP });
+    try {
+      await updateUserEmail({ newEmail: pendingEmail, otpCode: typedOTP });
+    } catch {
+      resetFlow();
+      return;
+    }
 
     createNotification({
       text: "Email updated successfully. You will be redirected to login.",
