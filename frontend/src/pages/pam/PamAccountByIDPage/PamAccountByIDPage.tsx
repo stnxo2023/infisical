@@ -39,7 +39,7 @@ import {
 } from "@app/hooks/api/pam";
 import { useManualRotateAccount } from "@app/hooks/api/pam/mutations";
 import { pamKeys } from "@app/hooks/api/pam/queries";
-import { PAM_DOMAIN_TYPE_MAP, PamDomainType } from "@app/hooks/api/pamDomain";
+import { PAM_DOMAIN_TYPE_MAP, PamDomainType, useGetPamDomainById } from "@app/hooks/api/pamDomain";
 
 import { PamAccessAccountModal } from "../PamAccountsPage/components/PamAccessAccountModal";
 import { PamAwsIamAccessReasonModal } from "../PamAccountsPage/components/PamAwsIamAccessReasonModal";
@@ -89,6 +89,15 @@ const PageContent = () => {
   const rotateAccount = useManualRotateAccount();
 
   const { data: account, isPending } = useGetPamAccountById(accountId);
+
+  // Domain accounts use the AD FQDN to disambiguate from a like-named local
+  // account. Fetch the full domain row for connectionDetails.domain so the
+  // approval-layer identity matches what the backend computes.
+  const { data: domain } = useGetPamDomainById(
+    (account?.domain?.domainType as PamDomainType) ?? PamDomainType.ActiveDirectory,
+    account?.domainId || undefined,
+    { enabled: !!account?.domainId }
+  );
 
   if (isPending) {
     return <PageLoader />;
@@ -369,19 +378,25 @@ const PageContent = () => {
           domainType={account.domain.domainType}
           domainId={account.domain.id}
           onSelect={async (resource) => {
+            // Domain accounts pass `<fqdn>:<slug>` to the approval layer so a
+            // like-named local-account grant can't authorize this access.
+            const accountIdentity = domain?.connectionDetails.domain
+              ? `${domain.connectionDetails.domain}:${account.name}`
+              : account.name;
+
             const { requiresApproval, constraints } = await checkPolicyMatch({
               policyType: ApprovalPolicyType.PamAccess,
               projectId: projectId!,
               inputs: {
                 resourceName: resource.name,
-                accountName: account.name
+                accountName: accountIdentity
               }
             });
 
             if (requiresApproval) {
               handlePopUpOpen("requestAccount", {
                 resourceName: resource.name,
-                accountName: account.name,
+                accountName: accountIdentity,
                 accountAccessed: true,
                 accessDurationMax: constraints?.accessDuration.max
               });

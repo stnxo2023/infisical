@@ -256,19 +256,26 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   };
 
   const accessAccount = async (account: TPamAccount) => {
+    // Domain accounts pass `<fqdn>:<slug>` to the approval layer so a
+    // like-named local-account grant can't authorize this access.
+    const accountIdentity =
+      account.domainId && domainData?.connectionDetails.domain
+        ? `${domainData.connectionDetails.domain}:${account.name}`
+        : account.name;
+
     const { requiresApproval, constraints } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
         resourceName: resource.name,
-        accountName: account.name
+        accountName: accountIdentity
       }
     });
 
     if (requiresApproval) {
       handlePopUpOpen("requestAccount", {
         resourceName: resource.name,
-        accountName: account.name,
+        accountName: accountIdentity,
         accountAccessed: true,
         accessDurationMax: constraints?.accessDuration.max
       });

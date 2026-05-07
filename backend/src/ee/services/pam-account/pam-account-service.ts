@@ -756,13 +756,20 @@ export const pamAccountServiceFactory = ({
       });
     }
 
+    // Returns the account row plus the canonical identity to feed the approval
+    // layer. For domain accounts we prefix with the FQDN from the domain row
+    // (not the caller's hint) so casing is normalized and grants/policies
+    // created against domain accounts can't be matched by a same-named local
+    // grant (which would otherwise let one grant authorize both buckets).
     const lookupAccount = async () => {
       if (!isDomainAccount) {
-        return pamAccountDAL.findOne({
+        const localAccount = await pamAccountDAL.findOne({
           projectId,
           resourceId: resource.id,
           name: accountSlug
         });
+        if (!localAccount) return null;
+        return { account: localAccount, accountIdentity: localAccount.name };
       }
       if (!resource.domainId) {
         throw new BadRequestError({
@@ -783,19 +790,22 @@ export const pamAccountServiceFactory = ({
           message: `Resource '${inputResourceName}' is not joined to '${fqdnHint}'`
         });
       }
-      return pamAccountDAL.findOne({
+      const domainAccount = await pamAccountDAL.findOne({
         projectId,
         domainId: resource.domainId,
         name: accountSlug
       });
+      if (!domainAccount) return null;
+      return { account: domainAccount, accountIdentity: `${domainConn.domain}:${domainAccount.name}` };
     };
-    const account = await lookupAccount();
+    const lookup = await lookupAccount();
 
-    if (!account) {
+    if (!lookup) {
       throw new NotFoundError({
         message: `Account with name '${inputAccountName}' not found for resource '${inputResourceName}'`
       });
     }
+    const { account, accountIdentity } = lookup;
 
     const trimmedReason = reason?.trim() || null;
 
@@ -804,7 +814,7 @@ export const pamAccountServiceFactory = ({
     const inputs = {
       resourceId: resource.id,
       resourceName: resource.name,
-      accountName: account.name
+      accountName: accountIdentity
     };
 
     const canAccess = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);
