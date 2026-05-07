@@ -2380,7 +2380,8 @@ export const registerRoutes = async (
     snapshotService,
     secretQueueService,
     appConnectionService,
-    telemetryService
+    telemetryService,
+    auditLogService
   });
 
   const webhookService = webhookServiceFactory({
