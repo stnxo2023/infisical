@@ -1024,20 +1024,20 @@ export const honeyTokenServiceFactory = ({
         parsed.data.accessKeyId,
         TRIGGER_NOTIFICATION_COOLDOWN_MS
       );
+      void telemetryService
+        .sendPostHogEvents({
+          event: PostHogEventTypes.HoneyTokenTriggered,
+          distinctId: `honey-token-${honeyToken.id}`,
+          organizationId: honeyTokenWithOrg.orgId,
+          properties: {
+            honeyTokenId: honeyToken.id,
+            type: honeyToken.type,
+            projectId: honeyToken.projectId
+          }
+        })
+        .catch(() => {});
       if (updatedToken) {
         void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata: parsed.data });
-        void telemetryService
-          .sendPostHogEvents({
-            event: PostHogEventTypes.HoneyTokenTriggered,
-            distinctId: `honey-token-${honeyToken.id}`,
-            organizationId: honeyTokenWithOrg.orgId,
-            properties: {
-              honeyTokenId: honeyToken.id,
-              type: honeyToken.type,
-              projectId: honeyToken.projectId
-            }
-          })
-          .catch(() => {});
       }
     }
     /* eslint-enable no-continue */
