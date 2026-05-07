@@ -152,9 +152,10 @@ export const supabaseApiKeyRotationFactory: TRotationFactory<
   const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
     TSupabaseApiKeyRotationGeneratedCredentials
   > = async ({ apiKey }) => {
-    // Project URL follows Supabase Cloud pattern. Self-hosted instances expose project APIs
-    // on user-defined hosts that are not derivable from projectRef alone.
-    const projectUrl = `https://${projectRef}.supabase.co`;
+    const projectUrl = connection.credentials.instanceUrl
+      ? await getSupabaseInstanceUrl(connectionConfig)
+      : `https://${projectRef}.supabase.co`;
+
     await blockLocalAndPrivateIpAddresses(projectUrl);
 
     try {

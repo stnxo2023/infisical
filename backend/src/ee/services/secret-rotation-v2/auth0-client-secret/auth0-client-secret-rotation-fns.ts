@@ -122,7 +122,7 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
         const errorData = error.response?.data as { error?: string; error_description?: string } | undefined;
-        if (errorData?.error === "access_denied") return;
+        if (errorData?.error === "invalid_scope" || errorData?.error === "access_denied") return;
         throw new BadRequestError({
           message: `Auth0 client credentials check failed: ${errorData?.error_description ?? errorData?.error ?? error.message}`
         });

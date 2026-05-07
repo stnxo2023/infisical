@@ -19,6 +19,7 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { BadRequestError } from "@app/lib/errors";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
 
 const getCreateDate = (key: AccessKeyMetadata): number => {
@@ -137,7 +138,11 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
       const errName = (err as { name?: string }).name;
       // AccessDenied means the credentials authenticated successfully but the IAM user
       // lacks iam:GetUser on themselves — the credential is still valid for our purposes.
-      if (errName === "AccessDenied") return;
+      if (errName === "AccessDenied") {
+        throw new BadRequestError({
+          message: "Failed to check active credentials"
+        });
+      }
       throw err;
     }
   };
