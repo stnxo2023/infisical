@@ -8,10 +8,9 @@ export enum ProjectListView {
 type Props = {
   value: ProjectListView;
   onChange: (value: ProjectListView) => void;
-  showAllProjects?: boolean;
 };
 
-export const ProjectListToggle = ({ value, onChange, showAllProjects = true }: Props) => {
+export const ProjectListToggle = ({ value, onChange }: Props) => {
   return (
     <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
       <Button
@@ -26,20 +25,18 @@ export const ProjectListToggle = ({ value, onChange, showAllProjects = true }: P
       >
         My Projects
       </Button>
-      {showAllProjects && (
-        <Button
-          variant="outline_bg"
-          onClick={() => {
-            onChange(ProjectListView.AllProjects);
-          }}
-          size="xs"
-          className={`${
-            value === ProjectListView.AllProjects ? "bg-mineshaft-500" : "bg-transparent"
-          } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
-        >
-          All Projects
-        </Button>
-      )}
+      <Button
+        variant="outline_bg"
+        onClick={() => {
+          onChange(ProjectListView.AllProjects);
+        }}
+        size="xs"
+        className={`${
+          value === ProjectListView.AllProjects ? "bg-mineshaft-500" : "bg-transparent"
+        } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
+      >
+        All Projects
+      </Button>
     </div>
   );
 };

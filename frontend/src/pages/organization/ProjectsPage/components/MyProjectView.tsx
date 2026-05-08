@@ -370,11 +370,9 @@ export const MyProjectView = ({
   return (
     <div>
       <div className="flex w-full flex-row flex-wrap gap-2 md:flex-nowrap md:gap-0">
-        <ProjectListToggle
-          value={projectListView}
-          onChange={onProjectListViewChange}
-          showAllProjects={showAllProjects}
-        />
+        {showAllProjects && (
+          <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+        )}
         <Input
           className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50/60 duration-200 focus:bg-mineshaft-700/80"
           containerClassName="w-full ml-2"
