@@ -57,7 +57,7 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
   // Warm the lazy chunk so Suspense doesn't fall back on first mount.
   useEffect(() => {
     if (isRdpSession) {
-      void importRdpReplayView();
+      importRdpReplayView().catch(() => undefined);
     }
   }, [isRdpSession]);
 
@@ -93,32 +93,28 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
       )}
       {isSSHSession && hasLogs && <TerminalEventView events={logs as TTerminalEvent[]} />}
       {isHttpSession && hasLogs && <HttpEventView events={logs as THttpEvent[]} />}
-      {isRdpSession &&
-        (hasLogs ? (
-          <Suspense
-            fallback={
-              <div className="flex grow flex-col items-center justify-center gap-2">
-                <Lottie
-                  isAutoPlay
-                  icon="infisical_loading"
-                  className="pointer-events-none size-12"
-                />
-                <span className="text-sm text-muted">Loading session recording</span>
-              </div>
-            }
-          >
-            <RdpReplayView
-              events={logs as TTerminalEvent[]}
-              isStreaming={isLoading}
-              totalDurationMs={isLegacyOrNoChunks ? undefined : playback.totalDurationMs}
-            />
-          </Suspense>
-        ) : isLoading ? (
-          <div className="flex grow flex-col items-center justify-center gap-2">
-            <Lottie isAutoPlay icon="infisical_loading" className="pointer-events-none size-12" />
-            <span className="text-sm text-muted">Loading session recording</span>
-          </div>
-        ) : null)}
+      {isRdpSession && hasLogs && (
+        <Suspense
+          fallback={
+            <div className="flex grow flex-col items-center justify-center gap-2">
+              <Lottie isAutoPlay icon="infisical_loading" className="pointer-events-none size-12" />
+              <span className="text-sm text-muted">Loading session recording</span>
+            </div>
+          }
+        >
+          <RdpReplayView
+            events={logs as TTerminalEvent[]}
+            isStreaming={isLoading}
+            totalDurationMs={isLegacyOrNoChunks ? undefined : playback.totalDurationMs}
+          />
+        </Suspense>
+      )}
+      {isRdpSession && !hasLogs && isLoading && (
+        <div className="flex grow flex-col items-center justify-center gap-2">
+          <Lottie isAutoPlay icon="infisical_loading" className="pointer-events-none size-12" />
+          <span className="text-sm text-muted">Loading session recording</span>
+        </div>
+      )}
       {isAwsIamSession && (
         <div className="flex grow items-center justify-center text-muted">
           <div className="text-center">

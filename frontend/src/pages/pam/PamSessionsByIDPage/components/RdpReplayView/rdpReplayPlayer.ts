@@ -255,19 +255,20 @@ export class RdpReplayPlayer {
     let boundsExpanded = false;
     for (let i = 0; i < count; i += 1) {
       const r = this.decoder.dirty_rect(i);
-      if (!r) continue;
-      this.ctx.putImageData(fullImage, 0, 0, r.x, r.y, r.w, r.h);
-      const right = r.x + r.w;
-      const bottom = r.y + r.h;
-      if (right > this.contentMaxX) {
-        this.contentMaxX = right;
-        boundsExpanded = true;
+      if (r) {
+        this.ctx.putImageData(fullImage, 0, 0, r.x, r.y, r.w, r.h);
+        const right = r.x + r.w;
+        const bottom = r.y + r.h;
+        if (right > this.contentMaxX) {
+          this.contentMaxX = right;
+          boundsExpanded = true;
+        }
+        if (bottom > this.contentMaxY) {
+          this.contentMaxY = bottom;
+          boundsExpanded = true;
+        }
+        r.free();
       }
-      if (bottom > this.contentMaxY) {
-        this.contentMaxY = bottom;
-        boundsExpanded = true;
-      }
-      r.free();
     }
     if (boundsExpanded) {
       this.callbacks.onContentBoundsChange(this.contentMaxX, this.contentMaxY);
