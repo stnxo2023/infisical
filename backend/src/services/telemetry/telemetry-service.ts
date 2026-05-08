@@ -290,10 +290,18 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             logger.error(error, "Failed to identify PostHog organization");
           });
       }
+      // When `anonymous` is set, we still record the event but instruct
+      // PostHog not to create or update a person record for the synthesised
+      // distinctId. This prevents per-request distinctIds (e.g. the
+      // `anonymous-<shareId>` keys used by unauthenticated public secret
+      // shares) from inflating the person count while preserving event
+      // counts, funnels, and breakdowns.
+      const properties = event.anonymous ? { ...event.properties, $process_person_profile: false } : event.properties;
+
       postHog.capture({
         event: event.event,
         distinctId: event.distinctId,
-        properties: event.properties,
+        properties,
         ...(event.organizationId ? { groups: { organization: event.organizationId } } : {})
       });
     }
