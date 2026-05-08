@@ -1,9 +1,11 @@
 // REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Outlet, useMatches } from "@tanstack/react-router";
 
+import { AnnouncementModal } from "@app/components/announcements/AnnouncementModal";
+import { useAnnouncementSeen } from "@app/components/announcements/useAnnouncementSeen";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
 import { PageHeader } from "@app/components/v2";
@@ -14,6 +16,7 @@ import {
   useOrgPermission,
   useSubscription
 } from "@app/context";
+import { useGetRecentAnnouncements } from "@app/hooks/api/announcement";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AllProjectView } from "./components/AllProjectView";
@@ -57,6 +60,23 @@ export const ProjectsPage = () => {
     "addNewWs",
     "upgradePlan"
   ] as const);
+
+  const { data: announcementData } = useGetRecentAnnouncements();
+  const announcements = announcementData?.announcements;
+  const latestAnnouncement = announcements?.[0];
+  const { hasUnseen, markSeen } = useAnnouncementSeen();
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
+
+  const shouldAutoOpen = Boolean(latestAnnouncement && hasUnseen(latestAnnouncement.id));
+
+  useEffect(() => {
+    if (shouldAutoOpen) setIsAnnouncementOpen(true);
+  }, [shouldAutoOpen]);
+
+  const handleAnnouncementOpenChange = (open: boolean) => {
+    setIsAnnouncementOpen(open);
+    if (!open && latestAnnouncement) markSeen(latestAnnouncement.id);
+  };
 
   const { subscription } = useSubscription();
   const { isSubOrganization } = useOrganization();
@@ -116,6 +136,13 @@ export const ProjectsPage = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You have reached the maximum number of projects allowed on your current plan. Upgrade to Infisical Pro plan to add more projects."
       />
+      {announcements && announcements.length > 0 && (
+        <AnnouncementModal
+          announcements={announcements}
+          isOpen={isAnnouncementOpen}
+          onOpenChange={handleAnnouncementOpenChange}
+        />
+      )}
     </div>
   );
 };
