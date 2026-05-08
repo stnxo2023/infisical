@@ -14,7 +14,7 @@ generatedBy:
   generator: "@infisical/upgrade-impact"
   generatorVersion: "1"
   model: gpt-5.4
-  generatedAt: 2026-05-01T18:24:36.008Z
+  generatedAt: 2026-05-08T21:50:43.475Z
   sourceRange:
     from: v0.159.17
     to: v0.159.18

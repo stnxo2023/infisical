@@ -119,6 +119,16 @@ Write for a busy self-hosted operator deciding whether and how to upgrade:
 - Do not include the same evidence item twice in one entry.
 - Do not repeat a release note or PR URL across multiple entries when a more specific file diff can support the claim.
 - Before finalizing, audit the JSON for duplicate titles, duplicate descriptions, and duplicate evidence.
+- Every entry title must clearly name the affected product area, for example "PAM domains migration", "PKI certificate metadata", "Kubernetes auth TLS setting", "SMTP HELO hostname", or "Platform startup migration".
+- Only write an action when there is a specific operator task. If there is no manual task, write "No manual action required; Infisical runs this migration during startup."
+- For additive database migrations, prefer "No manual action required; Infisical runs this migration during startup." Do not tell users to run migrations manually unless the diff proves they must.
+- If a migration failure is the only risk, say "If startup fails during migration, keep the previous version running and inspect migration logs before retrying."
+- Do not say "run migrations before serving traffic", "verify migration jobs complete", "account for", or "review X if you rely on Y".
+- Do not tell operators to change proxy, Helm, Docker, or environment configuration unless the diff introduces a required setting or changes a default that existing deployments must respond to.
+- Optional security-hardening settings such as TRUSTED_PROXY_CIDRS are not upgrade actions when unset preserves legacy behavior.
+- Do not tell API automation owners to update payloads when the service layer provides backwards-compatible defaults or auto-promotion.
+- For optional environment variables, nullable columns, or additive feature tables, include an entry only when existing deployments may need a decision; otherwise omit it or state that no manual action is required.
+- Before using breakingChanges, inspect whether existing records or configs are backfilled or compatibility-preserved. If compatibility exists, do not mark it breaking.
 - Use breakingChanges for changes that can make existing auth, API, startup, database, or integrations fail after upgrade.
 - Use deploymentNotes only when deployment files, self-hosting docs, Docker, Helm, Kubernetes manifests, startup/runtime, or rollout behavior changed.
 - Use configChanges only for environment variables, config files, defaults, or settings that operators must update.

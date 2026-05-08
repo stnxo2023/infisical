@@ -232,6 +232,39 @@ const validationCases: ValidationCase[] = [
       }
     ],
     expectedErrors: [`${validRelease.version}.yaml repeats impact entry title "Database schema migrations are included"`]
+  },
+  {
+    name: "rejects unclear operator actions",
+    index: makeIndex([
+      {
+        version: validRelease.version,
+        releasedAt: validRelease.releasedAt,
+        file: `releases/${validRelease.version}.yaml`
+      }
+    ]),
+    releases: [
+      {
+        fileName: `${validRelease.version}.yaml`,
+        release: makeRelease({
+          dbSchemaChanges: [
+            {
+              title: "Database schema migrations are included",
+              description: "This release includes a database migration.",
+              action: "Set TRUSTED_PROXY_CIDRS to your proxy CIDR ranges and restart.",
+              confidence: "high",
+              evidence: [
+                {
+                  type: "file",
+                  ref: "backend/src/db/migrations/20260429000000_example.ts",
+                  path: "backend/src/db/migrations/20260429000000_example.ts"
+                }
+              ]
+            }
+          ]
+        })
+      }
+    ],
+    expectedErrors: [`${validRelease.version}.yaml uses unclear operator action`]
   }
 ];
 

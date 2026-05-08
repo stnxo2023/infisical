@@ -70,6 +70,15 @@ const evidenceKey = (evidence: ReleaseImpact["breakingChanges"][number]["evidenc
 
 const normalizeEntryKey = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
 
+const unclearActionPatterns = [
+  /run migrations? before serving traffic/i,
+  /verify migration jobs? complete/i,
+  /account for/i,
+  /review .+ if you rely on/i,
+  /set\s+`?TRUSTED_PROXY_CIDRS`?/i,
+  /update any automation/i
+];
+
 const validateDuplicateContent = (release: ReleaseImpact, file: string, errors: string[]) => {
   const seenEntryTitles = new Map<string, string>();
   const sections = [
@@ -90,6 +99,13 @@ const validateDuplicateContent = (release: ReleaseImpact, file: string, errors: 
         errors.push(`${file} repeats impact entry title "${entry.title}" in ${previousEntryRef} and ${entryRef}`);
       } else {
         seenEntryTitles.set(titleKey, entryRef);
+      }
+
+      for (const pattern of unclearActionPatterns) {
+        if (pattern.test(entry.action)) {
+          errors.push(`${file} uses unclear operator action in ${entryRef}: ${entry.action}`);
+          break;
+        }
       }
 
       const seenEvidence = new Set<string>();
