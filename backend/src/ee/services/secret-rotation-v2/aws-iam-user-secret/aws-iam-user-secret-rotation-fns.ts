@@ -2,10 +2,10 @@ import {
   type AccessKeyMetadata,
   CreateAccessKeyCommand,
   DeleteAccessKeyCommand,
-  GetUserCommand,
   IAMClient,
   ListAccessKeysCommand
 } from "@aws-sdk/client-iam";
+import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 
 import {
   TAwsIamUserSecretRotationGeneratedCredentials,
@@ -127,23 +127,22 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     TAwsIamUserSecretRotationGeneratedCredentials
   > = async ({ accessKeyId, secretAccessKey }) => {
     const { region: resolvedRegion } = await getAwsConnectionConfig(connection, region);
-    const iam = new IAMClient({
-      credentials: { accessKeyId, secretAccessKey },
-      region: resolvedRegion
+
+    const sts = new STSClient({
+      credentials: {
+        accessKeyId: accessKeyId.trim(),
+        secretAccessKey: secretAccessKey.trim()
+      },
+      region: resolvedRegion,
+      maxAttempts: 2
     });
 
     try {
-      await iam.send(new GetUserCommand({}));
+      await sts.send(new GetCallerIdentityCommand({}));
     } catch (err) {
-      const errName = (err as { name?: string }).name;
-      // AccessDenied means the credentials authenticated successfully but the IAM user
-      // lacks iam:GetUser on themselves — the credential is still valid for our purposes.
-      if (errName === "AccessDenied") {
-        throw new BadRequestError({
-          message: "Failed to check active credentials"
-        });
-      }
-      throw err;
+      throw new BadRequestError({
+        message: "Failed to authenticate with the rotated credentials"
+      });
     }
   };
 

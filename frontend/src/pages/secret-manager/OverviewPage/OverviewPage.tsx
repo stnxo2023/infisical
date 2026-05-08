@@ -109,6 +109,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
 import { OrgMembershipRole } from "@app/helpers/roles";
+import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -3163,7 +3164,8 @@ const OverviewPageContent = () => {
                                 });
                                 createNotification({
                                   type: "success",
-                                  text: "Active credentials are still valid"
+                                  title: "Credentials verified",
+                                  text: `Successfully authenticated to ${SECRET_ROTATION_MAP[secretRotation.type].name} with the current rotated credentials for ${secretRotation.name}`
                                 });
                               }}
                             />
