@@ -9,7 +9,13 @@ import { useAnnouncementSeen } from "@app/components/announcements/useAnnounceme
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
 import { PageHeader } from "@app/components/v2";
-import { useOrganization, useSubscription } from "@app/context";
+import {
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission,
+  useSubscription
+} from "@app/context";
 import { useGetRecentAnnouncements } from "@app/hooks/api/announcement";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -74,24 +80,36 @@ export const ProjectsPage = () => {
 
   const { subscription } = useSubscription();
   const { isSubOrganization } = useOrganization();
+  const { permission } = useOrgPermission();
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
+
+  const canViewAllProjects = permission.can(
+    OrgPermissionProjectActions.RequestAccess,
+    OrgPermissionSubjects.Project
+  );
 
   if (hasChildRoute) {
     return <Outlet />;
   }
 
+  const effectiveProjectListView =
+    !canViewAllProjects && projectListView === ProjectListView.AllProjects
+      ? ProjectListView.MyProjects
+      : projectListView;
+
   const projectViewProps = {
     onAddNewProject: () => handlePopUpOpen("addNewWs"),
     onUpgradePlan: () => handlePopUpOpen("upgradePlan"),
     isAddingProjectsAllowed,
-    projectListView,
-    onProjectListViewChange: handleSetProjectListView
+    projectListView: effectiveProjectListView,
+    onProjectListViewChange: handleSetProjectListView,
+    showAllProjects: canViewAllProjects
   };
 
   const projectView =
-    projectListView === ProjectListView.MyProjects ? (
+    effectiveProjectListView === ProjectListView.MyProjects ? (
       <MyProjectView {...projectViewProps} />
     ) : (
       <AllProjectView {...projectViewProps} />
