@@ -55,7 +55,7 @@ A status badge calls out overdue reminders:
 
 Click **View Upcoming Reminders** (or **View Overdue Reminders**) to see the list. Each row shows the secret key, environment, path, and how soon it's due (or how long it's been overdue). Click a row to jump to that secret in the Overview page.
 
-![Secret Insights rotation](/images/platform/insights/reminders.png)
+![Secret Insights reminders](/images/platform/insights/reminders.png)
 
 ### Stale Secrets
 
@@ -65,6 +65,8 @@ The card shows either **All secrets up to date** when nothing is stale, or **{N}
 
 Stale secrets aren't necessarily a problem — long-lived configuration values are normal. The list is meant as a prompt to review whether anything should be rotated, removed, or refreshed.
 
+![Secret Insights stale secrets](/images/platform/insights/stale.png)
+
 ## Rotation & Reminder Calendar
 
 The calendar panel shows every upcoming rotation and reminder laid out on a month grid, so you can see the cadence of upcoming work at a glance.
@@ -73,7 +75,7 @@ The calendar panel shows every upcoming rotation and reminder laid out on a mont
 
 **Navigation.** Use the chevrons in the panel header to move between months. The current day is highlighted with a colored border.
 
-**Event pills.** Each day cell shows up to two events; if there are more, a **+N more** pill expands the rest. Pills are color-coded:
+**Event pills.** Each day cell shows up to two events; when there are more, the second slot is replaced by a **+N more** pill that expands the rest. Pills are color-coded:
 
 | Color | Event Type |
 |---|---|
