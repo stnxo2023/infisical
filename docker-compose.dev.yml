@@ -78,6 +78,7 @@ services:
       - BULL_PREFIX=bull
     ports:
       - "3008:3000"
+    profiles: [queue]
 
   db-test:
     profiles: ["test"]
