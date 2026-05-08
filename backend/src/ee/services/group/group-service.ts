@@ -928,7 +928,7 @@ export const groupServiceFactory = ({
       projectBotDAL
     });
 
-    return users[0];
+    return { user: users[0], group: groupMembership.group };
   };
 
   const addMachineIdentityToGroup = async ({
@@ -1009,7 +1009,7 @@ export const groupServiceFactory = ({
       identityGroupMembershipDAL
     });
 
-    return identities[0];
+    return { identity: identities[0], group: groupMembership.group };
   };
 
   const removeUserFromGroup = async ({
@@ -1101,7 +1101,7 @@ export const groupServiceFactory = ({
       identityIds: []
     });
 
-    return users[0];
+    return { user: users[0], group: groupMembership.group };
   };
 
   const removeMachineIdentityFromGroup = async ({
@@ -1187,7 +1187,7 @@ export const groupServiceFactory = ({
       identityIds: [identityId]
     });
 
-    return identities[0];
+    return { identity: identities[0], group: groupMembership.group };
   };
 
   return {
