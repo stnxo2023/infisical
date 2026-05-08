@@ -61,12 +61,22 @@ export async function down(knex: Knex): Promise<void> {
         inverted?: boolean;
       }[];
 
+      let wasModified = false;
       const filteredRules = rules.filter((rule) => {
         if (rule.subject !== PROJECT_SUBJECT || rule.inverted) return true;
-        if (rule.action === REQUEST_ACCESS_ACTION) return false;
+        if (rule.action === REQUEST_ACCESS_ACTION) {
+          wasModified = true;
+          return false;
+        }
         if (Array.isArray(rule.action)) {
           const withoutRequestAccess = rule.action.filter((a) => a !== REQUEST_ACCESS_ACTION);
-          if (withoutRequestAccess.length === 0) return false;
+          if (withoutRequestAccess.length === 0) {
+            wasModified = true;
+            return false;
+          }
+          if (withoutRequestAccess.length !== rule.action.length) {
+            wasModified = true;
+          }
           // mutate in place to drop the action from the array
           // eslint-disable-next-line no-param-reassign
           rule.action = withoutRequestAccess;
@@ -74,7 +84,7 @@ export async function down(knex: Knex): Promise<void> {
         return true;
       });
 
-      if (filteredRules.length === rules.length) return null;
+      if (!wasModified) return null;
 
       return {
         ...role,
