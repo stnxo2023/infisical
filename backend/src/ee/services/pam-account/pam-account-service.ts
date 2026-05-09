@@ -1089,6 +1089,7 @@ export const pamAccountServiceFactory = ({
       case PamResource.Postgres:
       case PamResource.MySQL:
       case PamResource.MsSQL:
+      case PamResource.OracleDB:
       case PamResource.MongoDB:
         {
           const connectionCredentials = (await decryptResourceConnectionDetails({
