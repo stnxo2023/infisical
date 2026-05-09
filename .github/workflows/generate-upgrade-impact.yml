@@ -58,7 +58,7 @@ jobs:
         run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
         working-directory: upgrade-impact
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPGRADE_TOOL_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Validate upgrade impact data
