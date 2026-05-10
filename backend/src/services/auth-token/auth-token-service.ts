@@ -150,8 +150,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     }
 
     if (!isValidToken) {
-      if (token.triesLeft !== undefined) {
-        if (token.triesLeft === 1) {
+      if (token.triesLeft !== undefined && token.triesLeft !== null) {
+        if (token.triesLeft <= 1) {
           await tokenDAL.deleteTokenForUser({ type, userId, orgId: orgId || null });
         } else {
           await tokenDAL.decrementTriesField({ type, userId, orgId: orgId || null });
