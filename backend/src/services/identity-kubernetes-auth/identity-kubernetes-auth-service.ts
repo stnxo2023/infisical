@@ -276,8 +276,11 @@ export const identityKubernetesAuthServiceFactory = ({
     };
   };
 
-  const $resolveEffectiveVerifyTlsCertificate = (caCert: string, storedVerify: boolean | null | undefined): boolean => {
-    if (!caCert.length) return false;
+  const $resolveEffectiveVerifyTlsCertificate = (
+    caCert: string | null | undefined,
+    storedVerify: boolean | null | undefined
+  ): boolean => {
+    if (!caCert?.length) return false;
     return storedVerify ?? false;
   };
 
@@ -1235,7 +1238,7 @@ export const identityKubernetesAuthServiceFactory = ({
     }
     const effectiveVerifyTlsCertificate =
       resolvedVerifyTlsCertificate ??
-      $resolveEffectiveVerifyTlsCertificate(effectiveCaCert ?? "", identityKubernetesAuth.verifyTlsCertificate);
+      $resolveEffectiveVerifyTlsCertificate(effectiveCaCert, identityKubernetesAuth.verifyTlsCertificate);
 
     if (
       effectiveVerifyTlsCertificate &&
