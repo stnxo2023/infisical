@@ -2794,6 +2794,11 @@ export const AppConnections = {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
     },
+    DATADOG: {
+      url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
+      apiKey: "The Datadog API key used to authenticate.",
+      applicationKey: "The Datadog Application key used to authenticate."
+    },
     SSH: {
       host: "The hostname or IP address of the SSH server.",
       port: "The port number of the SSH server (default: 22).",

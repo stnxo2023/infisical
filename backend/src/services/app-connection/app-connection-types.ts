@@ -125,6 +125,12 @@ import {
   TValidateDatabricksConnectionCredentialsSchema
 } from "./databricks";
 import {
+  TDatadogConnection,
+  TDatadogConnectionConfig,
+  TDatadogConnectionInput,
+  TValidateDatadogConnectionCredentialsSchema
+} from "./datadog";
+import {
   TDbtConnection,
   TDbtConnectionConfig,
   TDbtConnectionInput,
@@ -443,6 +449,7 @@ export type TAppConnection = { id: string } & (
   | TDigiCertConnection
   | TTravisCIConnection
   | TSnowflakeConnection
+  | TDatadogConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -518,6 +525,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDigiCertConnectionInput
   | TTravisCIConnectionInput
   | TSnowflakeConnectionInput
+  | TDatadogConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -621,7 +629,8 @@ export type TAppConnectionConfig =
   | TOnaConnectionConfig
   | TDigiCertConnectionConfig
   | TTravisCIConnectionConfig
-  | TSnowflakeConnectionConfig;
+  | TSnowflakeConnectionConfig
+  | TDatadogConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -687,7 +696,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOnaConnectionCredentialsSchema
   | TValidateDigiCertConnectionCredentialsSchema
   | TValidateTravisCIConnectionCredentialsSchema
-  | TValidateSnowflakeConnectionCredentialsSchema;
+  | TValidateSnowflakeConnectionCredentialsSchema
+  | TValidateDatadogConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

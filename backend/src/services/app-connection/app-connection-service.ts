@@ -84,6 +84,7 @@ import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-
 import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
+import { ValidateDatadogConnectionCredentialsSchema } from "./datadog";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
 import { dbtConnectionService } from "./dbt/dbt-connection-service";
 import { ValidateDevinConnectionCredentialsSchema } from "./devin";
@@ -240,7 +241,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
   [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
   [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema,
-  [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema
+  [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
+  [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
