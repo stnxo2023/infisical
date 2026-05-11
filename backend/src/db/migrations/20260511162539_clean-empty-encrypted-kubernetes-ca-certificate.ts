@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { inMemoryKeyStore } from "@app/keystore/memory";
-import { initLogger } from "@app/lib/logger";
+import { initLogger, logger } from "@app/lib/logger";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
@@ -52,8 +52,7 @@ export async function up(knex: Knex): Promise<void> {
     try {
       decrypted = orgKms.decryptor({ cipherTextBlob: record.encryptedKubernetesCaCertificate }).toString();
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error(`Migration failed to decrypt encryptedKubernetesCaCertificate [id=${record.id}]:`, err);
+      logger.error(err, `Migration failed to decrypt encryptedKubernetesCaCertificate [id=${record.id}]`);
       throw err;
     }
 
