@@ -123,6 +123,7 @@ export type AuthModeAccountRecoveryTokenPayload = {
   authTokenType: AuthTokenType.ACCOUNT_RECOVERY_TOKEN;
   userId: string;
   jti: string;
+  exp: number;
 };
 
 export enum MfaMethod {

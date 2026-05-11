@@ -9,6 +9,7 @@ export type TResetPasswordV2DTO = {
   newPassword: string;
   oldPassword?: string;
   recoveryTokenJti?: string;
+  recoveryTokenExpiresAt?: number;
 };
 
 export type TResetPasswordViaBackupKeyDTO = {

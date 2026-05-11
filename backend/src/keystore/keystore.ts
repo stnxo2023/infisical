@@ -138,7 +138,6 @@ export const KeyStoreTtls = {
   MfaSessionInSeconds: 300, // 5 minutes
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   UsedTotpCodeInSeconds: 120, // covers the full ±30s acceptance window (window:1 → 90s) with margin
-  UsedAccountRecoveryTokenInSeconds: 900, // 15 minutes — matches JWT_SIGNUP_LIFETIME default
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
   RefreshTokenGraceInSeconds: 10,
