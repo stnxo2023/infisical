@@ -582,7 +582,11 @@ export const groupServiceFactory = ({
     const isLinkedGroup = group.orgId !== actorOrgId;
 
     if (isLinkedGroup) {
-      const unlinkedGroup = await unlinkGroupFromSubOrg({ groupId: id, groupMembershipId: groupMembership.id, actorOrgId });
+      const unlinkedGroup = await unlinkGroupFromSubOrg({
+        groupId: id,
+        groupMembershipId: groupMembership.id,
+        actorOrgId
+      });
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
