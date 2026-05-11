@@ -100,6 +100,24 @@ export const DynamicSecretAwsElastiCacheSchema = z.object({
   revocationStatement: z.string().trim()
 });
 
+export enum AwsMemoryDbAuthType {
+  IAM = "iam"
+}
+
+export const DynamicSecretAwsMemoryDbSchema = z.object({
+  clusterName: z.string().trim().min(1),
+  auth: z.discriminatedUnion("type", [
+    z.object({
+      type: z.literal(AwsMemoryDbAuthType.IAM),
+      accessKeyId: z.string().trim().min(1),
+      secretAccessKey: z.string().trim().min(1)
+    })
+  ]),
+  region: z.string().trim().min(1),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim()
+});
+
 export const DynamicSecretElasticSearchSchema = z.object({
   host: z.string().trim().min(1),
   port: z.number(),
@@ -695,6 +713,7 @@ export enum DynamicSecretProviders {
   AwsIam = "aws-iam",
   Redis = "redis",
   AwsElastiCache = "aws-elasticache",
+  AwsMemoryDb = "aws-memorydb",
   MongoAtlas = "mongo-db-atlas",
   ElasticSearch = "elastic-search",
   MongoDB = "mongo-db",
@@ -735,6 +754,7 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Redis), inputs: DynamicSecretRedisDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.SapHana), inputs: DynamicSecretSapHanaSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AwsElastiCache), inputs: DynamicSecretAwsElastiCacheSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.AwsMemoryDb), inputs: DynamicSecretAwsMemoryDbSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.MongoAtlas), inputs: DynamicSecretMongoAtlasSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.ElasticSearch), inputs: DynamicSecretElasticSearchSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.MongoDB), inputs: DynamicSecretMongoDBSchema }),
