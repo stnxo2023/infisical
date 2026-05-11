@@ -10,8 +10,6 @@
 //! output matches what a live IronRDP client would render: bitmap RLE,
 //! RDP6 streams, pointer compositing -- all handled upstream.
 
-use std::sync::Arc;
-
 use ironrdp_connector::connection_activation::ConnectionActivationSequence;
 use ironrdp_connector::{BitmapConfig, Config, ConnectionResult, Credentials, DesktopSize};
 use ironrdp_graphics::image_processing::PixelFormat;
@@ -234,10 +232,4 @@ fn stub_config(desktop_size: DesktopSize) -> Config {
         enable_server_pointer: true,
         pointer_software_rendering: true,
     }
-}
-
-// Silence unused Arc import in trimmed-down builds.
-#[allow(dead_code)]
-fn _assert_arc_used() {
-    let _: Arc<()> = Arc::new(());
 }
