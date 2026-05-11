@@ -1082,7 +1082,8 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
-    totpConfigDAL
+    totpConfigDAL,
+    keyStore
   });
 
   const accountRecoveryService = accountRecoveryServiceFactory({

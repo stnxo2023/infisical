@@ -1,6 +1,7 @@
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -19,12 +20,32 @@ type TAuthPasswordServiceFactoryDep = {
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
 };
 
 export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
-export const authPaswordServiceFactory = ({ userDAL, tokenService, smtpService }: TAuthPasswordServiceFactoryDep) => {
-  const resetPasswordV2 = async ({ userId, newPassword, oldPassword, type }: TResetPasswordV2DTO) => {
+export const authPaswordServiceFactory = ({
+  userDAL,
+  tokenService,
+  smtpService,
+  keyStore
+}: TAuthPasswordServiceFactoryDep) => {
+  const resetPasswordV2 = async ({ userId, newPassword, oldPassword, type, recoveryTokenJti }: TResetPasswordV2DTO) => {
     const cfg = getConfig();
+
+    if (type === ResetPasswordV2Type.Recovery) {
+      if (!recoveryTokenJti) {
+        throw new UnauthorizedError({ message: "Invalid recovery token" });
+      }
+      const claimed = await keyStore.setItemWithExpiryNX(
+        KeyStorePrefixes.UsedAccountRecoveryToken(userId, recoveryTokenJti),
+        KeyStoreTtls.UsedAccountRecoveryTokenInSeconds,
+        "1"
+      );
+      if (!claimed) {
+        throw new UnauthorizedError({ message: "Invalid recovery token" });
+      }
+    }
 
     const user = await userDAL.findById(userId);
     if (!user || !user.isAccepted || !user.isEmailVerified) {
