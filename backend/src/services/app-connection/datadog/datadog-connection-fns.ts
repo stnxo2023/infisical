@@ -78,40 +78,62 @@ export const validateDatadogConnectionCredentials = async (config: TDatadogConne
   return config.credentials;
 };
 
+type TDatadogServiceAccountEntry = {
+  id: string;
+  type: string;
+  attributes?: {
+    name?: string | null;
+    email?: string | null;
+    handle?: string | null;
+    disabled?: boolean;
+  };
+};
+
 type TDatadogServiceAccountResponse = {
-  data: Array<{
-    id: string;
-    type: string;
-    attributes?: {
-      name?: string | null;
-      email?: string | null;
-      handle?: string | null;
-      disabled?: boolean;
+  data: TDatadogServiceAccountEntry[];
+  meta?: {
+    page?: {
+      total_count?: number;
     };
-  }>;
+  };
 };
 
 export const listDatadogServiceAccounts = async (connection: TDatadogConnection): Promise<TDatadogServiceAccount[]> => {
   const baseUrl = await getDatadogBaseUrl(connection);
+  const PAGE_SIZE = 100;
+  const MAX_PAGES = 50;
+
+  const rawEntries: TDatadogServiceAccountEntry[] = [];
 
   try {
-    const { data } = await request.get<TDatadogServiceAccountResponse>(`${baseUrl}/api/v2/users`, {
-      params: {
-        "filter[service_account]": "true",
-        "page[size]": 100
-      },
-      headers: getDatadogAuthHeaders(connection.credentials)
-    });
+    for (let pageNumber = 0; pageNumber < MAX_PAGES; pageNumber += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data } = await request.get<TDatadogServiceAccountResponse>(`${baseUrl}/api/v2/users`, {
+        params: {
+          "filter[service_account]": "true",
+          "page[size]": PAGE_SIZE,
+          "page[number]": pageNumber
+        },
+        headers: getDatadogAuthHeaders(connection.credentials)
+      });
 
-    return (data.data ?? [])
-      .filter((entry) => !entry.attributes?.disabled)
-      .map((entry) => ({
-        id: entry.id,
-        name: entry.attributes?.name || entry.attributes?.email || entry.attributes?.handle || entry.id
-      }));
+      const pageEntries = data.data ?? [];
+      rawEntries.push(...pageEntries);
+
+      const totalCount = data.meta?.page?.total_count;
+      if (pageEntries.length < PAGE_SIZE) break;
+      if (typeof totalCount === "number" && rawEntries.length >= totalCount) break;
+    }
   } catch (error: unknown) {
     throw new BadRequestError({
       message: `Failed to list Datadog service accounts: ${getDatadogErrorMessage(error)}`
     });
   }
+
+  return rawEntries
+    .filter((entry) => !entry.attributes?.disabled)
+    .map((entry) => ({
+      id: entry.id,
+      name: entry.attributes?.name || entry.attributes?.email || entry.attributes?.handle || entry.id
+    }));
 };

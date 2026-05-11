@@ -100,7 +100,7 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
 
     try {
       const baseUrl = await getDatadogBaseUrl(connection);
-      await request.get(`${baseUrl}/api/v1/validate`, {
+      await request.get(`${baseUrl}/api/v2/permissions`, {
         headers: { "DD-API-KEY": connection.credentials.apiKey, "DD-APPLICATION-KEY": created.applicationKey }
       });
     } catch (error) {
