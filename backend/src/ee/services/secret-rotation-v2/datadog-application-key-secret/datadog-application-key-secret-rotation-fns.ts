@@ -1,0 +1,242 @@
+import { AxiosError } from "axios";
+
+import {
+  TRotationFactory,
+  TRotationFactoryGetSecretsPayload,
+  TRotationFactoryIssueCredentials,
+  TRotationFactoryRevokeCredentials,
+  TRotationFactoryRotateCredentials
+} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import {
+  getDatadogAuthHeaders,
+  getDatadogBaseUrl,
+  getDatadogErrorMessage,
+  TDatadogConnection
+} from "@app/services/app-connection/datadog";
+
+import {
+  TDatadogApplicationKeySecretRotationGeneratedCredentials,
+  TDatadogApplicationKeySecretRotationWithConnection
+} from "./datadog-application-key-secret-rotation-types";
+
+export type TDatadogServiceAccount = {
+  id: string;
+  name: string;
+};
+
+type TDatadogServiceAccountResponse = {
+  data: Array<{
+    id: string;
+    type: string;
+    attributes?: {
+      name?: string | null;
+      email?: string | null;
+      handle?: string | null;
+      disabled?: boolean;
+    };
+  }>;
+};
+
+type TDatadogCreateApplicationKeyResponse = {
+  data: {
+    id: string;
+    type: string;
+    attributes: {
+      name: string;
+      key: string;
+      created_at?: string;
+      last4?: string;
+    };
+  };
+};
+
+export const listDatadogServiceAccounts = async (connection: TDatadogConnection): Promise<TDatadogServiceAccount[]> => {
+  const baseUrl = await getDatadogBaseUrl(connection);
+
+  try {
+    const { data } = await request.get<TDatadogServiceAccountResponse>(`${baseUrl}/api/v2/users`, {
+      params: {
+        "filter[service_account]": "true",
+        "page[size]": 100
+      },
+      headers: getDatadogAuthHeaders(connection.credentials)
+    });
+
+    return (data.data ?? [])
+      .filter((entry) => !entry.attributes?.disabled)
+      .map((entry) => ({
+        id: entry.id,
+        name: entry.attributes?.name || entry.attributes?.email || entry.attributes?.handle || entry.id
+      }));
+  } catch (error: unknown) {
+    throw new BadRequestError({
+      message: `Failed to list Datadog service accounts: ${getDatadogErrorMessage(error)}`
+    });
+  }
+};
+
+export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
+  TDatadogApplicationKeySecretRotationWithConnection,
+  TDatadogApplicationKeySecretRotationGeneratedCredentials
+> = (secretRotation) => {
+  const {
+    id: rotationId,
+    connection,
+    parameters: { serviceAccountId },
+    secretsMapping
+  } = secretRotation;
+
+  const authHeaders = getDatadogAuthHeaders(connection.credentials);
+
+  let baseUrlCache: string | undefined;
+  const resolveBaseUrl = async () => {
+    baseUrlCache ??= await getDatadogBaseUrl(connection);
+    return baseUrlCache;
+  };
+
+  const $createApplicationKey = async () => {
+    const baseUrl = await resolveBaseUrl();
+
+    logger.info(`Creating Datadog application key for service account ${serviceAccountId} on base URL: ${baseUrl}`);
+    try {
+      const { data } = await request.post<TDatadogCreateApplicationKeyResponse>(
+        `${baseUrl}/api/v2/service_accounts/${serviceAccountId}/application_keys`,
+        {
+          data: {
+            type: "application_keys",
+            attributes: {
+              name: `infisical-rotation-${Date.now()}`
+            }
+          }
+        },
+        {
+          headers: { ...authHeaders, "Content-Type": "application/json" }
+        }
+      );
+
+      if (!data?.data?.id || !data?.data?.attributes?.key) {
+        throw new BadRequestError({
+          message: "Datadog application key response missing 'id' or 'attributes.key'"
+        });
+      }
+
+      return { applicationKeyId: data.data.id, applicationKey: data.data.attributes.key };
+    } catch (error: unknown) {
+      if (error instanceof BadRequestError) throw error;
+      throw new BadRequestError({
+        message: `Failed to create Datadog application key for service account ${serviceAccountId}: ${getDatadogErrorMessage(error)}`
+      });
+    }
+  };
+
+  const $deleteApplicationKey = async (applicationKeyId: string) => {
+    const baseUrl = await resolveBaseUrl();
+
+    try {
+      await request.delete(
+        `${baseUrl}/api/v2/service_accounts/${serviceAccountId}/application_keys/${applicationKeyId}`,
+        { headers: authHeaders }
+      );
+    } catch (error: unknown) {
+      // 404 means the key is already gone — treat as success since revocation is the desired end state.
+      if (error instanceof AxiosError && error.response?.status === 404) return;
+      throw new BadRequestError({
+        message: `Failed to delete Datadog application key ${applicationKeyId} for service account ${serviceAccountId}: ${getDatadogErrorMessage(error)}`
+      });
+    }
+  };
+
+  const $issueAndValidateKey = async () => {
+    const created = await $createApplicationKey();
+
+    logger.info(`baseUrl: ${await resolveBaseUrl()}`);
+
+    try {
+      const baseUrl = await resolveBaseUrl();
+      await request.get(`${baseUrl}/api/v1/validate`, {
+        headers: { "DD-API-KEY": connection.credentials.apiKey, "DD-APPLICATION-KEY": created.applicationKey }
+      });
+    } catch (error) {
+      try {
+        await $deleteApplicationKey(created.applicationKeyId);
+      } catch (cleanupError) {
+        logger.error(
+          cleanupError,
+          `datadogApplicationKeySecretRotation: failed to revoke unvalidated key [rotationId=${rotationId}] [keyId=${created.applicationKeyId}]`
+        );
+      }
+      if (error instanceof BadRequestError) throw error;
+      throw new BadRequestError({
+        message: `Failed to validate newly issued Datadog application key: ${getDatadogErrorMessage(error)}`
+      });
+    }
+
+    return created;
+  };
+
+  const issueCredentials: TRotationFactoryIssueCredentials<
+    TDatadogApplicationKeySecretRotationGeneratedCredentials
+  > = async (callback) => {
+    const credentials = await $issueAndValidateKey();
+    return callback(credentials);
+  };
+
+  const revokeCredentials: TRotationFactoryRevokeCredentials<
+    TDatadogApplicationKeySecretRotationGeneratedCredentials
+  > = async (generatedCredentials, callback) => {
+    if (!generatedCredentials?.length) return callback();
+
+    const results = await Promise.allSettled(
+      generatedCredentials.map((credential) => $deleteApplicationKey(credential.applicationKeyId))
+    );
+
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        logger.error(
+          result.reason,
+          `datadogApplicationKeySecretRotation: failed to revoke key during cleanup [rotationId=${rotationId}] [keyId=${generatedCredentials[index].applicationKeyId}]`
+        );
+      }
+    });
+
+    return callback();
+  };
+
+  // Issue first, then revoke the previously-inactive key. If issue fails, the old key remains usable
+  // and we avoid leaving the service account keyless.
+  const rotateCredentials: TRotationFactoryRotateCredentials<
+    TDatadogApplicationKeySecretRotationGeneratedCredentials
+  > = async (credentialsToRevoke, callback) => {
+    const credentials = await $issueAndValidateKey();
+
+    if (credentialsToRevoke?.applicationKeyId) {
+      try {
+        await $deleteApplicationKey(credentialsToRevoke.applicationKeyId);
+      } catch (revokeError) {
+        logger.error(
+          revokeError,
+          `datadogApplicationKeySecretRotation: failed to revoke previous key after rotation [rotationId=${rotationId}] [keyId=${credentialsToRevoke.applicationKeyId}]`
+        );
+      }
+    }
+
+    return callback(credentials);
+  };
+
+  const getSecretsPayload: TRotationFactoryGetSecretsPayload<
+    TDatadogApplicationKeySecretRotationGeneratedCredentials
+  > = (generatedCredentials) => [
+    { key: secretsMapping.applicationKeyId, value: generatedCredentials.applicationKeyId },
+    { key: secretsMapping.applicationKey, value: generatedCredentials.applicationKey }
+  ];
+
+  return {
+    issueCredentials,
+    revokeCredentials,
+    rotateCredentials,
+    getSecretsPayload
+  };
+};

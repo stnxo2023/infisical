@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { logger } from "@app/lib/logger/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
@@ -42,27 +43,36 @@ export const getDatadogConnectionListItem = () => {
   };
 };
 
+export const getDatadogAuthHeaders = (credentials: { apiKey: string; applicationKey: string }) => ({
+  "DD-API-KEY": credentials.apiKey,
+  "DD-APPLICATION-KEY": credentials.applicationKey,
+  Accept: "application/json"
+});
+
+type TDatadogJsonApiError = { detail?: string; title?: string; status?: string };
+
+// Datadog v2 errors use JSON:API shape: { errors: [{ detail, title, status }] }.
+// Surface the most actionable field; fall back to axios error.message.
+export const getDatadogErrorMessage = (error: unknown): string => {
+  if (error instanceof AxiosError) {
+    const errors = (error.response?.data as { errors?: TDatadogJsonApiError[] } | undefined)?.errors;
+    const first = errors?.[0];
+    if (first?.detail) return first.detail;
+    if (first?.title) return first.title;
+    if (error.message) return error.message;
+  }
+  if (error instanceof Error && error.message) return error.message;
+  return "Unknown error";
+};
+
 export const validateDatadogConnectionCredentials = async (config: TDatadogConnectionConfig) => {
   const baseUrl = await getDatadogBaseUrl(config);
-  const { apiKey, applicationKey } = config.credentials;
 
   try {
-    await request.get(`${baseUrl}/api/v2/permissions`, {
-      headers: {
-        "DD-API-KEY": apiKey,
-        "DD-APPLICATION-KEY": applicationKey,
-        Accept: "application/json"
-      }
-    });
+    await request.get(`${baseUrl}/api/v2/permissions`, { headers: getDatadogAuthHeaders(config.credentials) });
   } catch (error: unknown) {
-    if (error instanceof AxiosError) {
-      throw new BadRequestError({
-        message: `Failed to validate Datadog credentials: ${error.message || "Unknown error"}`
-      });
-    }
-
     throw new BadRequestError({
-      message: "Failed to validate Datadog credentials - verify URL, API key and Application key are correct"
+      message: `Failed to validate Datadog credentials: ${getDatadogErrorMessage(error)}`
     });
   }
 
