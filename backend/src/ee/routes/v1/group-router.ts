@@ -210,7 +210,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const group = await server.services.group.deleteGroup({
+      const { group, isUnlinked } = await server.services.group.deleteGroup({
         id: req.params.id,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -222,14 +222,22 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
-          event: {
-            type: EventType.DELETE_GROUP,
-            metadata: {
-              groupId: group.id,
-              name: group.name,
-              slug: group.slug
-            }
-          }
+          event: isUnlinked
+            ? {
+                type: EventType.UNLINK_GROUP_FROM_SUB_ORG,
+                metadata: {
+                  groupId: group.id,
+                  groupName: group.name
+                }
+              }
+            : {
+                type: EventType.DELETE_GROUP,
+                metadata: {
+                  groupId: group.id,
+                  name: group.name,
+                  slug: group.slug
+                }
+              }
         });
       }
 

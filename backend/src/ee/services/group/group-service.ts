@@ -582,10 +582,12 @@ export const groupServiceFactory = ({
     const isLinkedGroup = group.orgId !== actorOrgId;
 
     if (isLinkedGroup) {
-      return unlinkGroupFromSubOrg({ groupId: id, groupMembershipId: groupMembership.id, actorOrgId });
+      const unlinkedGroup = await unlinkGroupFromSubOrg({ groupId: id, groupMembershipId: groupMembership.id, actorOrgId });
+      return { group: unlinkedGroup, isUnlinked: true };
     }
 
-    return deleteOwnedGroup({ groupId: id, actorOrgId });
+    const deletedGroup = await deleteOwnedGroup({ groupId: id, actorOrgId });
+    return { group: deletedGroup, isUnlinked: false };
   };
 
   const getGroupById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetGroupByIdDTO) => {

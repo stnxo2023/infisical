@@ -485,6 +485,9 @@ export enum EventType {
   CREATE_GROUP = "create-group",
   UPDATE_GROUP = "update-group",
   DELETE_GROUP = "delete-group",
+  LINK_GROUP_TO_SUB_ORG = "link-group-to-sub-org",
+  UPDATE_GROUP_ORG_MEMBERSHIP = "update-group-org-membership",
+  UNLINK_GROUP_FROM_SUB_ORG = "unlink-group-from-sub-org",
   ADD_USER_TO_GROUP = "add-user-to-group",
   REMOVE_USER_FROM_GROUP = "remove-user-from-group",
   ADD_IDENTITY_TO_GROUP = "add-identity-to-group",
@@ -2773,6 +2776,44 @@ interface DeleteGroupEvent {
     groupId: string;
     name: string;
     slug: string;
+  };
+}
+
+interface LinkGroupToSubOrgEvent {
+  type: EventType.LINK_GROUP_TO_SUB_ORG;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    roles: Array<{
+      role: string;
+      isTemporary: boolean;
+      temporaryMode?: string;
+      temporaryRange?: string;
+      temporaryAccessStartTime?: string;
+    }>;
+  };
+}
+
+interface UpdateGroupOrgMembershipEvent {
+  type: EventType.UPDATE_GROUP_ORG_MEMBERSHIP;
+  metadata: {
+    groupId: string;
+    groupName: string;
+    roles: Array<{
+      role: string;
+      isTemporary: boolean;
+      temporaryMode?: string;
+      temporaryRange?: string;
+      temporaryAccessStartTime?: string;
+    }>;
+  };
+}
+
+interface UnlinkGroupFromSubOrgEvent {
+  type: EventType.UNLINK_GROUP_FROM_SUB_ORG;
+  metadata: {
+    groupId: string;
+    groupName: string;
   };
 }
 
@@ -7107,6 +7148,9 @@ export type Event =
   | CreateGroupEvent
   | UpdateGroupEvent
   | DeleteGroupEvent
+  | LinkGroupToSubOrgEvent
+  | UpdateGroupOrgMembershipEvent
+  | UnlinkGroupFromSubOrgEvent
   | AddUserToGroupEvent
   | RemoveUserFromGroupEvent
   | AddIdentityToGroupEvent
