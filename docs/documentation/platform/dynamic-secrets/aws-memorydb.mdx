@@ -10,7 +10,7 @@ The Infisical AWS MemoryDB dynamic secret generates short-lived MemoryDB users (
 ## Prerequisites
 
 1. A MemoryDB cluster with an ACL attached. If your cluster is still on the default `open-access` ACL, attach a real ACL before configuring the dynamic secret — Infisical will refuse to add users to a cluster with no ACL.
-2. An AWS IAM user (or assumed role) for Infisical to use, with an access key ID and secret access key. Attach the following policy:
+2. An AWS IAM user for Infisical to use, with an access key ID and secret access key. Attach the following policy:
 
 ```json
 {
@@ -95,7 +95,7 @@ A few notes on the policy:
   </Step>
   <Step title="(Optional) Modify MemoryDB Statements">
     ![Modify MemoryDB Statements](/images/platform/dynamic-secrets/aws-memorydb/modify-memorydb-statement.png)
-    {/* TODO: add screenshot of the expanded "Modify MemoryDB Statements" accordion */}
+
 
     <DynamicSecretUsernameTemplateParamField />
 

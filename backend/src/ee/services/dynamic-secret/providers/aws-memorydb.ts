@@ -59,7 +59,7 @@ const MemoryDbUserManager = (credentials: TBasicAWSCredentials, region: string) 
     if (!cluster) {
       throw new BadRequestError({ message: `MemoryDB cluster ${clusterName} not found` });
     }
-    if (!cluster.ACLName) {
+    if (!cluster.ACLName || cluster.ACLName === "open-access") {
       throw new BadRequestError({
         message: `MemoryDB cluster ${clusterName} has no ACL attached. Attach an ACL to the cluster before using it for dynamic secrets.`
       });
