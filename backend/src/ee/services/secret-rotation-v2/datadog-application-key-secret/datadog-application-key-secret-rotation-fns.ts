@@ -91,14 +91,8 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
 
   const authHeaders = getDatadogAuthHeaders(connection.credentials);
 
-  let baseUrlCache: string | undefined;
-  const resolveBaseUrl = async () => {
-    baseUrlCache ??= await getDatadogBaseUrl(connection);
-    return baseUrlCache;
-  };
-
   const $createApplicationKey = async () => {
-    const baseUrl = await resolveBaseUrl();
+    const baseUrl = await getDatadogBaseUrl(connection);
 
     logger.info(`Creating Datadog application key for service account ${serviceAccountId} on base URL: ${baseUrl}`);
     try {
@@ -133,7 +127,7 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
   };
 
   const $deleteApplicationKey = async (applicationKeyId: string) => {
-    const baseUrl = await resolveBaseUrl();
+    const baseUrl = await getDatadogBaseUrl(connection);
 
     try {
       await request.delete(
@@ -152,10 +146,8 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
   const $issueAndValidateKey = async () => {
     const created = await $createApplicationKey();
 
-    logger.info(`baseUrl: ${await resolveBaseUrl()}`);
-
     try {
-      const baseUrl = await resolveBaseUrl();
+      const baseUrl = await getDatadogBaseUrl(connection);
       await request.get(`${baseUrl}/api/v1/validate`, {
         headers: { "DD-API-KEY": connection.credentials.apiKey, "DD-APPLICATION-KEY": created.applicationKey }
       });

@@ -3,7 +3,6 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { logger } from "@app/lib/logger/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
