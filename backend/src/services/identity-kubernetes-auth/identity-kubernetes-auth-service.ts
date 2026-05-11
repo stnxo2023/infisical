@@ -1021,7 +1021,12 @@ export const identityKubernetesAuthServiceFactory = ({
       return doc;
     });
 
-    return { ...identityKubernetesAuth, caCert, tokenReviewerJwt, orgId: identityMembershipOrg.scopeOrgId };
+    return {
+      ...identityKubernetesAuth,
+      caCert: caCert ?? "",
+      tokenReviewerJwt,
+      orgId: identityMembershipOrg.scopeOrgId
+    };
   };
 
   const updateKubernetesAuth = async ({
