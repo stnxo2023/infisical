@@ -1,7 +1,7 @@
-import { listDatadogServiceAccounts } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret/datadog-application-key-secret-rotation-fns";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
+import { listDatadogServiceAccounts } from "./datadog-connection-fns";
 import { TDatadogConnection } from "./datadog-connection-types";
 
 type TGetAppConnectionFunc = (

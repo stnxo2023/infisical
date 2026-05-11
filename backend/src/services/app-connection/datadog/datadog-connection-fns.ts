@@ -7,7 +7,7 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
 import { DatadogConnectionMethod } from "./datadog-connection-enums";
-import { TDatadogConnectionConfig } from "./datadog-connection-types";
+import { TDatadogConnection, TDatadogConnectionConfig, TDatadogServiceAccount } from "./datadog-connection-types";
 
 const DATADOG_ALLOWED_DOMAINS = ["datadoghq", "ddog-gov"];
 
@@ -76,4 +76,42 @@ export const validateDatadogConnectionCredentials = async (config: TDatadogConne
   }
 
   return config.credentials;
+};
+
+type TDatadogServiceAccountResponse = {
+  data: Array<{
+    id: string;
+    type: string;
+    attributes?: {
+      name?: string | null;
+      email?: string | null;
+      handle?: string | null;
+      disabled?: boolean;
+    };
+  }>;
+};
+
+export const listDatadogServiceAccounts = async (connection: TDatadogConnection): Promise<TDatadogServiceAccount[]> => {
+  const baseUrl = await getDatadogBaseUrl(connection);
+
+  try {
+    const { data } = await request.get<TDatadogServiceAccountResponse>(`${baseUrl}/api/v2/users`, {
+      params: {
+        "filter[service_account]": "true",
+        "page[size]": 100
+      },
+      headers: getDatadogAuthHeaders(connection.credentials)
+    });
+
+    return (data.data ?? [])
+      .filter((entry) => !entry.attributes?.disabled)
+      .map((entry) => ({
+        id: entry.id,
+        name: entry.attributes?.name || entry.attributes?.email || entry.attributes?.handle || entry.id
+      }));
+  } catch (error: unknown) {
+    throw new BadRequestError({
+      message: `Failed to list Datadog service accounts: ${getDatadogErrorMessage(error)}`
+    });
+  }
 };

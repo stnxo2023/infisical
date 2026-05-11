@@ -10,35 +10,12 @@ import {
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import {
-  getDatadogAuthHeaders,
-  getDatadogBaseUrl,
-  getDatadogErrorMessage,
-  TDatadogConnection
-} from "@app/services/app-connection/datadog";
+import { getDatadogAuthHeaders, getDatadogBaseUrl, getDatadogErrorMessage } from "@app/services/app-connection/datadog";
 
 import {
   TDatadogApplicationKeySecretRotationGeneratedCredentials,
   TDatadogApplicationKeySecretRotationWithConnection
 } from "./datadog-application-key-secret-rotation-types";
-
-export type TDatadogServiceAccount = {
-  id: string;
-  name: string;
-};
-
-type TDatadogServiceAccountResponse = {
-  data: Array<{
-    id: string;
-    type: string;
-    attributes?: {
-      name?: string | null;
-      email?: string | null;
-      handle?: string | null;
-      disabled?: boolean;
-    };
-  }>;
-};
 
 type TDatadogCreateApplicationKeyResponse = {
   data: {
@@ -51,31 +28,6 @@ type TDatadogCreateApplicationKeyResponse = {
       last4?: string;
     };
   };
-};
-
-export const listDatadogServiceAccounts = async (connection: TDatadogConnection): Promise<TDatadogServiceAccount[]> => {
-  const baseUrl = await getDatadogBaseUrl(connection);
-
-  try {
-    const { data } = await request.get<TDatadogServiceAccountResponse>(`${baseUrl}/api/v2/users`, {
-      params: {
-        "filter[service_account]": "true",
-        "page[size]": 100
-      },
-      headers: getDatadogAuthHeaders(connection.credentials)
-    });
-
-    return (data.data ?? [])
-      .filter((entry) => !entry.attributes?.disabled)
-      .map((entry) => ({
-        id: entry.id,
-        name: entry.attributes?.name || entry.attributes?.email || entry.attributes?.handle || entry.id
-      }));
-  } catch (error: unknown) {
-    throw new BadRequestError({
-      message: `Failed to list Datadog service accounts: ${getDatadogErrorMessage(error)}`
-    });
-  }
 };
 
 export const datadogApplicationKeySecretRotationFactory: TRotationFactory<

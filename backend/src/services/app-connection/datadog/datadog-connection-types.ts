@@ -18,3 +18,8 @@ export type TDatadogConnectionInput = z.infer<typeof CreateDatadogConnectionSche
 export type TValidateDatadogConnectionCredentialsSchema = typeof ValidateDatadogConnectionCredentialsSchema;
 
 export type TDatadogConnectionConfig = DiscriminativePick<TDatadogConnectionInput, "method" | "app" | "credentials">;
+
+export type TDatadogServiceAccount = {
+  id: string;
+  name: string;
+};
