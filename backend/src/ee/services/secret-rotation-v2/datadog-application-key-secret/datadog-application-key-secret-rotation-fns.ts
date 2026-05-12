@@ -97,26 +97,6 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
   const $issueAndValidateKey = async () => {
     const created = await $createApplicationKey();
 
-    try {
-      const baseUrl = await getDatadogBaseUrl(connection);
-      await request.get(`${baseUrl}/api/v2/permissions`, {
-        headers: { "DD-API-KEY": connection.credentials.apiKey, "DD-APPLICATION-KEY": created.applicationKey }
-      });
-    } catch (error) {
-      try {
-        await $deleteApplicationKey(created.applicationKeyId);
-      } catch (cleanupError) {
-        logger.error(
-          cleanupError,
-          `datadogApplicationKeySecretRotation: failed to revoke unvalidated key [rotationId=${rotationId}] [keyId=${created.applicationKeyId}]`
-        );
-      }
-      if (error instanceof BadRequestError) throw error;
-      throw new BadRequestError({
-        message: `Failed to validate newly issued Datadog application key: ${getDatadogErrorMessage(error)}`
-      });
-    }
-
     return created;
   };
 
