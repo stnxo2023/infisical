@@ -7,13 +7,12 @@ import { TTestSmtpService } from "../../mocks/smtp";
 const smtp = () => (globalThis as unknown as { testSmtp: TTestSmtpService }).testSmtp;
 
 describe("Auth Email Signup V3", () => {
-  const testEmail = "signuptest@localhost.local";
-
   beforeEach(() => {
     smtp().clear();
   });
 
   test("Begin email signup sends verification code", async () => {
+    const testEmail = "signuptest-begin@localhost.local";
     const res = await testServer.inject({
       method: "POST",
       url: "/api/v3/signup/email/signup",
@@ -31,6 +30,8 @@ describe("Auth Email Signup V3", () => {
   });
 
   test("Verify email signup with correct code returns signup token", async () => {
+    const testEmail = "signuptest-verify@localhost.local";
+
     // Step 1: Begin signup
     await testServer.inject({
       method: "POST",
@@ -61,6 +62,8 @@ describe("Auth Email Signup V3", () => {
   });
 
   test("Verify email signup with wrong code fails", async () => {
+    const testEmail = "signuptest-wrongcode@localhost.local";
+
     // Begin signup first
     await testServer.inject({
       method: "POST",
