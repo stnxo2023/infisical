@@ -45,18 +45,6 @@ export class RdpDecoder {
     feed(action: number, bytes: Uint8Array): number;
     height(): number;
     /**
-     * Move the server-rendered pointer sprite to (x, y) and re-composite
-     * it into the framebuffer. Returns the number of dirty rectangles
-     * produced (read via `dirty_rect(i)`, same as `feed`).
-     *
-     * The server only emits PositionPointer PDUs for server-initiated
-     * cursor moves (dialog focus pulls, etc). Client-driven mouse
-     * movement is resolved locally — a live IronRDP client calls this
-     * on every mousemove. For replay we drive it from recorded input
-     * events so the cursor tracks the user's actual pointer path.
-     */
-    move_pointer(x: number, y: number): number;
-    /**
      * Construct a decoder with a framebuffer of `width x height` pixels
      * in RGBA32 format.
      */
@@ -90,7 +78,6 @@ export interface InitOutput {
     readonly rdpdecoder_dirty_rect: (a: number, b: number) => number;
     readonly rdpdecoder_feed: (a: number, b: number, c: number, d: number) => number;
     readonly rdpdecoder_height: (a: number) => number;
-    readonly rdpdecoder_move_pointer: (a: number, b: number, c: number) => number;
     readonly rdpdecoder_new: (a: number, b: number) => number;
     readonly rdpdecoder_stride: (a: number) => number;
     readonly rdpdecoder_width: (a: number) => number;

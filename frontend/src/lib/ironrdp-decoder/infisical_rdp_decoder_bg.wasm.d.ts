@@ -16,7 +16,6 @@ export const rdpdecoder_buffer_ptr: (a: number) => number;
 export const rdpdecoder_dirty_rect: (a: number, b: number) => number;
 export const rdpdecoder_feed: (a: number, b: number, c: number, d: number) => number;
 export const rdpdecoder_height: (a: number) => number;
-export const rdpdecoder_move_pointer: (a: number, b: number, c: number) => number;
 export const rdpdecoder_new: (a: number, b: number) => number;
 export const rdpdecoder_stride: (a: number) => number;
 export const rdpdecoder_width: (a: number) => number;

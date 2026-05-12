@@ -46,6 +46,10 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
   const progressFillRef = useRef<HTMLDivElement | null>(null);
   const timeTextRef = useRef<HTMLSpanElement | null>(null);
   const currentMsRef = useRef(0);
+  // Cursor follows mouse input events as a DOM overlay (see PlayerCallbacks
+  // doc); ref-driven so cursor moves don't re-render the player subtree.
+  const cursorRef = useRef<HTMLDivElement | null>(null);
+  const contentBoundsRef = useRef({ width: CANVAS_W, height: CANVAS_H });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [lastSeenEventMs, setLastSeenEventMs] = useState(0);
@@ -79,6 +83,18 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
     }
   };
 
+  const moveCursor = (x: number, y: number) => {
+    const el = cursorRef.current;
+    if (!el) return;
+    // Cursor coords are in canvas pixel space. The cursor element is
+    // absolutely positioned inside the same container the canvas fills, so
+    // percentages of contentBounds map to the same scaled space.
+    const { width, height } = contentBoundsRef.current;
+    el.style.left = `${((x / width) * 100).toFixed(3)}%`;
+    el.style.top = `${((y / height) * 100).toFixed(3)}%`;
+    el.style.opacity = "1";
+  };
+
   // Player lifetime is mount-scoped; later chunks land via appendEvents.
   useEffect(() => {
     let cancelled = false;
@@ -106,8 +122,12 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
         setIsPlaying(false);
         setIsBuffering(false);
       },
-      onContentBoundsChange: (width, height) => setContentBounds({ width, height }),
-      onBuffering: (b) => setIsBuffering(b)
+      onContentBoundsChange: (width, height) => {
+        contentBoundsRef.current = { width, height };
+        setContentBounds({ width, height });
+      },
+      onBuffering: (b) => setIsBuffering(b),
+      onCursorMove: moveCursor
     })
       .then((player) => {
         if (cancelled) {
@@ -241,6 +261,22 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
             }}
             aria-label="RDP session replay"
           />
+          <div
+            ref={cursorRef}
+            aria-hidden
+            className="pointer-events-none absolute opacity-0"
+            style={{ left: 0, top: 0, willChange: "left, top, opacity" }}
+          >
+            <svg width="14" height="22" viewBox="0 0 14 22" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M0 0 L0 18 L4.5 14 L7 20 L9.5 19 L7 13 L13 13 Z"
+                fill="white"
+                stroke="black"
+                strokeWidth="1"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
         </div>
         <AnimatePresence>
           {feedback && (
