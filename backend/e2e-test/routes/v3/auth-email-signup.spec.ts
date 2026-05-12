@@ -172,6 +172,54 @@ describe("Auth Email Signup V3", () => {
     expect(second.statusCode).toBe(400);
   });
 
+  test("Second signup request for accepted account also returns 400 (no enumeration oracle)", async () => {
+    const email = "cooldown-accepted@localhost.local";
+
+    // Step 1: full signup flow to create an accepted user
+    await testServer.inject({ method: "POST", url: "/api/v3/signup/email/signup", body: { email } });
+    const signupEmail = smtp().getLastEmail();
+    const code = (signupEmail?.substitutions as Record<string, string>)?.code;
+
+    const verifyRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v3/signup/email/verify",
+      body: { email, code }
+    });
+    const { token: signupToken } = verifyRes.json();
+
+    await testServer.inject({
+      method: "POST",
+      url: "/api/v3/signup/complete-account",
+      headers: { authorization: `Bearer ${signupToken}` },
+      body: {
+        type: "email",
+        email,
+        firstName: "Cool",
+        lastName: "Down",
+        password: "testPassword123!",
+        organizationName: "Cooldown Org"
+      }
+    });
+
+    smtp().clear();
+
+    // Step 2: first re-signup request for the now-accepted account — should succeed (informational email)
+    const first = await testServer.inject({
+      method: "POST",
+      url: "/api/v3/signup/email/signup",
+      body: { email }
+    });
+    expect(first.statusCode).toBe(200);
+
+    // Step 3: second request within cooldown — must return 400 for both paths to be indistinguishable
+    const second = await testServer.inject({
+      method: "POST",
+      url: "/api/v3/signup/email/signup",
+      body: { email }
+    });
+    expect(second.statusCode).toBe(400);
+  });
+
   test("Exhausting all OTP tries prevents verification even with the correct code", async () => {
     const email = "exhausted-tries@localhost.local";
 

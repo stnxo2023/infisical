@@ -1,5 +1,4 @@
 import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
-import { KeyStoreTtls } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -52,11 +51,13 @@ export const authSignupServiceFactory = ({
       throw new Error("Provided a disposable email");
     }
 
-    // akhilmhdh: case sensitive email resolution
+    // Acquire cooldown before any operation to avoid reliable enumeration oracle
+    const { emailHash, cooldownSeconds } = await tokenService.acquireEmailSignupCooldown(sanitizedEmail);
+
+    // Case sensitive email resolution
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
     if (existingUser?.isAccepted) {
-      // Send informational email for existing accounts instead of throwing error
-      // This prevents user enumeration vulnerability
+      // Send informational email for existing accounts instead of throwing error to prevent user enumeration vulnerability
       const appCfg = getConfig();
       await smtpService
         .sendMail({
@@ -72,10 +73,10 @@ export const authSignupServiceFactory = ({
         .catch((err) =>
           logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
         );
-      return { cooldownSeconds: KeyStoreTtls.EmailSignupResendCooldownInSeconds };
+      return { cooldownSeconds };
     }
 
-    const { token, cooldownSeconds } = await tokenService.createEmailSignupToken(sanitizedEmail);
+    const token = await tokenService.createEmailSignupToken(emailHash);
 
     await smtpService
       .sendMail({

@@ -28,7 +28,13 @@ type TAuthTokenServiceFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
-    "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem" | "acquireLock" | "deleteItemsByKeyIn" | "ttl"
+    | "setItemWithExpiry"
+    | "setItemWithExpiryNX"
+    | "getItem"
+    | "deleteItem"
+    | "acquireLock"
+    | "deleteItemsByKeyIn"
+    | "ttl"
   >;
 };
 
@@ -361,21 +367,32 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
   };
 
-  const createEmailSignupToken = async (email: string): Promise<{ token: string; cooldownSeconds: number }> => {
+  const acquireEmailSignupCooldown = async (email: string): Promise<{ emailHash: string; cooldownSeconds: number }> => {
     const appCfg = getConfig();
     const emailHash = computeHash(email, appCfg.AUTH_SECRET);
-
     const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
+    const cooldownSeconds = KeyStoreTtls.EmailSignupResendCooldownInSeconds;
+
     // SET NX is atomic: only one concurrent request can acquire the cooldown slot.
-    const acquired = await keyStore.setItemWithExpiryNX(cooldownKey, KeyStoreTtls.EmailSignupResendCooldownInSeconds, "1");
+    const acquired = await keyStore.setItemWithExpiryNX(cooldownKey, cooldownSeconds, "1");
     if (!acquired) {
       const remaining = await keyStore.ttl(cooldownKey);
       throw new BadRequestError({
         message: "Please wait before requesting another code",
-        details: { cooldownSeconds: Math.max(1, remaining) }
+        details: {
+          cooldownSeconds: Math.max(1, remaining)
+        }
       });
     }
 
+    return {
+      emailHash,
+      cooldownSeconds
+    };
+  };
+
+  const createEmailSignupToken = async (emailHash: string): Promise<string> => {
+    const appCfg = getConfig();
     const token = generateSixDigitToken();
     const tokenHash = computeHash(token, appCfg.AUTH_SECRET);
     const ttlSeconds = KeyStoreTtls.EmailSignupOtpInSeconds;
@@ -391,7 +408,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       JSON.stringify(payload)
     );
 
-    return { token, cooldownSeconds: KeyStoreTtls.EmailSignupResendCooldownInSeconds };
+    return token;
   };
 
   const validateEmailSignupToken = async (email: string, code: string): Promise<void> => {
@@ -402,23 +419,23 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     // Acquire a short-lived lock to make the tries-decrement / delete atomic.
     const lock = await keyStore.acquireLock([KeyStorePrefixes.EmailSignupOtpLock(emailHash)], 5000);
     try {
-      const raw = await keyStore.getItem(key);
-      const parsed = raw ? (JSON.parse(raw) as TEmailSignupOtpPayload) : null;
-
-      // Always compute the HMAC and compare with timingSafeEqual for constant-time behaviour.
       const computedHash = computeHash(code, appCfg.AUTH_SECRET);
-      const storedHash = parsed?.tokenHash ?? "0".repeat(64);
-      const isValidToken = crypto.nativeCrypto.timingSafeEqual(
-        Buffer.from(computedHash, "hex"),
-        Buffer.from(storedHash, "hex")
-      );
 
-      if (!parsed) {
+      const raw = await keyStore.getItem(key);
+      if (!raw) {
+        // Always compute the HMAC and compare with timingSafeEqual for constant-time behaviour.
+        crypto.nativeCrypto.timingSafeEqual(Buffer.from(computedHash, "hex"), Buffer.from("0".repeat(64), "hex"));
         throw new UnauthorizedError({
           message: "Invalid token",
           name: "InvalidToken"
         });
       }
+
+      const parsed = JSON.parse(raw) as TEmailSignupOtpPayload;
+      const isValidToken = crypto.nativeCrypto.timingSafeEqual(
+        Buffer.from(computedHash, "hex"),
+        Buffer.from(parsed.tokenHash, "hex")
+      );
 
       if (Date.now() > parsed.expiresAt) {
         await keyStore.deleteItem(key);
@@ -465,6 +482,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     rotateRefreshToken,
     fnValidateJwtIdentity,
     getUserTokenSessionById,
+    acquireEmailSignupCooldown,
     createEmailSignupToken,
     validateEmailSignupToken
   };

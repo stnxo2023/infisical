@@ -129,31 +129,20 @@ describe("tokenServiceFactory — email signup OTP", () => {
     vi.clearAllMocks();
   });
 
-  describe("createEmailSignupToken", () => {
-    test("returns token and cooldown", async () => {
+  describe("acquireEmailSignupCooldown", () => {
+    test("returns emailHash and cooldownSeconds on first call", async () => {
       const { service } = setup();
 
-      const result = await service.createEmailSignupToken(TEST_EMAIL);
+      const result = await service.acquireEmailSignupCooldown(TEST_EMAIL);
 
+      expect(result.emailHash).toBe(emailHash);
       expect(result.cooldownSeconds).toBe(KeyStoreTtls.EmailSignupResendCooldownInSeconds);
-      expect(result.token).toMatch(/^\d{6}$/);
-    });
-
-    test("stores hashed token", async () => {
-      const { service, keyStore } = setup();
-
-      const { token } = await service.createEmailSignupToken(TEST_EMAIL);
-
-      const payload = getStoredOtpPayload(keyStore);
-
-      expect(payload?.tokenHash).toBe(hmac(token));
-      expect(payload?.triesLeft).toBe(3);
     });
 
     test("sets cooldown key atomically via NX", async () => {
       const { service, keyStore } = setup();
 
-      await service.createEmailSignupToken(TEST_EMAIL);
+      await service.acquireEmailSignupCooldown(TEST_EMAIL);
 
       expect(keyStore.setItemWithExpiryNX).toHaveBeenCalledWith(
         cooldownKey,
@@ -162,26 +151,75 @@ describe("tokenServiceFactory — email signup OTP", () => {
       );
     });
 
-    test("blocks when cooldown active", async () => {
+    test("throws when cooldown is active", async () => {
       const { service } = setup().mockCooldown(45);
 
-      await expectRejected(service.createEmailSignupToken(TEST_EMAIL), BadRequestError);
+      await expectRejected(service.acquireEmailSignupCooldown(TEST_EMAIL), BadRequestError);
     });
 
-    test("returns cooldown seconds from TTL", async () => {
+    test("reports remaining TTL in error details", async () => {
       const { service } = setup().mockCooldown(30);
 
-      const err = await expectRejected(service.createEmailSignupToken(TEST_EMAIL), BadRequestError);
+      const err = await expectRejected(service.acquireEmailSignupCooldown(TEST_EMAIL), BadRequestError);
 
       expect(err.details).toMatchObject({ cooldownSeconds: 30 });
     });
 
-    test("clamps cooldown to minimum 1", async () => {
+    test("clamps remaining TTL to minimum 1", async () => {
       const { service } = setup().mockCooldown(-1);
 
-      const err = await expectRejected(service.createEmailSignupToken(TEST_EMAIL), BadRequestError);
+      const err = await expectRejected(service.acquireEmailSignupCooldown(TEST_EMAIL), BadRequestError);
 
       expect(err.details).toMatchObject({ cooldownSeconds: 1 });
+    });
+  });
+
+  describe("createEmailSignupToken", () => {
+    test("returns a six-digit numeric token", async () => {
+      const { service } = setup();
+
+      const token = await service.createEmailSignupToken(emailHash);
+
+      expect(token).toMatch(/^\d{6}$/);
+    });
+
+    test("stores OTP payload with hashed token and 3 tries", async () => {
+      const { service, keyStore } = setup();
+
+      const token = await service.createEmailSignupToken(emailHash);
+
+      const payload = getStoredOtpPayload(keyStore);
+      expect(payload?.tokenHash).toBe(hmac(token));
+      expect(payload?.triesLeft).toBe(3);
+    });
+
+    test("stores OTP with correct expiry", async () => {
+      const { service, keyStore } = setup();
+
+      await service.createEmailSignupToken(emailHash);
+
+      const payload = getStoredOtpPayload(keyStore);
+      expect(payload?.expiresAt).toBe(NOW_MS + KeyStoreTtls.EmailSignupOtpInSeconds * 1000);
+    });
+
+    test("writes to the OTP key with the correct TTL", async () => {
+      const { service, keyStore } = setup();
+
+      await service.createEmailSignupToken(emailHash);
+
+      expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+        otpKey,
+        KeyStoreTtls.EmailSignupOtpInSeconds,
+        expect.any(String)
+      );
+    });
+
+    test("does not touch the cooldown key", async () => {
+      const { service, keyStore } = setup();
+
+      await service.createEmailSignupToken(emailHash);
+
+      expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
     });
   });
 
