@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
@@ -10,7 +10,6 @@ import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "
 
 import SecurityClient from "../utilities/SecurityClient";
 
-// Matches v3 input theme: transparent bg, border (#2b2c30), foreground text (#ebebeb), ring on focus (#2d2f33)
 const codeInputStyle = {
   inputStyle: {
     fontFamily: "monospace",
@@ -65,15 +64,35 @@ export default function CodeInputStep({
     isPending: isVerifying,
     isError: isCodeError
   } = useVerifySignupEmailVerificationCode();
-  const [code, setCode] = useState("");
-  const [cooldown, setCooldown] = useState(initialCooldown);
+
   const { t } = useTranslation();
 
+  const [code, setCode] = useState("");
+
+  // Store absolute expiry time (source of truth)
+  const endTimeRef = useRef<number>(0);
+  // Force UI refresh every second
+  const [, forceRender] = useState(0);
+
+  // Initialize cooldown from server
   useEffect(() => {
-    if (cooldown <= 0) return undefined;
-    const timer = setInterval(() => setCooldown((s) => s - 1), 1000);
+    if (initialCooldown > 0) {
+      endTimeRef.current = Date.now() + initialCooldown * 1000;
+    }
+  }, [initialCooldown]);
+
+  // Tick every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      forceRender((x) => x + 1);
+    }, 1000);
+
     return () => clearInterval(timer);
-  }, [cooldown]);
+  }, []);
+
+  const remainingCooldown = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+
+  const isCooldownActive = endTimeRef.current > Date.now();
 
   const handleVerify = async () => {
     const { token } = await verifyCode({ email, code });
@@ -84,20 +103,23 @@ export default function CodeInputStep({
   const handleResend = async () => {
     try {
       const { cooldownSeconds } = await resendEmail({ email });
-      setCooldown(cooldownSeconds);
+      endTimeRef.current = Date.now() + cooldownSeconds * 1000;
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const remaining = err.response?.data?.details?.cooldownSeconds;
         if (typeof remaining === "number") {
-          setCooldown(remaining);
+          endTimeRef.current = Date.now() + remaining * 1000;
         }
       }
     }
   };
 
   let resendLabel = t("signup.step2-resend-submit");
-  if (isResending) resendLabel = t("signup.step2-resend-progress");
-  else if (cooldown > 0) resendLabel = `${t("signup.step2-resend-submit")} (${cooldown}s)`;
+  if (isResending) {
+    resendLabel = t("signup.step2-resend-progress");
+  } else if (remainingCooldown > 0) {
+    resendLabel = `${t("signup.step2-resend-submit")} (${remainingCooldown}s)`;
+  }
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
@@ -147,10 +169,14 @@ export default function CodeInputStep({
           </div>
           <div className="mt-6 flex flex-col items-center gap-2 text-xs text-label">
             <div className="flex flex-row items-baseline gap-1">
-              <button disabled={isResending || cooldown > 0} onClick={handleResend} type="button">
+              <button
+                disabled={isResending || isCooldownActive}
+                onClick={handleResend}
+                type="button"
+              >
                 <span
                   className={
-                    cooldown > 0
+                    remainingCooldown > 0
                       ? "text-label/60"
                       : "cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2"
                   }
