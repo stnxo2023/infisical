@@ -163,7 +163,7 @@ export const RotationsBrowser = () => {
     {
       name: "Datadog Application Key",
       slug: "datadog-application-key",
-      path: "/documentation/platform/secret-rotation/datadog-application-key",
+      path: "/documentation/platform/secret-rotation/datadog-application-key-secret",
       description:
         "Learn how to automatically rotate Datadog application keys.",
       category: "Monitoring",

@@ -9,7 +9,7 @@ import { AppConnection } from "../app-connection-enums";
 import { DatadogConnectionMethod } from "./datadog-connection-enums";
 import { TDatadogConnection, TDatadogConnectionConfig, TDatadogServiceAccount } from "./datadog-connection-types";
 
-const DATADOG_ALLOWED_DOMAINS = ["datadoghq", "ddog-gov"];
+const DATADOG_ALLOWED_DOMAIN_SUFFIXES = ["datadoghq.com", "datadoghq.eu", "ddog-gov.com"];
 
 export const getDatadogBaseUrl = async (config: TDatadogConnectionConfig) => {
   const rawUrl = removeTrailingSlash(config.credentials.url);
@@ -21,11 +21,13 @@ export const getDatadogBaseUrl = async (config: TDatadogConnectionConfig) => {
     throw new BadRequestError({ message: "Invalid Datadog URL" });
   }
 
-  const labels = parsed.hostname.split(".");
-  const secondLevelLabel = labels[labels.length - 2];
-  if (!secondLevelLabel || !DATADOG_ALLOWED_DOMAINS.includes(secondLevelLabel)) {
+  const { hostname } = parsed;
+  const isAllowedHost = DATADOG_ALLOWED_DOMAIN_SUFFIXES.some(
+    (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`)
+  );
+  if (!isAllowedHost) {
     throw new BadRequestError({
-      message: "Datadog URL must be a datadoghq.* or ddog-gov.* domain"
+      message: "Datadog URL must end with datadoghq.com, datadoghq.eu, or ddog-gov.com"
     });
   }
 

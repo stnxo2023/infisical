@@ -46,10 +46,9 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
   const $createApplicationKey = async () => {
     const baseUrl = await getDatadogBaseUrl(connection);
 
-    logger.info(`Creating Datadog application key for service account ${serviceAccountId} on base URL: ${baseUrl}`);
     try {
       const { data } = await request.post<TDatadogCreateApplicationKeyResponse>(
-        `${baseUrl}/api/v2/service_accounts/${serviceAccountId}/application_keys`,
+        `${baseUrl}/api/v2/service_accounts/${encodeURIComponent(serviceAccountId)}/application_keys`,
         {
           data: {
             type: "application_keys",
@@ -83,7 +82,7 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
 
     try {
       await request.delete(
-        `${baseUrl}/api/v2/service_accounts/${serviceAccountId}/application_keys/${applicationKeyId}`,
+        `${baseUrl}/api/v2/service_accounts/${encodeURIComponent(serviceAccountId)}/application_keys/${encodeURIComponent(applicationKeyId)}`,
         { headers: authHeaders }
       );
     } catch (error: unknown) {
