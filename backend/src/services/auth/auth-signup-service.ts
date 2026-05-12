@@ -1,4 +1,5 @@
 import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
+import { KeyStoreTtls } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -43,7 +44,7 @@ export const authSignupServiceFactory = ({
   loginService
 }: TAuthSignupDep) => {
   // First step of signup to send OTP email
-  const beginEmailSignupProcess = async (email: string) => {
+  const beginEmailSignupProcess = async (email: string): Promise<{ cooldownSeconds: number }> => {
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
     const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
@@ -71,10 +72,10 @@ export const authSignupServiceFactory = ({
         .catch((err) =>
           logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
         );
-      return;
+      return { cooldownSeconds: KeyStoreTtls.EmailSignupResendCooldownInSeconds };
     }
 
-    const token = await tokenService.createEmailSignupToken(sanitizedEmail);
+    const { token, cooldownSeconds } = await tokenService.createEmailSignupToken(sanitizedEmail);
 
     await smtpService
       .sendMail({
@@ -86,6 +87,8 @@ export const authSignupServiceFactory = ({
         }
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send signup verification email"));
+
+    return { cooldownSeconds };
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {

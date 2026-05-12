@@ -26,7 +26,10 @@ type TAuthTokenServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem" | "acquireLock">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "setItemWithExpiry" | "getItem" | "deleteItem" | "acquireLock" | "deleteItemsByKeyIn" | "ttl"
+  >;
 };
 
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
@@ -358,8 +361,20 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
   };
 
-  const createEmailSignupToken = async (email: string): Promise<string> => {
+  const createEmailSignupToken = async (email: string): Promise<{ token: string; cooldownSeconds: number }> => {
     const appCfg = getConfig();
+    const emailHash = computeHash(email, appCfg.AUTH_SECRET);
+
+    const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
+    const hasCooldown = await keyStore.getItem(cooldownKey);
+    if (hasCooldown) {
+      const remaining = await keyStore.ttl(cooldownKey);
+      throw new BadRequestError({
+        message: "Please wait before requesting another code",
+        details: { cooldownSeconds: Math.max(1, remaining) }
+      });
+    }
+
     const token = generateSixDigitToken();
     const tokenHash = computeHash(token, appCfg.AUTH_SECRET);
     const ttlSeconds = KeyStoreTtls.EmailSignupOtpInSeconds;
@@ -369,16 +384,20 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       expiresAt: Date.now() + ttlSeconds * 1000
     };
 
-    const emailHash = computeHash(email, appCfg.AUTH_SECRET);
-    await keyStore.setItemWithExpiry(KeyStorePrefixes.EmailSignupOtp(emailHash), ttlSeconds, JSON.stringify(payload));
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.EmailSignupOtpHash(emailHash),
+      ttlSeconds,
+      JSON.stringify(payload)
+    );
+    await keyStore.setItemWithExpiry(cooldownKey, KeyStoreTtls.EmailSignupResendCooldownInSeconds, "1");
 
-    return token;
+    return { token, cooldownSeconds: KeyStoreTtls.EmailSignupResendCooldownInSeconds };
   };
 
   const validateEmailSignupToken = async (email: string, code: string): Promise<void> => {
     const appCfg = getConfig();
     const emailHash = computeHash(email, appCfg.AUTH_SECRET);
-    const key = KeyStorePrefixes.EmailSignupOtp(emailHash);
+    const key = KeyStorePrefixes.EmailSignupOtpHash(emailHash);
 
     // Acquire a short-lived lock to make the tries-decrement / delete atomic.
     const lock = await keyStore.acquireLock([KeyStorePrefixes.EmailSignupOtpLock(emailHash)], 5000);
@@ -395,12 +414,18 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       );
 
       if (!parsed) {
-        throw new Error("Invalid token");
+        throw new UnauthorizedError({
+          message: "Invalid token",
+          name: "InvalidToken"
+        });
       }
 
       if (Date.now() > parsed.expiresAt) {
         await keyStore.deleteItem(key);
-        throw new Error("Invalid token");
+        throw new UnauthorizedError({
+          message: "Invalid token",
+          name: "InvalidToken"
+        });
       }
 
       if (!isValidToken) {
@@ -415,10 +440,14 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
             JSON.stringify({ ...parsed, triesLeft: remainingTries })
           );
         }
-        throw new Error("Invalid token");
+        throw new UnauthorizedError({
+          message: "Invalid token",
+          name: "InvalidToken"
+        });
       }
 
-      await keyStore.deleteItem(key);
+      const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
+      await keyStore.deleteItemsByKeyIn([key, cooldownKey]);
     } finally {
       await lock.release();
     }
