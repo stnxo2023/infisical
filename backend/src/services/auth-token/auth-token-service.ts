@@ -381,7 +381,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     const key = KeyStorePrefixes.EmailSignupOtp(emailHash);
 
     // Acquire a short-lived lock to make the tries-decrement / delete atomic.
-    const lock = await keyStore.acquireLock([key], 5000);
+    const lock = await keyStore.acquireLock([KeyStorePrefixes.EmailSignupOtpLock(emailHash)], 5000);
     try {
       const raw = await keyStore.getItem(key);
       const parsed = raw ? (JSON.parse(raw) as TEmailSignupOtpPayload) : null;

@@ -110,7 +110,8 @@ export const KeyStorePrefixes = {
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
-  EmailSignupOtp: (hash: string) => `email-signup-otp:${hash}` as const,
+  EmailSignupOtp: (hash: string) => `email-signup-otp:${hash}:hash` as const,
+  EmailSignupOtpLock: (hash: string) => `email-signup-otp-lock:${hash}:lock` as const,
   InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
