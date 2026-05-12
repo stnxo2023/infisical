@@ -1,9 +1,9 @@
-{{- if eq .Values.gateway.enrollMethod "token" }}
+{{- if eq .Values.gateway.enrollment.method "token" }}
   {{- if not .Values.persistence.enabled }}
-    {{- fail "persistence.enabled must be true when gateway.enrollMethod is 'token'. The enrollment token is single-use and credentials must persist across pod restarts." }}
+    {{- fail "persistence.enabled must be true when gateway.enrollment.method is 'token'. The enrollment token is single-use and credentials must persist across pod restarts." }}
   {{- end }}
-  {{- if not (or .Values.gateway.token.value .Values.gateway.token.existingSecret) }}
-    {{- fail "gateway.token.value or gateway.token.existingSecret is required when gateway.enrollMethod is 'token'." }}
+  {{- if not (or .Values.gateway.enrollment.token.value .Values.gateway.enrollment.token.existingSecret) }}
+    {{- fail "gateway.enrollment.token.value or gateway.enrollment.token.existingSecret is required when gateway.enrollment.method is 'token'." }}
   {{- end }}
 {{- end }}
 apiVersion: apps/v1
@@ -13,7 +13,7 @@ metadata:
   labels:
     {{- include "infisical-gateway.labels" . | nindent 4 }}
 spec:
-  {{- if .Values.gateway.enrollMethod }}
+  {{- if .Values.gateway.enrollment.method }}
   replicas: 1
   {{- if .Values.persistence.enabled }}
   strategy:
@@ -45,7 +45,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        {{- if .Values.gateway.enrollMethod }}
+        {{- if .Values.gateway.enrollment.method }}
         - name: gateway-credentials
           {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
@@ -74,33 +74,33 @@ spec:
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- if .Values.gateway.enrollMethod }}
-          {{- if .Values.gateway.credentialsSecretRef }}
+          {{- if .Values.gateway.enrollment.method }}
+          {{- if .Values.gateway.enrollment.credentialsSecretRef }}
           envFrom:
             - secretRef:
-                name: {{ .Values.gateway.credentialsSecretRef }}
+                name: {{ .Values.gateway.enrollment.credentialsSecretRef }}
           {{- end }}
           env:
             - name: HOME
               value: /home/infisical
-            {{- if eq .Values.gateway.enrollMethod "token" }}
+            {{- if eq .Values.gateway.enrollment.method "token" }}
             - name: INFISICAL_ENROLLMENT_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.gateway.token.existingSecret | default (printf "%s-enrollment-token" (include "infisical-gateway.fullname" .)) }}
-                  key: {{ .Values.gateway.token.secretKey | default "enrollment-token" }}
+                  name: {{ .Values.gateway.enrollment.token.existingSecret | default (printf "%s-enrollment-token" (include "infisical-gateway.fullname" .)) }}
+                  key: {{ .Values.gateway.enrollment.token.secretKey | default "enrollment-token" }}
             {{- end }}
           args:
             - gateway
             - start
-            - {{ required "gateway.name is required when gateway.enrollMethod is set" .Values.gateway.name | quote }}
-            - --enroll-method={{ .Values.gateway.enrollMethod }}
-            - --domain={{ required "gateway.domain is required when gateway.enrollMethod is set" .Values.gateway.domain }}
-            {{- if eq .Values.gateway.enrollMethod "token" }}
+            - {{ required "gateway.name is required when gateway.enrollment.method is set" .Values.gateway.name | quote }}
+            - --enroll-method={{ .Values.gateway.enrollment.method }}
+            - --domain={{ required "gateway.domain is required when gateway.enrollment.method is set" .Values.gateway.domain }}
+            {{- if eq .Values.gateway.enrollment.method "token" }}
             - --token=$(INFISICAL_ENROLLMENT_TOKEN)
             {{- end }}
-            {{- if eq .Values.gateway.enrollMethod "aws" }}
-            - --gateway-id={{ required "gateway.aws.gatewayId is required when gateway.enrollMethod is 'aws'" .Values.gateway.aws.gatewayId }}
+            {{- if eq .Values.gateway.enrollment.method "aws" }}
+            - --gateway-id={{ required "gateway.enrollment.aws.gatewayId is required when gateway.enrollment.method is 'aws'" .Values.gateway.enrollment.aws.gatewayId }}
             {{- end }}
             {{- if .Values.gateway.relayName }}
             - --target-relay-name={{ .Values.gateway.relayName }}

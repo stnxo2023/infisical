@@ -82,8 +82,8 @@ This guide covers everything you need to deploy and configure Infisical Gateways
             ```bash
             helm install infisical-gateway infisical/infisical-gateway \
               --set gateway.name=<gateway-name> \
-              --set gateway.enrollMethod=token \
-              --set gateway.token.existingSecret=gateway-enrollment-token \
+              --set gateway.enrollment.method=token \
+              --set gateway.enrollment.token.existingSecret=gateway-enrollment-token \
               --set gateway.domain=<your-infisical-domain>
             ```
 
@@ -95,8 +95,8 @@ This guide covers everything you need to deploy and configure Infisical Gateways
             ```bash
             helm install infisical-gateway infisical/infisical-gateway \
               --set gateway.name=<gateway-name> \
-              --set gateway.enrollMethod=token \
-              --set gateway.token.value=<enrollment-token> \
+              --set gateway.enrollment.method=token \
+              --set gateway.enrollment.token.value=<enrollment-token> \
               --set gateway.domain=<your-infisical-domain>
             ```
           </Tab>
@@ -134,16 +134,11 @@ This guide covers everything you need to deploy and configure Infisical Gateways
             ```bash
             helm install infisical-gateway infisical/infisical-gateway \
               --set gateway.name=<gateway-name> \
-              --set gateway.enrollMethod=aws \
-              --set gateway.aws.gatewayId=<gateway-id> \
+              --set gateway.enrollment.method=aws \
+              --set gateway.enrollment.aws.gatewayId=<gateway-id> \
               --set gateway.domain=<your-infisical-domain> \
               --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=arn:aws:iam::<account-id>:role/<role-name> \
-              --set persistence.enabled=false
             ```
-
-            <Info>
-              With AWS auth, persistence is optional since the gateway re-authenticates via STS on every start. You can disable it with `persistence.enabled=false` to avoid provisioning a PersistentVolumeClaim.
-            </Info>
 
             <Info>
               Ensure the IAM role's trust policy allows the Kubernetes service account to assume it, and that the role's ARN or account ID is in the gateway's AWS auth allowlist in the Infisical UI.
