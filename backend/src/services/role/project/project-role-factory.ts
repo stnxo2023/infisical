@@ -57,8 +57,10 @@ export const newProjectRoleFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
     if (dto.data.permissions) {
+      const packedPermissions =
+        typeof dto.data.permissions === "string" ? JSON.parse(dto.data.permissions) : dto.data.permissions;
       const managedPermission = createMongoAbility<ProjectPermissionSet>(
-        buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: dto.data.permissions }]),
+        buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: packedPermissions }]),
         { conditionsMatcher }
       );
       assertPermissionBoundary(
@@ -81,8 +83,10 @@ export const newProjectRoleFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
     if (dto.data.permissions) {
+      const packedPermissions =
+        typeof dto.data.permissions === "string" ? JSON.parse(dto.data.permissions) : dto.data.permissions;
       const managedPermission = createMongoAbility<ProjectPermissionSet>(
-        buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: dto.data.permissions }]),
+        buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: packedPermissions }]),
         { conditionsMatcher }
       );
       assertPermissionBoundary(

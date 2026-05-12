@@ -276,10 +276,11 @@ export const projectTemplateServiceFactory = ({
       OrgPermissionProjectTemplateActions.Create,
       OrgPermissionSubjects.ProjectTemplates
     );
+    const predefinedRoleSlugs = new Set<string>(Object.values(ProjectMembershipRole));
     const hasElevatedContent =
       (roles?.length ?? 0) > 0 ||
       [...(users ?? []), ...(groups ?? []), ...(identities ?? []), ...(projectManagedIdentities ?? [])].some((m) =>
-        m.roles.includes(ProjectMembershipRole.Admin)
+        m.roles.some((r) => r === ProjectMembershipRole.Admin || !predefinedRoleSlugs.has(r))
       );
     if (hasElevatedContent) {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -531,10 +532,11 @@ export const projectTemplateServiceFactory = ({
       OrgPermissionProjectTemplateActions.Edit,
       OrgPermissionSubjects.ProjectTemplates
     );
+    const predefinedRoleSlugs = new Set<string>(Object.values(ProjectMembershipRole));
     const hasElevatedContent =
       (roles?.length ?? 0) > 0 ||
       [...(users ?? []), ...(groups ?? []), ...(identities ?? []), ...(projectManagedIdentities ?? [])].some((m) =>
-        m.roles.includes(ProjectMembershipRole.Admin)
+        m.roles.some((r) => r === ProjectMembershipRole.Admin || !predefinedRoleSlugs.has(r))
       );
     if (hasElevatedContent) {
       ForbiddenError.from(permission).throwUnlessCan(

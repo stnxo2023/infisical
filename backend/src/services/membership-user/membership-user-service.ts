@@ -189,6 +189,8 @@ export const membershipUserServiceFactory = ({
       }
 
       rolesToUse = [{ isTemporary: false, role: defaultRole }];
+      // Expose resolved roles to onCreateMembershipUserGuard's boundary check
+      data.roles = rolesToUse;
     }
 
     const hasNoPermanentRole = rolesToUse.every((el) => el.isTemporary);

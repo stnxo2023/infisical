@@ -48,8 +48,10 @@ export const newOrgRoleFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Role);
     if (dto.data.permissions) {
+      const packedPermissions =
+        typeof dto.data.permissions === "string" ? JSON.parse(dto.data.permissions) : dto.data.permissions;
       const managedPermission = createMongoAbility<OrgPermissionSet>(
-        buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: dto.data.permissions }]),
+        buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: packedPermissions }]),
         { conditionsMatcher }
       );
       assertPermissionBoundary(
@@ -71,8 +73,10 @@ export const newOrgRoleFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Role);
     if (dto.data.permissions) {
+      const packedPermissions =
+        typeof dto.data.permissions === "string" ? JSON.parse(dto.data.permissions) : dto.data.permissions;
       const managedPermission = createMongoAbility<OrgPermissionSet>(
-        buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: dto.data.permissions }]),
+        buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: packedPermissions }]),
         { conditionsMatcher }
       );
       assertPermissionBoundary(
