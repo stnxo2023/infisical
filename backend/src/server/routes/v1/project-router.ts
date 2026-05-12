@@ -153,7 +153,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
+        projectName: z
+          .string()
+          .trim()
+          .max(64, { message: "Name must be 64 or fewer characters" })
+          .describe(PROJECTS.CREATE.projectName),
         projectDescription: z
           .string()
           .trim()

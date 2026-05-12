@@ -11,11 +11,6 @@ export async function up(knex: Knex): Promise<void> {
   }
 }
 
-export async function down(knex: Knex): Promise<void> {
-  const hasColumn = await knex.schema.hasColumn(TableName.Project, "description");
-  if (hasColumn) {
-    await knex.schema.alterTable(TableName.Project, (t) => {
-      t.string("description", 255).alter();
-    });
-  }
+export async function down(): Promise<void> {
+  // No down migration or it will error
 }

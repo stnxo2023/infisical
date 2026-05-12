@@ -101,7 +101,11 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         }
       ],
       body: z.object({
-        projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
+        projectName: z
+          .string()
+          .trim()
+          .max(64, { message: "Name must be 64 or fewer characters" })
+          .describe(PROJECTS.CREATE.projectName),
         projectDescription: z
           .string()
           .trim()
@@ -276,7 +280,12 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         slug: slugSchema({ min: 5, max: 64 }).describe("The slug of the project to update.")
       }),
       body: z.object({
-        name: z.string().trim().optional().describe(PROJECTS.UPDATE.name),
+        name: z
+          .string()
+          .trim()
+          .max(64, { message: "Name must be 64 or fewer characters" })
+          .optional()
+          .describe(PROJECTS.UPDATE.name),
         description: z
           .string()
           .trim()
