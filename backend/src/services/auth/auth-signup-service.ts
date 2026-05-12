@@ -42,7 +42,7 @@ export const authSignupServiceFactory = ({
   orgDAL,
   loginService
 }: TAuthSignupDep) => {
-  // first step of signup. create user and send email
+  // First step of signup to send OTP email
   const beginEmailSignupProcess = async (email: string) => {
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
@@ -52,8 +52,8 @@ export const authSignupServiceFactory = ({
     }
 
     // akhilmhdh: case sensitive email resolution
-    let user = await userDAL.findOne({ username: sanitizedEmail });
-    if (user && user.isAccepted) {
+    const existingUser = await userDAL.findOne({ username: sanitizedEmail });
+    if (existingUser?.isAccepted) {
       // Send informational email for existing accounts instead of throwing error
       // This prevents user enumeration vulnerability
       const appCfg = getConfig();
@@ -74,20 +74,7 @@ export const authSignupServiceFactory = ({
       return;
     }
 
-    if (!user) {
-      user = await userDAL.create({
-        authMethods: [AuthMethod.EMAIL],
-        username: sanitizedEmail,
-        email: sanitizedEmail,
-        isGhost: false
-      });
-    }
-    if (!user) throw new Error("Failed to create user");
-
-    const token = await tokenService.createTokenForUser({
-      type: TokenType.TOKEN_EMAIL_CONFIRMATION,
-      userId: user.id
-    });
+    const token = await tokenService.createEmailSignupToken(sanitizedEmail);
 
     await smtpService
       .sendMail({
@@ -104,31 +91,29 @@ export const authSignupServiceFactory = ({
   const verifyEmailSignup = async (email: string, code: string) => {
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
-    const user = await userDAL.findOne({ username: sanitizedEmail });
 
-    // Always call validateTokenForUser so the response time includes
-    // the bcrypt cost regardless of whether the user exists.
-    // Use a dummy userId when there's no valid user.
-    const shouldReject = !user || user.isAccepted;
+    await tokenService.validateEmailSignupToken(sanitizedEmail, code);
 
-    try {
-      await tokenService.validateTokenForUser({
-        type: TokenType.TOKEN_EMAIL_CONFIRMATION,
-        userId: shouldReject ? DUMMY_USER_ID : user.id,
-        code
+    // Only create (or recover) the user after the OTP has been verified.
+    let user = await userDAL.findOne({ username: sanitizedEmail });
+    if (!user) {
+      user = await userDAL.create({
+        authMethods: [AuthMethod.EMAIL],
+        username: sanitizedEmail,
+        email: sanitizedEmail,
+        isGhost: false,
+        isEmailVerified: true
       });
-    } catch {
-      // If we were going to reject anyway, throw the generic message.
-      // If the user was valid but the token failed, same generic message.
+    } else if (!user.isAccepted) {
+      // Migration path: pre-user created by the old flow before this refactor.
+      await userDAL.updateById(user.id, { isEmailVerified: true });
+      user = { ...user, isEmailVerified: true };
+    } else {
+      // isAccepted guard should have been caught in beginEmailSignupProcess, but defend here too.
       throw new Error("Invalid or expired verification request");
     }
 
-    // Reject *after* the constant-time token validation work.
-    if (shouldReject) {
-      throw new Error("Invalid or expired verification request");
-    }
-
-    await userDAL.updateById(user.id, { isEmailVerified: true });
+    if (!user) throw new Error("Failed to create user");
 
     const appCfg = getConfig();
     const jwtToken = crypto.jwt().sign(

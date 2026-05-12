@@ -110,6 +110,7 @@ export const KeyStorePrefixes = {
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
+  EmailSignupOtp: (hash: string) => `email-signup-otp:${hash}` as const,
   InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
@@ -140,6 +141,7 @@ export const KeyStoreTtls = {
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
   RefreshTokenGraceInSeconds: 10,
+  EmailSignupOtpInSeconds: 300, // 5 minutes
   InsightsCacheInSeconds: 300, // 5 minutes
   AdminConfigInSeconds: 60,
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job

@@ -74,3 +74,9 @@ export type TTokenMetadata = {
   type: TokenMetadataType.InviteToProjects;
   payload: TTokenInviteToProjectsMetadataPayload;
 };
+
+export type TEmailSignupOtpPayload = {
+  tokenHash: string;
+  triesLeft: number;
+  expiresAt: number;
+};

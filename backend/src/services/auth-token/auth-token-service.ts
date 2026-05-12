@@ -13,7 +13,13 @@ import { TMembershipUserDALFactory } from "../membership-user/membership-user-da
 import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
-import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenForUserDTO } from "./auth-token-types";
+import {
+  TCreateTokenForUserDTO,
+  TEmailSignupOtpPayload,
+  TIssueAuthTokenDTO,
+  TokenType,
+  TValidateTokenForUserDTO
+} from "./auth-token-types";
 
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
@@ -358,6 +364,52 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
   };
 
+  const createEmailSignupToken = async (email: string): Promise<string> => {
+    const appCfg = getConfig();
+    const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+    const tokenHash = await crypto.hashing().createHash(token, appCfg.SALT_ROUNDS);
+    const ttlSeconds = KeyStoreTtls.EmailSignupOtpInSeconds;
+    const payload: TEmailSignupOtpPayload = {
+      tokenHash,
+      triesLeft: 3,
+      expiresAt: Date.now() + ttlSeconds * 1000
+    };
+    const emailHash = crypto.nativeCrypto.createHash("sha256").update(email).digest("hex");
+    await keyStore.setItemWithExpiry(KeyStorePrefixes.EmailSignupOtp(emailHash), ttlSeconds, JSON.stringify(payload));
+    return token;
+  };
+
+  const validateEmailSignupToken = async (email: string, code: string): Promise<void> => {
+    const emailHash = crypto.nativeCrypto.createHash("sha256").update(email).digest("hex");
+    const raw = await keyStore.getItem(KeyStorePrefixes.EmailSignupOtp(emailHash));
+    const parsed = raw ? (JSON.parse(raw) as TEmailSignupOtpPayload) : null;
+
+    // Always run bcrypt comparison for constant-time behaviour regardless of token presence.
+    const hashToCompare = parsed?.tokenHash ?? DUMMY_HASH;
+    const isValidToken = await crypto.hashing().compareHash(code, hashToCompare);
+
+    if (!parsed || parsed.expiresAt < Date.now()) {
+      throw new Error("Invalid token");
+    }
+
+    if (!isValidToken) {
+      if (parsed.triesLeft <= 1) {
+        await keyStore.deleteItem(KeyStorePrefixes.EmailSignupOtp(emailHash));
+      } else {
+        const remainingTtlSec = Math.max(1, Math.floor((parsed.expiresAt - Date.now()) / 1000));
+        const updated: TEmailSignupOtpPayload = { ...parsed, triesLeft: parsed.triesLeft - 1 };
+        await keyStore.setItemWithExpiry(
+          KeyStorePrefixes.EmailSignupOtp(emailHash),
+          remainingTtlSec,
+          JSON.stringify(updated)
+        );
+      }
+      throw new Error("Invalid token");
+    }
+
+    await keyStore.deleteItem(KeyStorePrefixes.EmailSignupOtp(emailHash));
+  };
+
   return {
     createTokenForUser,
     validateTokenForUser,
@@ -369,6 +421,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     validateRefreshToken,
     rotateRefreshToken,
     fnValidateJwtIdentity,
-    getUserTokenSessionById
+    getUserTokenSessionById,
+    createEmailSignupToken,
+    validateEmailSignupToken
   };
 };
