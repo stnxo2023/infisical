@@ -113,8 +113,6 @@ export const authSignupServiceFactory = ({
       throw new Error("Invalid or expired verification request");
     }
 
-    if (!user) throw new Error("Failed to create user");
-
     const appCfg = getConfig();
     const jwtToken = crypto.jwt().sign(
       {

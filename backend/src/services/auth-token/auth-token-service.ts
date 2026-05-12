@@ -31,23 +31,17 @@ type TAuthTokenServiceFactoryDep = {
 
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
 
-const generateSixDigitToken = (): string => crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+const generateSixDigitToken = (): string => String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
 
 const generateRandomHex = (size: number): string => crypto.randomBytes(size).toString("hex");
 
 const computeHash = (key: string, pepper: string): string =>
   crypto.nativeCrypto.createHmac("sha256", pepper).update(key).digest("hex");
 
-const getTokenConfig = (tokenType: TokenType) => {
+export const getTokenConfig = (tokenType: TokenType) => {
   // generate random token based on specified token use-case
   // type [type]
   switch (tokenType) {
-    case TokenType.TOKEN_EMAIL_CONFIRMATION: {
-      const token = generateSixDigitToken();
-      const expiresAt = new Date(new Date().getTime() + 86400000);
-      const triesLeft = 3;
-      return { token, expiresAt, triesLeft };
-    }
     case TokenType.TOKEN_EMAIL_VERIFICATION: {
       const token = generateSixDigitToken();
       const triesLeft = 3;

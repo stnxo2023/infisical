@@ -1,7 +1,6 @@
 import { ProjectMembershipRole } from "@app/db/schemas";
 
 export enum TokenType {
-  TOKEN_EMAIL_CONFIRMATION = "emailConfirmation",
   TOKEN_EMAIL_VERIFICATION = "emailVerification", // unverified -> verified
   TOKEN_EMAIL_CHANGE_OTP = "emailChangeOtp",
   TOKEN_EMAIL_CHANGE_CURRENT_OTP = "emailChangeCurrentOtp",
