@@ -46,7 +46,6 @@ export type PlaybackDecryptState = {
   brokenChunks: TBrokenChunkMarker[];
   missingChunks: number[];
   totalChunks: number;
-  // Max endElapsedMs across chunks; known before decryption.
   totalDurationMs: number;
 };
 

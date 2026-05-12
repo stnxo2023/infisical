@@ -187,11 +187,6 @@ impl RdpDecoder {
     }
 }
 
-#[wasm_bindgen(start)]
-pub fn start() {
-    tracing_wasm::set_as_global_default();
-}
-
 /// Build a minimal Config for ConnectionActivationSequence. The sequence
 /// is only used to interpret server-initiated reactivation PDUs; offline
 /// replay shouldn't hit those. If it does, the decoder will surface the
