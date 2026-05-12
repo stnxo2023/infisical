@@ -14,6 +14,8 @@ use ironrdp_connector::connection_activation::ConnectionActivationSequence;
 use ironrdp_connector::{BitmapConfig, Config, ConnectionResult, Credentials, DesktopSize};
 use ironrdp_graphics::image_processing::PixelFormat;
 use ironrdp_pdu::gcc::KeyboardType;
+use ironrdp_pdu::input::fast_path::FastPathInputEvent;
+use ironrdp_pdu::input::mouse::{MousePdu, PointerFlags};
 use ironrdp_pdu::rdp::capability_sets::{BitmapCodecs, MajorPlatformType};
 use ironrdp_pdu::rdp::client_info::{PerformanceFlags, TimezoneInfo};
 use ironrdp_pdu::Action;
@@ -108,6 +110,47 @@ impl RdpDecoder {
                 let w = region.right.saturating_sub(region.left).saturating_add(1);
                 let h = region.bottom.saturating_sub(region.top).saturating_add(1);
                 self.last_dirty.push(DirtyRect { x, y, w, h });
+            }
+        }
+        self.last_dirty.len() as u32
+    }
+
+    /// Move the server-rendered pointer sprite to (x, y) and re-composite
+    /// it into the framebuffer. Returns the number of dirty rectangles
+    /// produced (read via `dirty_rect(i)`, same as `feed`).
+    ///
+    /// The server only emits PositionPointer PDUs for server-initiated
+    /// cursor moves (dialog focus pulls, etc). Client-driven mouse
+    /// movement is resolved locally — a live IronRDP client calls this
+    /// on every mousemove. For replay we drive it from recorded input
+    /// events so the cursor tracks the user's actual pointer path.
+    pub fn move_pointer(&mut self, x: u16, y: u16) -> u32 {
+        self.last_dirty.clear();
+        let event = FastPathInputEvent::MouseEvent(MousePdu {
+            flags: PointerFlags::empty(),
+            number_of_wheel_rotation_units: 0,
+            x_position: x,
+            y_position: y,
+        });
+        let outputs = match self
+            .stage
+            .process_fastpath_input(&mut self.image, &[event])
+        {
+            Ok(o) => o,
+            Err(_) => return 0,
+        };
+        for out in outputs {
+            if let ActiveStageOutput::GraphicsUpdate(region) = out {
+                let rx = region.left;
+                let ry = region.top;
+                let rw = region.right.saturating_sub(region.left).saturating_add(1);
+                let rh = region.bottom.saturating_sub(region.top).saturating_add(1);
+                self.last_dirty.push(DirtyRect {
+                    x: rx,
+                    y: ry,
+                    w: rw,
+                    h: rh,
+                });
             }
         }
         self.last_dirty.len() as u32

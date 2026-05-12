@@ -2,6 +2,7 @@
 
 export class DirtyRect {
     static __wrap(ptr) {
+        ptr = ptr >>> 0;
         const obj = Object.create(DirtyRect.prototype);
         obj.__wbg_ptr = ptr;
         DirtyRectFinalization.register(obj, obj.__wbg_ptr, obj);
@@ -146,6 +147,24 @@ export class RdpDecoder {
         return ret;
     }
     /**
+     * Move the server-rendered pointer sprite to (x, y) and re-composite
+     * it into the framebuffer. Returns the number of dirty rectangles
+     * produced (read via `dirty_rect(i)`, same as `feed`).
+     *
+     * The server only emits PositionPointer PDUs for server-initiated
+     * cursor moves (dialog focus pulls, etc). Client-driven mouse
+     * movement is resolved locally — a live IronRDP client calls this
+     * on every mousemove. For replay we drive it from recorded input
+     * events so the cursor tracks the user's actual pointer path.
+     * @param {number} x
+     * @param {number} y
+     * @returns {number}
+     */
+    move_pointer(x, y) {
+        const ret = wasm.rdpdecoder_move_pointer(this.__wbg_ptr, x, y);
+        return ret >>> 0;
+    }
+    /**
      * Construct a decoder with a framebuffer of `width x height` pixels
      * in RGBA32 format.
      * @param {number} width
@@ -153,7 +172,7 @@ export class RdpDecoder {
      */
     constructor(width, height) {
         const ret = wasm.rdpdecoder_new(width, height);
-        this.__wbg_ptr = ret;
+        this.__wbg_ptr = ret >>> 0;
         RdpDecoderFinalization.register(this, this.__wbg_ptr, this);
         return this;
     }
@@ -182,7 +201,7 @@ export function start() {
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
-        __wbg___wbindgen_throw_9c31b086c2b26051: function(arg0, arg1) {
+        __wbg___wbindgen_throw_6b64449b9b9ed33c: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
         __wbg_log_0c201ade58bb55e1: function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
@@ -244,10 +263,10 @@ function __wbg_get_imports() {
 
 const DirtyRectFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_dirtyrect_free(ptr, 1));
+    : new FinalizationRegistry(ptr => wasm.__wbg_dirtyrect_free(ptr >>> 0, 1));
 const RdpDecoderFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_rdpdecoder_free(ptr, 1));
+    : new FinalizationRegistry(ptr => wasm.__wbg_rdpdecoder_free(ptr >>> 0, 1));
 
 function addToExternrefTable0(obj) {
     const idx = wasm.__externref_table_alloc();
@@ -256,7 +275,8 @@ function addToExternrefTable0(obj) {
 }
 
 function getStringFromWasm0(ptr, len) {
-    return decodeText(ptr >>> 0, len);
+    ptr = ptr >>> 0;
+    return decodeText(ptr, len);
 }
 
 let cachedUint8ArrayMemory0 = null;
@@ -299,9 +319,8 @@ function decodeText(ptr, len) {
 
 let WASM_VECTOR_LEN = 0;
 
-let wasmModule, wasmInstance, wasm;
+let wasmModule, wasm;
 function __wbg_finalize_init(instance, module) {
-    wasmInstance = instance;
     wasm = instance.exports;
     wasmModule = module;
     cachedUint8ArrayMemory0 = null;

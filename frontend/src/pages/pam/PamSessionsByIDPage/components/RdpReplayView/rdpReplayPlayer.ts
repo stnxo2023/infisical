@@ -20,11 +20,6 @@ type PlayerCallbacks = {
   onEnded: () => void;
   onContentBoundsChange: (width: number, height: number) => void;
   onBuffering: (buffering: boolean) => void;
-  // Cursor position is rendered as a DOM overlay rather than composited into
-  // the canvas. IronRDP's pointer pipeline hides the framebuffer cursor as
-  // soon as the server emits SetDefault (typical for Windows sessions) and
-  // expects the host OS to render it; replay has no host cursor.
-  onCursorMove: (x: number, y: number) => void;
 };
 
 let wasmReady: Promise<InitOutput> | null = null;
@@ -90,6 +85,9 @@ export class RdpReplayPlayer {
   ): Promise<RdpReplayPlayer> {
     const wasm = await ensureWasm();
     const decoder = new RdpDecoder(canvas.width, canvas.height);
+    // Prime pointer position off-screen so the first server-emitted pointer
+    // bitmap doesn't paint at (0,0) before the first recorded mouse event.
+    decoder.move_pointer(0xffff, 0xffff);
     return new RdpReplayPlayer(events, canvas, callbacks, decoder, wasm);
   }
 
@@ -146,6 +144,7 @@ export class RdpReplayPlayer {
     // Frames are deltas, so replaying needs a fresh decoder state.
     this.decoder.free();
     this.decoder = new RdpDecoder(this.canvas.width, this.canvas.height);
+    this.decoder.move_pointer(0xffff, 0xffff);
     this.ctx.fillStyle = "#000";
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.callbacks.onTick(0);
@@ -234,8 +233,10 @@ export class RdpReplayPlayer {
         if (ev.payload) this.feedFrame(ev);
         break;
       case "mouse":
+        // Server only sends PositionPointer for its own moves; drive cursor from input.
         if (ev.x !== undefined && ev.y !== undefined) {
-          this.callbacks.onCursorMove(ev.x, ev.y);
+          const count = this.decoder.move_pointer(ev.x, ev.y);
+          if (count > 0) this.blitDirtyRects(count);
         }
         break;
       case "keyboard":
