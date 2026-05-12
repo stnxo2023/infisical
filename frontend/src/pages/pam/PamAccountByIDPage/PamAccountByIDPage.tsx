@@ -245,8 +245,6 @@ const PageContent = () => {
           >
             <Button
               variant="neutral"
-              // Domain-account access uses `${fqdn}:${slug}` as the
-              // approval-layer identity. Block until the domain query lands.
               isDisabled={isDomainAccount && (isDomainPending || !domain?.connectionDetails.domain)}
               onClick={handleAccess}
             >
