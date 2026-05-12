@@ -29,7 +29,7 @@ const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
 
 type KeyStoreSlice = Pick<
   TKeyStoreFactory,
-  "setItemWithExpiry" | "getItem" | "deleteItem" | "acquireLock" | "deleteItemsByKeyIn" | "ttl"
+  "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem" | "acquireLock" | "deleteItemsByKeyIn" | "ttl"
 >;
 
 type MockedKeyStore = Mocked<KeyStoreSlice>;
@@ -37,6 +37,7 @@ type MockedKeyStore = Mocked<KeyStoreSlice>;
 const makeKeyStore = (patch: Partial<MockedKeyStore> = {}): MockedKeyStore =>
   ({
     setItemWithExpiry: vi.fn().mockResolvedValue("OK"),
+    setItemWithExpiryNX: vi.fn().mockResolvedValue("OK"),
     getItem: vi.fn().mockResolvedValue(null),
     deleteItem: vi.fn().mockResolvedValue(1),
     acquireLock: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) }),
@@ -78,7 +79,7 @@ const setup = () => {
     },
 
     mockCooldown(ttl: number, present = true) {
-      keyStore.getItem.mockImplementation(async (key: string) => (key === cooldownKey && present ? "1" : null));
+      keyStore.setItemWithExpiryNX.mockResolvedValue(present ? null : "OK");
       keyStore.ttl.mockResolvedValue(ttl);
       return this;
     },
@@ -149,12 +150,12 @@ describe("tokenServiceFactory — email signup OTP", () => {
       expect(payload?.triesLeft).toBe(3);
     });
 
-    test("sets cooldown key", async () => {
+    test("sets cooldown key atomically via NX", async () => {
       const { service, keyStore } = setup();
 
       await service.createEmailSignupToken(TEST_EMAIL);
 
-      expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      expect(keyStore.setItemWithExpiryNX).toHaveBeenCalledWith(
         cooldownKey,
         KeyStoreTtls.EmailSignupResendCooldownInSeconds,
         "1"

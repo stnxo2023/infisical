@@ -28,7 +28,7 @@ type TAuthTokenServiceFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
-    "setItemWithExpiry" | "getItem" | "deleteItem" | "acquireLock" | "deleteItemsByKeyIn" | "ttl"
+    "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem" | "acquireLock" | "deleteItemsByKeyIn" | "ttl"
   >;
 };
 
@@ -366,8 +366,9 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     const emailHash = computeHash(email, appCfg.AUTH_SECRET);
 
     const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
-    const hasCooldown = await keyStore.getItem(cooldownKey);
-    if (hasCooldown) {
+    // SET NX is atomic: only one concurrent request can acquire the cooldown slot.
+    const acquired = await keyStore.setItemWithExpiryNX(cooldownKey, KeyStoreTtls.EmailSignupResendCooldownInSeconds, "1");
+    if (!acquired) {
       const remaining = await keyStore.ttl(cooldownKey);
       throw new BadRequestError({
         message: "Please wait before requesting another code",
@@ -389,7 +390,6 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       ttlSeconds,
       JSON.stringify(payload)
     );
-    await keyStore.setItemWithExpiry(cooldownKey, KeyStoreTtls.EmailSignupResendCooldownInSeconds, "1");
 
     return { token, cooldownSeconds: KeyStoreTtls.EmailSignupResendCooldownInSeconds };
   };
