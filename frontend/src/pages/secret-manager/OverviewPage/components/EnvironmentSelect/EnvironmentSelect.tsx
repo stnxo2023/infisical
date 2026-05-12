@@ -126,7 +126,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
           </TooltipTrigger>
           <TooltipContent>Save or discard pending changes to switch environments</TooltipContent>
         </Tooltip>
-        <PopoverContent align="start" className="w-[180px] p-0">
+        <PopoverContent align="start" className="p-0">
           <Command>
             <CommandInput
               value={inputValue}
@@ -158,7 +158,6 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                     value={env.id}
                     onSelect={handleSelectEnv}
                     keywords={[env.name, env.slug]}
-                    title={env.name}
                   >
                     <CheckIcon
                       className={cn(
@@ -166,7 +165,14 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                         selectedEnvs.map((e) => e.id).includes(env.id) ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    <span className="truncate">{env.name}</span>
+                    <Tooltip delayDuration={500}>
+                      <TooltipTrigger asChild>
+                        <span className="truncate">{env.name}</span>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-2xl break-all">
+                        {env.name}
+                      </TooltipContent>
+                    </Tooltip>
                   </CommandItem>
                 ))}
               </CommandGroup>
