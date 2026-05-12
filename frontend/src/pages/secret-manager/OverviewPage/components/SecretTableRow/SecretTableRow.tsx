@@ -525,11 +525,13 @@ export const SecretTableRow = ({
                             className={hasOverride ? "border-b-border/50" : undefined}
                           >
                             <div className="flex h-8 items-center space-x-2">
-                              <Tooltip>
+                              <Tooltip disableHoverableContent>
                                 <TooltipTrigger asChild>
                                   <span className="truncate">{name}</span>
                                 </TooltipTrigger>
-                                <TooltipContent side="right">{name}</TooltipContent>
+                                <TooltipContent side="right" className="max-w-2xl break-all">
+                                  {name}
+                                </TooltipContent>
                               </Tooltip>
                               {isImportedSecret && (
                                 <Tooltip>

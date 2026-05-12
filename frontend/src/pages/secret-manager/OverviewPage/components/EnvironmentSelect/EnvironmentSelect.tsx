@@ -58,6 +58,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
       : true;
 
   const handleAddEnvironment = () => {
+    setIsOpen(false);
     if (isMoreEnvironmentsAllowed) {
       handlePopUpOpen("createEnvironment");
     } else {
@@ -165,7 +166,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                         selectedEnvs.map((e) => e.id).includes(env.id) ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    <Tooltip delayDuration={500}>
+                    <Tooltip delayDuration={500} disableHoverableContent>
                       <TooltipTrigger asChild>
                         <span className="truncate">{env.name}</span>
                       </TooltipTrigger>
