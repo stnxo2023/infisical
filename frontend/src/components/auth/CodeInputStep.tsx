@@ -69,17 +69,8 @@ export default function CodeInputStep({
 
   const [code, setCode] = useState("");
 
-  // Store absolute expiry time (source of truth)
-  const endTimeRef = useRef<number>(0);
-  // Force UI refresh every second
+  const endTimeRef = useRef<number>(initialCooldown > 0 ? Date.now() + initialCooldown * 1000 : 0);
   const [, forceRender] = useState(0);
-
-  // Initialize cooldown from server
-  useEffect(() => {
-    if (initialCooldown > 0) {
-      endTimeRef.current = Date.now() + initialCooldown * 1000;
-    }
-  }, [initialCooldown]);
 
   // Tick every second
   useEffect(() => {
