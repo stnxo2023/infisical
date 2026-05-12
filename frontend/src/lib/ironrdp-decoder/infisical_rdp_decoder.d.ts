@@ -92,9 +92,7 @@ export interface InitOutput {
     readonly rdpdecoder_new: (a: number, b: number) => number;
     readonly rdpdecoder_stride: (a: number) => number;
     readonly rdpdecoder_width: (a: number) => number;
-    readonly __wbindgen_externrefs: WebAssembly.Table;
-    readonly __wbindgen_malloc: (a: number, b: number) => number;
-    readonly __wbindgen_start: () => void;
+    readonly __wbindgen_export: (a: number, b: number) => number;
 }
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;
