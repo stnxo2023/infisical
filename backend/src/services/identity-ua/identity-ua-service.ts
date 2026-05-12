@@ -59,7 +59,7 @@ type TIdentityUaServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeAllTokensForIdentity" | "revokeAllTokensForClientSecret"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "revokeAllTokensForClientSecret"
   >;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -775,13 +775,13 @@ export const identityUaServiceFactory = ({
       return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 
-    // Revoking the auth method must invalidate any access tokens already
-    // issued via it — without this, leaked tokens keep authenticating up
-    // to MAX_MACHINE_IDENTITY_TOKEN_AGE even after an admin pulled the
-    // method. The marker is identity-wide (matches the existing semantics
-    // of identity deletion) which is acceptable here because detaching an
-    // auth method is a high-trust admin action.
-    await identityAccessTokenService.revokeAllTokensForIdentity(identityId);
+    // Scoped marker so leaked tokens issued via UA stop authenticating once an
+    // admin detaches the method; tokens minted via other still-attached methods
+    // on the same identity stay valid (PLATFOR-359).
+    await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+      identityId,
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+    });
 
     return revokedIdentityUniversalAuth;
   };
