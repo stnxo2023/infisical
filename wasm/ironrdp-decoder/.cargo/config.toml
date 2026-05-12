@@ -1,6 +1,0 @@
-[build]
-rustflags = [
-  "--remap-path-prefix=/home/=build/",
-  "--remap-path-prefix=/Users/=build/",
-  "--remap-path-prefix=C:\\Users\\=build/",
-]

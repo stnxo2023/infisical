@@ -20,8 +20,10 @@ Build + emit bindings into the frontend:
 
 ```sh
 cd wasm/ironrdp-decoder
-wasm-pack build --target web --release --out-dir ../../frontend/src/lib/ironrdp-decoder --out-name infisical_rdp_decoder
+make build
 ```
+
+The Makefile passes `--remap-path-prefix=$HOME=build` so the committed `.wasm` doesn't embed your home directory (which includes your username).
 
 ## When to rebuild
 

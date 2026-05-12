@@ -8,8 +8,10 @@ After any change to `src/lib.rs` or `Cargo.toml` (including IronRDP version bump
 
 ```sh
 cd wasm/ironrdp-decoder
-wasm-pack build --target web --release --out-dir ../../frontend/src/lib/ironrdp-decoder --out-name infisical_rdp_decoder
+make build
 ```
+
+The Makefile injects `--remap-path-prefix=$HOME=build` into `RUSTFLAGS` so the committed `.wasm` doesn't carry your home-directory path (and username). Running raw `wasm-pack build` skips that and leaks the path.
 
 The bindings under `frontend/src/lib/ironrdp-decoder/` are committed so the frontend builds without a Rust toolchain. Skipping the rebuild leaves source and bindings out of sync and the frontend keeps running the old WASM.
 
