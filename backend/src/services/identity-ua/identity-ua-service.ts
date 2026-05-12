@@ -59,7 +59,7 @@ type TIdentityUaServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeAllTokensForIdentity"
+    "issueIdentityAccessToken" | "revokeAllTokensForIdentity" | "revokeAllTokensForClientSecret"
   >;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -1169,6 +1169,14 @@ export const identityUaServiceFactory = ({
         });
       }
     }
+    // Insert the revocation marker BEFORE flipping isClientSecretRevoked. If
+    // the flip fails, tokens are already dead and a retry safely re-flips the
+    // bit; flipping first would leave the secret flagged but tokens authentic.
+    await identityAccessTokenService.revokeAllTokensForClientSecret({
+      identityId,
+      clientSecretId
+    });
+
     const updatedClientSecret = await identityUaClientSecretDAL.updateById(clientSecretId, {
       isClientSecretRevoked: true
     });
