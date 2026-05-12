@@ -843,19 +843,20 @@ export const pamAccountServiceFactory = ({
 
       const accountMeta = await pamAccountDAL.findMetadataByAccountIds([account.id]);
 
-      // For domain accounts the subject scopes to {domainName, domainType} (matching
-      // create/list/etc). Using {resourceName, resourceType} would let a role keyed on
-      // a single resource authorize every domain account, and a role keyed on the
-      // domain wouldn't match because the field would be undefined.
+      // On Access, resourceName/resourceType match the connect-target (the
+      // Windows host the credentials are used against), and for domain
+      // accounts domainName/domainType additionally scope to the parent.
+      // Other actions (create/read/update/delete) keep resourceName as the
+      // account's parent, which is undefined for domain accounts.
       const domain = isDomainAccount && account.domainId ? await pamDomainDAL.findById(account.domainId) : null;
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPamAccountActions.Access,
         subject(ProjectPermissionSub.PamAccounts, {
           accountName: account.name,
-          ...(isDomainAccount && domain
-            ? { domainName: domain.name, domainType: domain.domainType }
-            : { resourceName: resource.name, resourceType: resource.resourceType }),
+          resourceName: resource.name,
+          resourceType: resource.resourceType,
+          ...(isDomainAccount && domain && { domainName: domain.name, domainType: domain.domainType }),
           metadata: accountMeta[account.id] || []
         })
       );
