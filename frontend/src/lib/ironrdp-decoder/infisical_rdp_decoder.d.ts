@@ -11,11 +11,6 @@ export class DirtyRect {
     y: number;
 }
 
-export enum PduAction {
-    X224 = 0,
-    FastPath = 1,
-}
-
 /**
  * A decoder session tied to a specific desktop size. Create one per
  * replay, feed PDUs in original order, read out the framebuffer + dirty

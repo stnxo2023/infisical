@@ -73,14 +73,6 @@ export class DirtyRect {
 if (Symbol.dispose) DirtyRect.prototype[Symbol.dispose] = DirtyRect.prototype.free;
 
 /**
- * @enum {0 | 1}
- */
-export const PduAction = Object.freeze({
-    X224: 0, "0": "X224",
-    FastPath: 1, "1": "FastPath",
-});
-
-/**
  * A decoder session tied to a specific desktop size. Create one per
  * replay, feed PDUs in original order, read out the framebuffer + dirty
  * regions after each call.

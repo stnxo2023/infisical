@@ -44,12 +44,6 @@ pub struct DirtyRect {
 }
 
 #[wasm_bindgen]
-pub enum PduAction {
-    X224 = 0,
-    FastPath = 1,
-}
-
-#[wasm_bindgen]
 impl RdpDecoder {
     /// Construct a decoder with a framebuffer of `width x height` pixels
     /// in RGBA32 format.
