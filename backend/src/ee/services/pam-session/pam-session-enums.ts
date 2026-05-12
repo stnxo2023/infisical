@@ -5,7 +5,7 @@ export enum PamSessionStatus {
   Terminated = "terminated" // Terminated by an admin
 }
 
-export enum TerminalChannelType {
+export enum SessionChannelType {
   Terminal = "terminal", // Interactive SSH terminal session
   Exec = "exec", // SSH exec command
   Sftp = "sftp", // SFTP file transfer session

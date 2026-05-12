@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Loader2Icon, PauseIcon, PlayIcon, RotateCcwIcon } from "lucide-react";
 
 import { IconButton } from "@app/components/v3";
-import { TTerminalEvent } from "@app/hooks/api/pam";
+import { TSessionEvent } from "@app/hooks/api/pam";
 import { isBrokenChunkMarker } from "@app/hooks/api/pam/session-playback";
 
 import { parseRdpLogEntry, RdpEvent, RdpReplayPlayer } from "./rdpReplayPlayer";
@@ -22,7 +22,7 @@ const formatMs = (ms: number) => {
   return `${m.toString().padStart(2, "0")}:${r.toString().padStart(2, "0")}`;
 };
 
-const parseRange = (events: TTerminalEvent[], start: number, end: number): RdpEvent[] => {
+const parseRange = (events: TSessionEvent[], start: number, end: number): RdpEvent[] => {
   const out: RdpEvent[] = [];
   for (let i = start; i < end; i += 1) {
     const ev = parseRdpLogEntry(events[i]);
@@ -32,7 +32,7 @@ const parseRange = (events: TTerminalEvent[], start: number, end: number): RdpEv
 };
 
 type Props = {
-  events: TTerminalEvent[];
+  events: TSessionEvent[];
   isStreaming?: boolean;
   totalDurationMs?: number;
 };

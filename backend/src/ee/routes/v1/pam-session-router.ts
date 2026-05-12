@@ -15,8 +15,8 @@ import {
   PamSessionCommandLogSchema,
   SanitizedSessionListItemSchema,
   SanitizedSessionSchema,
-  SessionLogsPageSchema,
-  TerminalEventSchema
+  SessionEventSchema,
+  SessionLogsPageSchema
 } from "@app/ee/services/pam-session/pam-session-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -142,7 +142,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         sessionId: z.string().uuid()
       }),
       body: z.object({
-        logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]))
+        logs: z.array(z.union([PamSessionCommandLogSchema, SessionEventSchema, HttpEventSchema]))
       }),
       response: {
         200: z.object({
@@ -408,7 +408,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]));
+      const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, SessionEventSchema, HttpEventSchema]));
       try {
         EventBatchSchema.parse(JSON.parse(req.body.toString()));
       } catch (e) {
