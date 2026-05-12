@@ -97,22 +97,11 @@ impl RdpDecoder {
             1 => Action::FastPath,
             _ => return 0,
         };
-        self.last_dirty.clear();
         let outputs = match self.stage.process(&mut self.image, action, bytes) {
             Ok(o) => o,
             Err(_) => return 0,
         };
-        for out in outputs {
-            if let ActiveStageOutput::GraphicsUpdate(region) = out {
-                // InclusiveRectangle: left/top/right/bottom inclusive.
-                let x = region.left;
-                let y = region.top;
-                let w = region.right.saturating_sub(region.left).saturating_add(1);
-                let h = region.bottom.saturating_sub(region.top).saturating_add(1);
-                self.last_dirty.push(DirtyRect { x, y, w, h });
-            }
-        }
-        self.last_dirty.len() as u32
+        self.collect_dirty_rects(outputs)
     }
 
     /// Move the server-rendered pointer sprite to (x, y) and re-composite
@@ -125,7 +114,6 @@ impl RdpDecoder {
     /// on every mousemove. For replay we drive it from recorded input
     /// events so the cursor tracks the user's actual pointer path.
     pub fn move_pointer(&mut self, x: u16, y: u16) -> u32 {
-        self.last_dirty.clear();
         let event = FastPathInputEvent::MouseEvent(MousePdu {
             flags: PointerFlags::empty(),
             number_of_wheel_rotation_units: 0,
@@ -139,17 +127,19 @@ impl RdpDecoder {
             Ok(o) => o,
             Err(_) => return 0,
         };
+        self.collect_dirty_rects(outputs)
+    }
+
+    // InclusiveRectangle: left/top/right/bottom inclusive.
+    fn collect_dirty_rects(&mut self, outputs: Vec<ActiveStageOutput>) -> u32 {
+        self.last_dirty.clear();
         for out in outputs {
             if let ActiveStageOutput::GraphicsUpdate(region) = out {
-                let rx = region.left;
-                let ry = region.top;
-                let rw = region.right.saturating_sub(region.left).saturating_add(1);
-                let rh = region.bottom.saturating_sub(region.top).saturating_add(1);
                 self.last_dirty.push(DirtyRect {
-                    x: rx,
-                    y: ry,
-                    w: rw,
-                    h: rh,
+                    x: region.left,
+                    y: region.top,
+                    w: region.right.saturating_sub(region.left).saturating_add(1),
+                    h: region.bottom.saturating_sub(region.top).saturating_add(1),
                 });
             }
         }
