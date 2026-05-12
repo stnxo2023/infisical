@@ -26,81 +26,81 @@ type TAuthTokenServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem" | "acquireLock">;
 };
 
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
 
-export const getTokenConfig = (tokenType: TokenType) => {
+const generateSixDigitToken = (): string => crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+
+const generateRandomHex = (size: number): string => crypto.randomBytes(size).toString("hex");
+
+const computeHash = (key: string, pepper: string): string =>
+  crypto.nativeCrypto.createHmac("sha256", pepper).update(key).digest("hex");
+
+const getTokenConfig = (tokenType: TokenType) => {
   // generate random token based on specified token use-case
   // type [type]
   switch (tokenType) {
     case TokenType.TOKEN_EMAIL_CONFIRMATION: {
-      // generate random 6-digit code
-      const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+      const token = generateSixDigitToken();
       const expiresAt = new Date(new Date().getTime() + 86400000);
       const triesLeft = 3;
       return { token, expiresAt, triesLeft };
     }
     case TokenType.TOKEN_EMAIL_VERIFICATION: {
-      // generate random 6-digit code
-      const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+      const token = generateSixDigitToken();
       const triesLeft = 3;
       const expiresAt = new Date(new Date().getTime() + 86400000);
       return { token, triesLeft, expiresAt };
     }
     case TokenType.TOKEN_EMAIL_CHANGE_OTP:
     case TokenType.TOKEN_EMAIL_CHANGE_CURRENT_OTP: {
-      const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+      const token = generateSixDigitToken();
       const triesLeft = 1;
       const expiresAt = new Date(new Date().getTime() + 600000);
       return { token, triesLeft, expiresAt };
     }
     case TokenType.TOKEN_EMAIL_MFA: {
-      // generate random 6-digit code
-      const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+      const token = generateSixDigitToken();
       const triesLeft = 3;
       const expiresAt = new Date(new Date().getTime() + 300000);
       return { token, triesLeft, expiresAt };
     }
     case TokenType.TOKEN_EMAIL_ORG_INVITATION: {
-      // generate random hex
-      const token = crypto.randomBytes(16).toString("hex");
+      const token = generateRandomHex(16);
       const expiresAt = new Date(new Date().getTime() + 259200000);
       return { token, expiresAt };
     }
     case TokenType.TOKEN_EMAIL_PASSWORD_RESET: {
-      // generate random hex
-      const token = crypto.randomBytes(32).toString("hex");
+      const token = generateRandomHex(32);
       const expiresAt = new Date(new Date().getTime() + 86400000);
       return { token, expiresAt };
     }
     case TokenType.TOKEN_EMAIL_PASSWORD_SETUP: {
-      // generate random hex
-      const token = crypto.randomBytes(16).toString("hex");
+      const token = generateRandomHex(16);
       const expiresAt = new Date(new Date().getTime() + 86400000);
       return { token, expiresAt };
     }
     case TokenType.TOKEN_USER_UNLOCK: {
-      const token = crypto.randomBytes(16).toString("hex");
+      const token = generateRandomHex(16);
       const expiresAt = new Date(new Date().getTime() + 259200000);
       return { token, expiresAt };
     }
     case TokenType.TOKEN_WEBAUTHN_SESSION: {
-      // generate random hex token for WebAuthn session
-      const token = crypto.randomBytes(32).toString("hex");
+      const token = generateRandomHex(32);
       const triesLeft = 1;
       const expiresAt = new Date(new Date().getTime() + 60000); // 60 seconds
       return { token, triesLeft, expiresAt };
     }
     case TokenType.TOKEN_PAM_WS_TICKET: {
-      const token = crypto.randomBytes(32).toString("hex");
+      const token = generateRandomHex(32);
       const triesLeft = 1;
       const expiresAt = new Date(new Date().getTime() + 30000); // 30 seconds
       return { token, triesLeft, expiresAt };
     }
     default: {
-      const token = crypto.randomBytes(16).toString("hex");
+      const token = generateRandomHex(16);
       const expiresAt = new Date();
       return { token, expiresAt };
     }
@@ -366,48 +366,68 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
 
   const createEmailSignupToken = async (email: string): Promise<string> => {
     const appCfg = getConfig();
-    const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
-    const tokenHash = await crypto.hashing().createHash(token, appCfg.SALT_ROUNDS);
+    const token = generateSixDigitToken();
+    const tokenHash = computeHash(token, appCfg.AUTH_SECRET);
     const ttlSeconds = KeyStoreTtls.EmailSignupOtpInSeconds;
     const payload: TEmailSignupOtpPayload = {
       tokenHash,
       triesLeft: 3,
       expiresAt: Date.now() + ttlSeconds * 1000
     };
-    const emailHash = crypto.nativeCrypto.createHash("sha256").update(email).digest("hex");
+
+    const emailHash = computeHash(email, appCfg.AUTH_SECRET);
     await keyStore.setItemWithExpiry(KeyStorePrefixes.EmailSignupOtp(emailHash), ttlSeconds, JSON.stringify(payload));
+
     return token;
   };
 
   const validateEmailSignupToken = async (email: string, code: string): Promise<void> => {
-    const emailHash = crypto.nativeCrypto.createHash("sha256").update(email).digest("hex");
-    const raw = await keyStore.getItem(KeyStorePrefixes.EmailSignupOtp(emailHash));
-    const parsed = raw ? (JSON.parse(raw) as TEmailSignupOtpPayload) : null;
+    const appCfg = getConfig();
+    const emailHash = computeHash(email, appCfg.AUTH_SECRET);
+    const key = KeyStorePrefixes.EmailSignupOtp(emailHash);
 
-    // Always run bcrypt comparison for constant-time behaviour regardless of token presence.
-    const hashToCompare = parsed?.tokenHash ?? DUMMY_HASH;
-    const isValidToken = await crypto.hashing().compareHash(code, hashToCompare);
+    // Acquire a short-lived lock to make the tries-decrement / delete atomic.
+    const lock = await keyStore.acquireLock([key], 5000);
+    try {
+      const raw = await keyStore.getItem(key);
+      const parsed = raw ? (JSON.parse(raw) as TEmailSignupOtpPayload) : null;
 
-    if (!parsed || parsed.expiresAt < Date.now()) {
-      throw new Error("Invalid token");
-    }
+      // Always compute the HMAC and compare with timingSafeEqual for constant-time behaviour.
+      const computedHash = computeHash(code, appCfg.AUTH_SECRET);
+      const storedHash = parsed?.tokenHash ?? "0".repeat(64);
+      const isValidToken = crypto.nativeCrypto.timingSafeEqual(
+        Buffer.from(computedHash, "hex"),
+        Buffer.from(storedHash, "hex")
+      );
 
-    if (!isValidToken) {
-      if (parsed.triesLeft <= 1) {
-        await keyStore.deleteItem(KeyStorePrefixes.EmailSignupOtp(emailHash));
-      } else {
-        const remainingTtlSec = Math.max(1, Math.floor((parsed.expiresAt - Date.now()) / 1000));
-        const updated: TEmailSignupOtpPayload = { ...parsed, triesLeft: parsed.triesLeft - 1 };
-        await keyStore.setItemWithExpiry(
-          KeyStorePrefixes.EmailSignupOtp(emailHash),
-          remainingTtlSec,
-          JSON.stringify(updated)
-        );
+      if (!parsed) {
+        throw new Error("Invalid token");
       }
-      throw new Error("Invalid token");
-    }
 
-    await keyStore.deleteItem(KeyStorePrefixes.EmailSignupOtp(emailHash));
+      if (Date.now() > parsed.expiresAt) {
+        await keyStore.deleteItem(key);
+        throw new Error("Invalid token");
+      }
+
+      if (!isValidToken) {
+        const remainingTries = parsed.triesLeft - 1;
+        if (remainingTries <= 0) {
+          await keyStore.deleteItem(key);
+        } else {
+          const remainingTtlSec = Math.max(1, Math.ceil((parsed.expiresAt - Date.now()) / 1000));
+          await keyStore.setItemWithExpiry(
+            key,
+            remainingTtlSec,
+            JSON.stringify({ ...parsed, triesLeft: remainingTries })
+          );
+        }
+        throw new Error("Invalid token");
+      }
+
+      await keyStore.deleteItem(key);
+    } finally {
+      await lock.release();
+    }
   };
 
   return {
