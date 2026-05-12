@@ -1,13 +1,13 @@
 import { createHmac } from "node:crypto";
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, type Mocked, test, vi } from "vitest";
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
-import { TEmailSignupOtpPayload } from "./auth-token-types";
 import { tokenServiceFactory } from "./auth-token-service";
+import { TEmailSignupOtpPayload } from "./auth-token-types";
 
 const AUTH_SECRET = "test-secret-for-otp-unit-tests";
 const NOW_MS = 1_700_000_000_000;
@@ -23,14 +23,18 @@ vi.mock("@app/lib/logger", () => ({
 
 const hmac = (value: string) => createHmac("sha256", AUTH_SECRET).update(value).digest("hex");
 
-// Pre-compute key names so assertions can reference them without re-running production logic.
 const emailHash = hmac(TEST_EMAIL);
 const otpKey = KeyStorePrefixes.EmailSignupOtpHash(emailHash);
 const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
 
-type KeyStoreSlice = Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem" | "acquireLock" | "deleteItemsByKeyIn" | "ttl">;
+type KeyStoreSlice = Pick<
+  TKeyStoreFactory,
+  "setItemWithExpiry" | "getItem" | "deleteItem" | "acquireLock" | "deleteItemsByKeyIn" | "ttl"
+>;
 
-const makeKeyStore = (patch: Partial<KeyStoreSlice> = {}): KeyStoreSlice & { [k: string]: ReturnType<typeof vi.fn> } =>
+type MockedKeyStore = Mocked<KeyStoreSlice>;
+
+const makeKeyStore = (patch: Partial<MockedKeyStore> = {}): MockedKeyStore =>
   ({
     setItemWithExpiry: vi.fn().mockResolvedValue("OK"),
     getItem: vi.fn().mockResolvedValue(null),
@@ -39,10 +43,9 @@ const makeKeyStore = (patch: Partial<KeyStoreSlice> = {}): KeyStoreSlice & { [k:
     deleteItemsByKeyIn: vi.fn().mockResolvedValue(2),
     ttl: vi.fn().mockResolvedValue(-1),
     ...patch
-  }) as KeyStoreSlice & { [k: string]: ReturnType<typeof vi.fn> };
+  }) as MockedKeyStore;
 
-const createService = (patch: Partial<KeyStoreSlice> = {}) => {
-  const keyStore = makeKeyStore(patch);
+const createService = (keyStore: MockedKeyStore) => {
   const service = tokenServiceFactory({
     tokenDAL: {} as never,
     userDAL: {} as never,
@@ -50,16 +53,60 @@ const createService = (patch: Partial<KeyStoreSlice> = {}) => {
     membershipUserDAL: {} as never,
     keyStore: keyStore as never
   });
+
   return { service, keyStore };
 };
 
-const makeStoredPayload = (overrides: Partial<TEmailSignupOtpPayload> = {}): string =>
-  JSON.stringify({
-    tokenHash: hmac("123456"),
-    triesLeft: 3,
-    expiresAt: NOW_MS + 300_000,
-    ...overrides
-  } satisfies TEmailSignupOtpPayload);
+const setup = () => {
+  const keyStore = makeKeyStore();
+  const { service } = createService(keyStore);
+
+  return {
+    service,
+    keyStore,
+
+    mockOtp(payload: Partial<TEmailSignupOtpPayload> = {}) {
+      keyStore.getItem.mockResolvedValue(
+        JSON.stringify({
+          tokenHash: hmac("123456"),
+          triesLeft: 3,
+          expiresAt: NOW_MS + 300_000,
+          ...payload
+        })
+      );
+      return this;
+    },
+
+    mockCooldown(ttl: number, present = true) {
+      keyStore.getItem.mockImplementation(async (key: string) => (key === cooldownKey && present ? "1" : null));
+      keyStore.ttl.mockResolvedValue(ttl);
+      return this;
+    },
+
+    mockNoOtp() {
+      keyStore.getItem.mockResolvedValue(null);
+      return this;
+    }
+  };
+};
+
+const getStoredOtpPayload = (keyStore: MockedKeyStore) => {
+  const stored = keyStore.setItemWithExpiry.mock.calls.find(([k]) => k === otpKey)?.[2];
+  return stored ? (JSON.parse(stored as string) as TEmailSignupOtpPayload) : null;
+};
+
+const expectRejected = async <T, E extends Error>(
+  promise: Promise<T>,
+  ErrorType: new (...args: never[]) => E
+): Promise<E> => {
+  try {
+    await promise;
+    throw new Error("Expected rejection");
+  } catch (e) {
+    expect(e).toBeInstanceOf(ErrorType);
+    return e as E;
+  }
+};
 
 describe("tokenServiceFactory — email signup OTP", () => {
   beforeAll(async () => {
@@ -81,13 +128,9 @@ describe("tokenServiceFactory — email signup OTP", () => {
     vi.clearAllMocks();
   });
 
-  // ---------------------------------------------------------------------------
-  // createEmailSignupToken
-  // ---------------------------------------------------------------------------
-
   describe("createEmailSignupToken", () => {
-    test("returns a 6-digit token string and the configured cooldownSeconds", async () => {
-      const { service } = createService();
+    test("returns token and cooldown", async () => {
+      const { service } = setup();
 
       const result = await service.createEmailSignupToken(TEST_EMAIL);
 
@@ -95,24 +138,19 @@ describe("tokenServiceFactory — email signup OTP", () => {
       expect(result.token).toMatch(/^\d{6}$/);
     });
 
-    test("stores the HMAC of the token (not the plain token) in the keystore", async () => {
-      const { service, keyStore } = createService();
+    test("stores hashed token", async () => {
+      const { service, keyStore } = setup();
 
       const { token } = await service.createEmailSignupToken(TEST_EMAIL);
-      const expectedHash = hmac(token);
 
-      const storedArg: string = (keyStore.setItemWithExpiry as ReturnType<typeof vi.fn>).mock.calls.find(
-        ([k]: string[]) => k === otpKey
-      )?.[2];
+      const payload = getStoredOtpPayload(keyStore);
 
-      expect(storedArg).toBeDefined();
-      const parsed = JSON.parse(storedArg) as TEmailSignupOtpPayload;
-      expect(parsed.tokenHash).toBe(expectedHash);
-      expect(parsed.triesLeft).toBe(3);
+      expect(payload?.tokenHash).toBe(hmac(token));
+      expect(payload?.triesLeft).toBe(3);
     });
 
-    test("sets the cooldown key in keystore", async () => {
-      const { service, keyStore } = createService();
+    test("sets cooldown key", async () => {
+      const { service, keyStore } = setup();
 
       await service.createEmailSignupToken(TEST_EMAIL);
 
@@ -123,113 +161,88 @@ describe("tokenServiceFactory — email signup OTP", () => {
       );
     });
 
-    test("throws BadRequestError when cooldown key is present", async () => {
-      const { service } = createService({
-        getItem: vi.fn().mockImplementation(async (key: string) => (key === cooldownKey ? "1" : null)),
-        ttl: vi.fn().mockResolvedValue(45)
-      });
+    test("blocks when cooldown active", async () => {
+      const { service } = setup().mockCooldown(45);
 
-      await expect(service.createEmailSignupToken(TEST_EMAIL)).rejects.toThrow(BadRequestError);
+      await expectRejected(service.createEmailSignupToken(TEST_EMAIL), BadRequestError);
     });
 
-    test("BadRequestError details.cooldownSeconds reflects the remaining TTL", async () => {
-      const { service } = createService({
-        getItem: vi.fn().mockImplementation(async (key: string) => (key === cooldownKey ? "1" : null)),
-        ttl: vi.fn().mockResolvedValue(30)
-      });
+    test("returns cooldown seconds from TTL", async () => {
+      const { service } = setup().mockCooldown(30);
 
-      const err = await service.createEmailSignupToken(TEST_EMAIL).catch((e) => e);
+      const err = await expectRejected(service.createEmailSignupToken(TEST_EMAIL), BadRequestError);
 
-      expect(err).toBeInstanceOf(BadRequestError);
-      expect((err as BadRequestError).details).toMatchObject({ cooldownSeconds: 30 });
+      expect(err.details).toMatchObject({ cooldownSeconds: 30 });
     });
 
-    test("clamps cooldownSeconds to at least 1 when TTL returns -1", async () => {
-      const { service } = createService({
-        getItem: vi.fn().mockImplementation(async (key: string) => (key === cooldownKey ? "1" : null)),
-        ttl: vi.fn().mockResolvedValue(-1)
-      });
+    test("clamps cooldown to minimum 1", async () => {
+      const { service } = setup().mockCooldown(-1);
 
-      const err = await service.createEmailSignupToken(TEST_EMAIL).catch((e) => e);
+      const err = await expectRejected(service.createEmailSignupToken(TEST_EMAIL), BadRequestError);
 
-      expect((err as BadRequestError).details).toMatchObject({ cooldownSeconds: 1 });
+      expect(err.details).toMatchObject({ cooldownSeconds: 1 });
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // validateEmailSignupToken
-  // ---------------------------------------------------------------------------
-
   describe("validateEmailSignupToken", () => {
-    test("resolves without error when code matches a valid unexpired payload", async () => {
-      const { service } = createService({
-        getItem: vi.fn().mockResolvedValue(makeStoredPayload())
-      });
+    test("valid token succeeds", async () => {
+      const { service } = setup().mockOtp();
 
       await expect(service.validateEmailSignupToken(TEST_EMAIL, "123456")).resolves.toBeUndefined();
     });
 
-    test("deletes both the OTP key and the cooldown key on success", async () => {
-      const { service, keyStore } = createService({
-        getItem: vi.fn().mockResolvedValue(makeStoredPayload())
-      });
+    test("deletes OTP and cooldown on success", async () => {
+      const { service, keyStore } = setup().mockOtp();
 
       await service.validateEmailSignupToken(TEST_EMAIL, "123456");
 
-      expect(keyStore.deleteItemsByKeyIn).toHaveBeenCalledWith(
-        expect.arrayContaining([otpKey, cooldownKey])
-      );
+      expect(keyStore.deleteItemsByKeyIn).toHaveBeenCalledWith(expect.arrayContaining([otpKey, cooldownKey]));
     });
 
-    test("throws UnauthorizedError when no OTP record exists in keystore", async () => {
-      const { service } = createService({
-        getItem: vi.fn().mockResolvedValue(null)
-      });
+    test("throws when OTP missing", async () => {
+      const { service } = setup().mockNoOtp();
 
-      await expect(service.validateEmailSignupToken(TEST_EMAIL, "123456")).rejects.toThrow(UnauthorizedError);
+      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "123456"), UnauthorizedError);
     });
 
-    test("throws UnauthorizedError and deletes the key when token is expired", async () => {
-      const { service, keyStore } = createService({
-        getItem: vi.fn().mockResolvedValue(makeStoredPayload({ expiresAt: NOW_MS - 1 }))
+    test("expires OTP deletes key", async () => {
+      const { service, keyStore } = setup().mockOtp({
+        expiresAt: NOW_MS - 1
       });
 
-      await expect(service.validateEmailSignupToken(TEST_EMAIL, "123456")).rejects.toThrow(UnauthorizedError);
+      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "123456"), UnauthorizedError);
+
       expect(keyStore.deleteItem).toHaveBeenCalledWith(otpKey);
     });
 
-    test("throws UnauthorizedError when code is wrong and decrements tries", async () => {
-      const { service, keyStore } = createService({
-        getItem: vi.fn().mockResolvedValue(makeStoredPayload({ triesLeft: 3 }))
-      });
+    test("wrong code decrements tries", async () => {
+      const { service, keyStore } = setup().mockOtp({ triesLeft: 3 });
 
-      await expect(service.validateEmailSignupToken(TEST_EMAIL, "000000")).rejects.toThrow(UnauthorizedError);
+      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "000000"), UnauthorizedError);
 
-      const updatedPayload = JSON.parse(
-        (keyStore.setItemWithExpiry as ReturnType<typeof vi.fn>).mock.calls[0][2]
-      ) as TEmailSignupOtpPayload;
-      expect(updatedPayload.triesLeft).toBe(2);
+      const payload = getStoredOtpPayload(keyStore);
+      expect(payload?.triesLeft).toBe(2);
     });
 
-    test("deletes the OTP key and throws when the last try is exhausted", async () => {
-      const { service, keyStore } = createService({
-        getItem: vi.fn().mockResolvedValue(makeStoredPayload({ triesLeft: 1 }))
-      });
+    test("last try deletes OTP", async () => {
+      const { service, keyStore } = setup().mockOtp({ triesLeft: 1 });
 
-      await expect(service.validateEmailSignupToken(TEST_EMAIL, "000000")).rejects.toThrow(UnauthorizedError);
+      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "000000"), UnauthorizedError);
+
       expect(keyStore.deleteItem).toHaveBeenCalledWith(otpKey);
       expect(keyStore.setItemWithExpiry).not.toHaveBeenCalled();
     });
 
-    test("always acquires and releases the lock regardless of outcome", async () => {
-      const releaseFn = vi.fn().mockResolvedValue(undefined);
-      const { service } = createService({
-        getItem: vi.fn().mockResolvedValue(null),
-        acquireLock: vi.fn().mockResolvedValue({ release: releaseFn })
+    test("lock is always released", async () => {
+      const release = vi.fn().mockResolvedValue(undefined);
+      const keyStore = makeKeyStore({
+        acquireLock: vi.fn().mockResolvedValue({ release } as never)
       });
+      const { service } = createService(keyStore);
 
-      await expect(service.validateEmailSignupToken(TEST_EMAIL, "123456")).rejects.toThrow(UnauthorizedError);
-      expect(releaseFn).toHaveBeenCalledOnce();
+      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "123456"), UnauthorizedError);
+
+      expect(release).toHaveBeenCalledOnce();
     });
   });
 });
