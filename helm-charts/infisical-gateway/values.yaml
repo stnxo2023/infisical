@@ -22,10 +22,10 @@ gateway:
 
     # Token enrollment settings (method=token)
     token:
-      # Inline enrollment token value. Mutually exclusive with existingSecret.
+      # Inline enrollment token value. Mutually exclusive with existingSecretRef.
       value: ""
       # Name of an existing K8s Secret containing the enrollment token.
-      existingSecret: ""
+      existingSecretRef: ""
       # Key within the secret that holds the enrollment token.
       secretKey: "enrollment-token"
 

@@ -83,7 +83,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
             helm install infisical-gateway infisical/infisical-gateway \
               --set gateway.name=<gateway-name> \
               --set gateway.enrollment.method=token \
-              --set gateway.enrollment.token.existingSecret=gateway-enrollment-token \
+              --set gateway.enrollment.token.existingSecretRef=gateway-enrollment-token \
               --set gateway.domain=<your-infisical-domain>
             ```
 

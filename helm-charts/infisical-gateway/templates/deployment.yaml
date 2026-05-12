@@ -2,7 +2,7 @@
   {{- if not .Values.persistence.enabled }}
     {{- fail "persistence.enabled must be true when gateway.enrollment.method is 'token'. The enrollment token is single-use and credentials must persist across pod restarts." }}
   {{- end }}
-  {{- if not (or .Values.gateway.enrollment.token.value .Values.gateway.enrollment.token.existingSecret) }}
+  {{- if not (or .Values.gateway.enrollment.token.value .Values.gateway.enrollment.token.existingSecretRef) }}
     {{- fail "gateway.enrollment.token.value or gateway.enrollment.token.existingSecret is required when gateway.enrollment.method is 'token'." }}
   {{- end }}
 {{- end }}
@@ -87,7 +87,7 @@ spec:
             - name: INFISICAL_ENROLLMENT_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.gateway.enrollment.token.existingSecret | default (printf "%s-enrollment-token" (include "infisical-gateway.fullname" .)) }}
+                  name: {{ .Values.gateway.enrollment.token.existingSecretRef | default (printf "%s-enrollment-token" (include "infisical-gateway.fullname" .)) }}
                   key: {{ .Values.gateway.enrollment.token.secretKey | default "enrollment-token" }}
             {{- end }}
           args:
