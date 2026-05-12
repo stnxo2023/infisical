@@ -123,7 +123,7 @@ export const AddEnvironmentModal = ({ isOpen, onOpenChange, onComplete }: Props)
                 <Input id="environmentSlug" isError={Boolean(error)} {...field} />
                 <FieldError>{error?.message}</FieldError>
                 <FieldDescription>
-                  Slugs are shorthands used in cli to access environment
+                  Slugs are shorthand identifiers used to reference this environment.
                 </FieldDescription>
               </Field>
             )}
