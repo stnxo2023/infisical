@@ -276,9 +276,6 @@ export const projectTemplateServiceFactory = ({
       OrgPermissionProjectTemplateActions.Create,
       OrgPermissionSubjects.ProjectTemplates
     );
-    // Custom project roles and Admin memberships grant elevated access in every project spawned
-    // from the template; gate them behind GrantPrivileges since the actor here is org-scoped and
-    // has no per-project boundary to check against.
     const hasElevatedContent =
       (roles?.length ?? 0) > 0 ||
       [...(users ?? []), ...(groups ?? []), ...(identities ?? []), ...(projectManagedIdentities ?? [])].some((m) =>
