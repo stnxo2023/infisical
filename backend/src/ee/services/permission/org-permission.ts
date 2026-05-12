@@ -135,6 +135,14 @@ export enum OrgPermissionProjectActions {
   RequestAccess = "request-access"
 }
 
+export enum OrgPermissionProjectTemplateActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Project = "project",
@@ -190,7 +198,7 @@ export type OrgPermissionSet =
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionAuditLogsActions, OrgPermissionSubjects.AuditLogs]
-  | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
+  | [OrgPermissionProjectTemplateActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
   | [OrgPermissionGatewayPoolActions, OrgPermissionSubjects.GatewayPool]
   | [OrgPermissionRelayActions, OrgPermissionSubjects.Relay]
@@ -310,7 +318,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.ProjectTemplates).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionProjectTemplateActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.AppConnections).describe("The entity this permission pertains to."),
@@ -475,10 +485,11 @@ const buildAdminPermission = () => {
 
   can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionProjectTemplateActions.Read, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionProjectTemplateActions.Create, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionProjectTemplateActions.Edit, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionProjectTemplateActions.Delete, OrgPermissionSubjects.ProjectTemplates);
+  can(OrgPermissionProjectTemplateActions.GrantPrivileges, OrgPermissionSubjects.ProjectTemplates);
 
   can(OrgPermissionAppConnectionActions.Read, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionAppConnectionActions.Create, OrgPermissionSubjects.AppConnections);

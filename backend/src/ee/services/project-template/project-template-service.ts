@@ -3,7 +3,7 @@ import { packRules } from "@casl/ability/extra";
 
 import { OrganizationActionScope, ProjectMembershipRole, ProjectType, TProjectTemplates } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionProjectTemplateActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
 import { getDefaultProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
@@ -130,7 +130,10 @@ export const projectTemplateServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionProjectTemplateActions.Read,
+      OrgPermissionSubjects.ProjectTemplates
+    );
 
     const projectTemplates = await projectTemplateDAL.find({
       orgId: actor.orgId,
@@ -188,7 +191,10 @@ export const projectTemplateServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionProjectTemplateActions.Read,
+      OrgPermissionSubjects.ProjectTemplates
+    );
 
     const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
       projectTemplateUserMembershipDAL.findByTemplateId(projectTemplate.id),
@@ -226,7 +232,10 @@ export const projectTemplateServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionProjectTemplateActions.Read,
+      OrgPermissionSubjects.ProjectTemplates
+    );
 
     const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
       projectTemplateUserMembershipDAL.findByTemplateId(projectTemplate.id),
@@ -263,7 +272,24 @@ export const projectTemplateServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionProjectTemplateActions.Create,
+      OrgPermissionSubjects.ProjectTemplates
+    );
+    // Custom project roles and Admin memberships grant elevated access in every project spawned
+    // from the template; gate them behind GrantPrivileges since the actor here is org-scoped and
+    // has no per-project boundary to check against.
+    const hasElevatedContent =
+      (roles?.length ?? 0) > 0 ||
+      [...(users ?? []), ...(groups ?? []), ...(identities ?? []), ...(projectManagedIdentities ?? [])].some((m) =>
+        m.roles.includes(ProjectMembershipRole.Admin)
+      );
+    if (hasElevatedContent) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionProjectTemplateActions.GrantPrivileges,
+        OrgPermissionSubjects.ProjectTemplates
+      );
+    }
 
     if (type === ProjectType.AI) {
       throw new BadRequestError({ message: "Agent Sentinel project templates are not supported" });
@@ -504,7 +530,22 @@ export const projectTemplateServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionProjectTemplateActions.Edit,
+      OrgPermissionSubjects.ProjectTemplates
+    );
+    const hasElevatedContent =
+      (roles?.length ?? 0) > 0 ||
+      [...(users ?? []), ...(groups ?? []), ...(identities ?? []), ...(projectManagedIdentities ?? [])].some((m) =>
+        m.roles.includes(ProjectMembershipRole.Admin)
+      );
+    if (hasElevatedContent) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionProjectTemplateActions.GrantPrivileges,
+        OrgPermissionSubjects.ProjectTemplates
+      );
+    }
+
     if (projectTemplate.type !== ProjectType.SecretManager && environments)
       throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
 
@@ -818,7 +859,10 @@ export const projectTemplateServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionProjectTemplateActions.Delete,
+      OrgPermissionSubjects.ProjectTemplates
+    );
 
     const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
       projectTemplateUserMembershipDAL.findByTemplateId(id),
