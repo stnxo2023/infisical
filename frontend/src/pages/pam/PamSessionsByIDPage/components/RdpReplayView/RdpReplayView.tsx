@@ -17,9 +17,12 @@ const OUTER_ASPECT = OUTER_ASPECT_W / OUTER_ASPECT_H;
 
 const formatMs = (ms: number) => {
   const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
-  return `${m.toString().padStart(2, "0")}:${r.toString().padStart(2, "0")}`;
+  const mm = m.toString().padStart(2, "0");
+  const ss = r.toString().padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 };
 
 const parseRange = (events: TSessionEvent[], start: number, end: number): RdpEvent[] => {
