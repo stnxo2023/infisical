@@ -183,7 +183,8 @@ export const AwsMemoryDbDatabaseProvider = (): TDynamicProviderFns => {
       decryptedDynamicSecretInputs: inputs,
       dynamicSecret,
       identity,
-      usernameCharset: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-",
+      usernameCharset: "abcdefghijklmnopqrstuvwxyz0123456789-",
+      usernameLowercase: true,
       usernamePrefix: "inf-"
     });
     const leasePassword = generatePassword();
