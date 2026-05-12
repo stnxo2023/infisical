@@ -2,16 +2,7 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import {
-  Button,
-  FormControl,
-  Input,
-  ModalClose,
-  SecretInput,
-  Select,
-  SelectItem
-} from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   DatadogConnectionMethod,
