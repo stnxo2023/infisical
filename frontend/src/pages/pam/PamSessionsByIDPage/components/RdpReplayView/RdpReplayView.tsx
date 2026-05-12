@@ -273,7 +273,7 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
       </button>
       <div className="flex items-center gap-3">
         <IconButton
-          variant="warning"
+          variant="project"
           size="sm"
           onClick={onPlayPause}
           aria-label={isPlaying ? "Pause" : "Play"}
