@@ -160,16 +160,21 @@ describe("createServiceToken authorization", () => {
       expect(serviceTokenDAL.create).toHaveBeenCalledTimes(1);
     });
 
-    test("granular pair (ReadValue + DescribeSecret) can mint a read token", async () => {
+    // Realistic V2 caller shape: Secrets supports granular actions (ReadValue + DescribeSecret),
+    // while SecretFolders / SecretImports only support ProjectPermissionActions (plain Read). The
+    // granular boundary fallback in createServiceToken must therefore grant ReadValue+DescribeSecret
+    // on Secrets and plain Read on SecretFolders/SecretImports; otherwise it would emit
+    // (readValue|describeSecret, SecretFolders|SecretImports) rules that no V2 caller can satisfy.
+    test("granular pair on Secrets + plain Read on folders/imports can mint a read token", async () => {
       const permission = buildAbility((b) => {
         grantServiceTokenCreate(b);
-        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
-          (subj) => {
-            b.can(ProjectPermissionSecretActions.ReadValue, subj);
-            b.can(ProjectPermissionSecretActions.DescribeSecret, subj);
-            b.can(ProjectPermissionSecretActions.Create, subj);
-          }
-        );
+        b.can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets);
+        b.can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
+        b.can(ProjectPermissionSecretActions.Create, ProjectPermissionSub.Secrets);
+        [ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach((subj) => {
+          b.can(ProjectPermissionActions.Read, subj);
+          b.can(ProjectPermissionActions.Create, subj);
+        });
       });
 
       const { service, serviceTokenDAL } = createService(permission);
@@ -283,20 +288,30 @@ describe("createServiceToken authorization", () => {
   });
 
   describe("scope widening (boundary check)", () => {
+    // Caller permissions mirror the realistic V2 schema: granular actions on Secrets
+    // and ProjectPermissionActions on SecretImports / SecretFolders. Both bound by the
+    // same condition so the only variable under test is the requested token scope.
+    const grantV2ScopedPermissions = (
+      b: AbilityBuilder<MongoAbility<ProjectPermissionSet>>,
+      conditions: Record<string, unknown>
+    ) => {
+      grantServiceTokenCreate(b);
+      canWithConditions(b, ProjectPermissionSecretActions.Create, ProjectPermissionSub.Secrets, conditions);
+      canWithConditions(b, ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets, conditions);
+      canWithConditions(b, ProjectPermissionSecretActions.Delete, ProjectPermissionSub.Secrets, conditions);
+      canWithConditions(b, ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets, conditions);
+      canWithConditions(b, ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets, conditions);
+      [ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach((subj) => {
+        canWithConditions(b, ProjectPermissionActions.Read, subj, conditions);
+        canWithConditions(b, ProjectPermissionActions.Create, subj, conditions);
+        canWithConditions(b, ProjectPermissionActions.Edit, subj, conditions);
+        canWithConditions(b, ProjectPermissionActions.Delete, subj, conditions);
+      });
+    };
+
     test("caller with $eq:'/apps/foo' cannot mint token with secretPath='/apps/**' (eq → glob)", async () => {
       const conditions = { secretPath: "/apps/foo", environment: ENV_SLUG };
-      const permission = buildAbility((b) => {
-        grantServiceTokenCreate(b);
-        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
-          (subj) => {
-            canWithConditions(b, ProjectPermissionSecretActions.Create, subj, conditions);
-            canWithConditions(b, ProjectPermissionSecretActions.Edit, subj, conditions);
-            canWithConditions(b, ProjectPermissionSecretActions.Delete, subj, conditions);
-            canWithConditions(b, ProjectPermissionSecretActions.ReadValue, subj, conditions);
-            canWithConditions(b, ProjectPermissionSecretActions.DescribeSecret, subj, conditions);
-          }
-        );
-      });
+      const permission = buildAbility((b) => grantV2ScopedPermissions(b, conditions));
 
       const { service, serviceTokenDAL } = createService(permission);
 
@@ -312,18 +327,7 @@ describe("createServiceToken authorization", () => {
 
     test("caller with $eq:'/apps/foo' can mint token with the literal secretPath='/apps/foo' (no widening)", async () => {
       const conditions = { secretPath: "/apps/foo", environment: ENV_SLUG };
-      const permission = buildAbility((b) => {
-        grantServiceTokenCreate(b);
-        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
-          (subj) => {
-            canWithConditions(b, ProjectPermissionSecretActions.Create, subj, conditions);
-            canWithConditions(b, ProjectPermissionSecretActions.Edit, subj, conditions);
-            canWithConditions(b, ProjectPermissionSecretActions.Delete, subj, conditions);
-            canWithConditions(b, ProjectPermissionSecretActions.ReadValue, subj, conditions);
-            canWithConditions(b, ProjectPermissionSecretActions.DescribeSecret, subj, conditions);
-          }
-        );
-      });
+      const permission = buildAbility((b) => grantV2ScopedPermissions(b, conditions));
 
       const { service, serviceTokenDAL } = createService(permission);
 

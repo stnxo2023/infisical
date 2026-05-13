@@ -110,9 +110,12 @@ export const serviceTokenServiceFactory = ({
         const tokenAbilityGranular = buildServiceTokenProjectPermission(scopes, permissions, { useLegacyRead: false });
         const boundaryGranular = validatePermissionBoundary(permission, tokenAbilityGranular);
         if (!boundaryGranular.isValid) {
+          const legacyMissing = boundaryLegacy.missingPermissions ?? [];
+          const granularMissing = boundaryGranular.missingPermissions ?? [];
+          const decisiveMissing = legacyMissing.length <= granularMissing.length ? legacyMissing : granularMissing;
           throw new PermissionBoundaryError({
             message: "Cannot create service token whose permissions exceed the caller's permissions",
-            details: { missingPermissions: boundaryLegacy.missingPermissions }
+            details: { missingPermissions: decisiveMissing }
           });
         }
       }

@@ -2104,19 +2104,21 @@ export const buildServiceTokenProjectPermission = (
           });
         }
         if (canRead) {
-          if (useLegacyRead) {
-            can(ProjectPermissionActions.Read, subject, {
-              // @ts-expect-error type
+          if (!useLegacyRead && subject === ProjectPermissionSub.Secrets) {
+            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
+            // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
+            can(ProjectPermissionSecretActions.ReadValue, subject, {
+              secretPath: { $glob: secretPath },
+              environment
+            });
+            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
+            // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
+            can(ProjectPermissionSecretActions.DescribeSecret, subject, {
               secretPath: { $glob: secretPath },
               environment
             });
           } else {
-            can(ProjectPermissionSecretActions.ReadValue, subject, {
-              // @ts-expect-error type
-              secretPath: { $glob: secretPath },
-              environment
-            });
-            can(ProjectPermissionSecretActions.DescribeSecret, subject, {
+            can(ProjectPermissionActions.Read, subject, {
               // @ts-expect-error type
               secretPath: { $glob: secretPath },
               environment

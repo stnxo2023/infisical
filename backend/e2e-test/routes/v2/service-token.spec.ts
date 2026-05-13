@@ -660,12 +660,13 @@ describe("Service token fail cases", async () => {
     const createdToken = serviceTokens.find(({ name }) => name === "test-admin-token");
     expect(createdToken).toBeDefined();
 
-    await testServer.inject({
+    const deleteRes = await testServer.inject({
       method: "DELETE",
       url: `/api/v2/service-token/${createdToken?.id}`,
       headers: {
         authorization: `Bearer ${jwtAuthToken}`
       }
     });
+    expect(deleteRes.statusCode).toBe(200);
   });
 });
