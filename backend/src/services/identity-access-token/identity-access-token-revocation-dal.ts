@@ -40,10 +40,12 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
 
   const findActiveRevocationsForToken = async ({
     tokenId,
-    identityId
+    identityId,
+    scopes
   }: {
     tokenId: string;
     identityId: string;
+    scopes: string[];
   }): Promise<TRevocationRow[]> => {
     try {
       return (
@@ -52,10 +54,14 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
           .select("id", "identityId", "revokedAt", "createdAt", "scope")
           .where("expiresAt", ">", db.fn.now())
           .where("identityId", identityId)
-          // Legacy markers key off id (tokenId or identityId); scoped markers always
-          // come along so the in-memory filter can match by clientSecretId / authMethod.
+          // Both halves of the OR must be equality predicates so the planner can
+          // serve `id IN (...)` from the PK and the `scope IN (...)` filter stays
+          // selective. `scope IS NOT NULL` would force a non-sargable scan.
           .andWhere((qb) => {
-            void qb.whereIn("id", [tokenId, identityId]).orWhereNotNull("scope");
+            void qb.whereIn("id", [tokenId, identityId]);
+            if (scopes.length > 0) {
+              void qb.orWhereIn("scope", scopes);
+            }
           })) as TRevocationRow[]
       );
     } catch (error) {
