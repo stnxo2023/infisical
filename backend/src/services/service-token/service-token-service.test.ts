@@ -7,7 +7,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { conditionsMatcher } from "@app/lib/casl";
+import { conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
 import { crypto } from "@app/lib/crypto";
 
 import { serviceTokenServiceFactory } from "./service-token-service";
@@ -336,6 +336,119 @@ describe("createServiceToken authorization", () => {
           service,
           scopes: [{ environment: ENV_SLUG, secretPath: "/apps/foo" }],
           permissions: ["read", "write"]
+        })
+      ).resolves.toBeDefined();
+      expect(serviceTokenDAL.create).toHaveBeenCalledTimes(1);
+    });
+
+    // Regression: glob → broader-glob widening was previously allowed because the boundary check
+    // used `picomatch.isMatch` to compare a subset glob against a parent glob as if the subset
+    // were a literal value, so `/apps/**` matched `/apps/*` (the literal `**` is two non-`/`
+    // characters and matches `*`). The fix in `boundary.ts` switched to a sound glob-set
+    // containment check.
+    test("caller with $glob:'/apps/*' cannot mint token with secretPath='/apps/**' (glob → broader glob)", async () => {
+      const conditions = {
+        secretPath: { [PermissionConditionOperators.$GLOB]: "/apps/*" },
+        environment: ENV_SLUG
+      };
+      const permission = buildAbility((b) => grantV2ScopedPermissions(b, conditions));
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({
+          service,
+          scopes: [{ environment: ENV_SLUG, secretPath: "/apps/**" }],
+          permissions: ["read", "write"]
+        })
+      ).rejects.toThrow();
+      expect(serviceTokenDAL.create).not.toHaveBeenCalled();
+    });
+
+    test("caller with $glob:'/apps/**' can mint token with secretPath='/apps/foo' (narrower)", async () => {
+      const conditions = {
+        secretPath: { [PermissionConditionOperators.$GLOB]: "/apps/**" },
+        environment: ENV_SLUG
+      };
+      const permission = buildAbility((b) => grantV2ScopedPermissions(b, conditions));
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({
+          service,
+          scopes: [{ environment: ENV_SLUG, secretPath: "/apps/foo" }],
+          permissions: ["read", "write"]
+        })
+      ).resolves.toBeDefined();
+      expect(serviceTokenDAL.create).toHaveBeenCalledTimes(1);
+    });
+
+    // Regression: a caller with a positive unconditional rule plus an inverted (deny) rule
+    // narrower than the requested token scope was previously allowed to mint, even though the
+    // resulting token grants access inside the deny region. Now overlap with the deny region —
+    // including the case where the subset is broader than the deny — fails the boundary check.
+    // The boundary check for a legacy "read" service token mints a token rule using
+    // `ProjectPermissionActions.Read` ("read") on each secret subject. To exercise the inverted-
+    // overlap path, the caller must have a deny rule on the SAME action — `Read` — at a narrower
+    // scope than the token's requested scope. Then the boundary check sees a positive rule plus
+    // a conditional inverted rule for action="read", and rejects the token because the requested
+    // glob (`/**`) overlaps the deny region (`/secret/**`).
+    const grantUnconditionalSecretActions = (b: AbilityBuilder<MongoAbility<ProjectPermissionSet>>) => {
+      grantServiceTokenCreate(b);
+      [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+        (subj) => {
+          b.can(ProjectPermissionActions.Read, subj);
+          b.can(ProjectPermissionSecretActions.ReadValue, subj);
+          b.can(ProjectPermissionSecretActions.DescribeSecret, subj);
+          b.can(ProjectPermissionSecretActions.Create, subj);
+        }
+      );
+    };
+
+    test("caller with deny Read on '/secret/**' cannot mint token with secretPath='/**' (inverted overlap)", async () => {
+      const permission = buildAbility((b) => {
+        grantUnconditionalSecretActions(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
+            // conditionsMatcher resolves it at runtime; same pattern is used in production rules.
+            b.cannot(ProjectPermissionActions.Read, subj, { secretPath: { $glob: "/secret/**" } });
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({
+          service,
+          scopes: [{ environment: ENV_SLUG, secretPath: "/**" }],
+          permissions: ["read"]
+        })
+      ).rejects.toThrow();
+      expect(serviceTokenDAL.create).not.toHaveBeenCalled();
+    });
+
+    test("caller with deny Read on '/secret/**' can mint token with secretPath='/apps/**' (no overlap)", async () => {
+      const permission = buildAbility((b) => {
+        grantUnconditionalSecretActions(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
+            // conditionsMatcher resolves it at runtime; same pattern is used in production rules.
+            b.cannot(ProjectPermissionActions.Read, subj, { secretPath: { $glob: "/secret/**" } });
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({
+          service,
+          scopes: [{ environment: ENV_SLUG, secretPath: "/apps/**" }],
+          permissions: ["read"]
         })
       ).resolves.toBeDefined();
       expect(serviceTokenDAL.create).toHaveBeenCalledTimes(1);
