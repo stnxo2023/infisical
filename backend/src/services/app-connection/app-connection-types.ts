@@ -543,6 +543,7 @@ export type TCreateAppConnectionDTO = Pick<
   | "description"
   | "isPlatformManagedCredentials"
   | "gatewayId"
+  | "gatewayPoolId"
   | "projectId"
   | "rotation"
   | "isAutoRotationEnabled"
