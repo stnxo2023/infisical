@@ -616,6 +616,40 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
         logger.info({ queue: name }, "Cleaned up orphaned internal queue from Redis");
       })
     );
+
+    // Remove stale BullMQ schedulers for queues migrated to cronJobFactory.
+    // Without this, the old scheduler keeps firing via the active Worker, causing double execution.
+    const staleSchedulersInActiveQueues: Array<{ queueName: string; schedulerId: string }> = [
+      { queueName: "pki-subscriber", schedulerId: `${JOB_SCHEDULER_PREFIX}:pki-subscriber` },
+      { queueName: "pki-discovery-scan", schedulerId: `${JOB_SCHEDULER_PREFIX}:pki-discovery-scheduled-scan` },
+      { queueName: "pam-discovery-scan", schedulerId: `${JOB_SCHEDULER_PREFIX}:pam-discovery-scheduled-scan` },
+      { queueName: "secret-rotation-v2", schedulerId: `${JOB_SCHEDULER_PREFIX}:secret-rotation-v2-cron` },
+      {
+        queueName: "app-connection-credential-rotation",
+        schedulerId: `${JOB_SCHEDULER_PREFIX}:app-connection-credential-rotation-cron`
+      },
+      { queueName: "app-connection-secret-sync", schedulerId: `${JOB_SCHEDULER_PREFIX}:daily-secret-sync-retry-job` },
+      { queueName: "ca-auto-renewal", schedulerId: `${JOB_SCHEDULER_PREFIX}:ca-daily-auto-renewal` }
+    ];
+    await Promise.allSettled(
+      staleSchedulersInActiveQueues.map(async ({ queueName, schedulerId }) => {
+        const q = new Queue(queueName, {
+          prefix: isClusterMode ? `{${queueName}}` : undefined,
+          connection
+        });
+        try {
+          await q.removeJobScheduler(schedulerId);
+          logger.info({ queue: queueName, schedulerId }, "Removed orphaned job scheduler from active queue");
+        } catch (err) {
+          logger.warn(
+            { err, queue: queueName, schedulerId },
+            "Failed to remove orphaned job scheduler from active queue"
+          );
+        } finally {
+          await q.close();
+        }
+      })
+    );
   })();
 
   const start: TQueueServiceFactory["start"] = (name, jobFn, queueSettings) => {
