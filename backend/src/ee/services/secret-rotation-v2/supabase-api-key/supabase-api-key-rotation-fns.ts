@@ -161,8 +161,7 @@ export const supabaseApiKeyRotationFactory: TRotationFactory<
     try {
       await request.get(`${projectUrl}/auth/v1/settings`, {
         headers: {
-          apikey: apiKey,
-          Authorization: `Bearer ${apiKey}`
+          apikey: apiKey
         }
       });
     } catch (error: unknown) {

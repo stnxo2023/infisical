@@ -178,7 +178,7 @@ export const openRouterApiKeyRotationFactory: TRotationFactory<
     TOpenRouterApiKeyRotationGeneratedCredentials
   > = async ({ apiKey }) => {
     try {
-      await request.get(`${OPEN_ROUTER_API_BASE_URL}/auth/key`, {
+      await request.get(`${OPEN_ROUTER_API_BASE_URL}/key`, {
         headers: { Authorization: `Bearer ${apiKey}` }
       });
     } catch (error: unknown) {

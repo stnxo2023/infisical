@@ -5,7 +5,7 @@ import {
   IAMClient,
   ListAccessKeysCommand
 } from "@aws-sdk/client-iam";
-import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
+import { GetCallerIdentityCommand, STSClient, STSServiceException } from "@aws-sdk/client-sts";
 
 import {
   TAwsIamUserSecretRotationGeneratedCredentials,
@@ -140,9 +140,13 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     try {
       await sts.send(new GetCallerIdentityCommand({}));
     } catch (err) {
-      throw new BadRequestError({
-        message: "Failed to authenticate with the rotated credentials"
-      });
+      if (err instanceof STSServiceException) {
+        throw new BadRequestError({
+          message: `Unable to validate credentials: ${
+            err.message ?? `AWS responded with a status code of ${err.$metadata.httpStatusCode}.`
+          }`
+        });
+      }
     }
   };
 

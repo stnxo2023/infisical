@@ -263,19 +263,16 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
     const basicAuth = Buffer.from(`${activeClientId}:${clientSecret}`).toString("base64");
 
     try {
-      await request.post(
-        tokenEndpoint,
-        new URLSearchParams({
+      await request.post(tokenEndpoint, undefined, {
+        params: {
           grant_type: "client_credentials",
           scope: "all-apis"
-        }).toString(),
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: `Basic ${basicAuth}`
-          }
+        },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${basicAuth}`
         }
-      );
+      });
     } catch (error: unknown) {
       let errorMessage = "Unknown error";
 

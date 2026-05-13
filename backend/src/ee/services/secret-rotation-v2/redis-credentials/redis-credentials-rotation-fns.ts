@@ -93,12 +93,6 @@ export const redisCredentialsRotationFactory: TRotationFactory<
         })
       });
 
-      const result: string = await conn.auth(credentials.username, credentials.password, () => {});
-
-      if (result !== "OK") {
-        throw new BadRequestError({ message: `Invalid credentials, Redis returned ${result} status` });
-      }
-
       await conn.ping();
     } catch (err) {
       throw new Error(redactPasswords(err, [credentials]));

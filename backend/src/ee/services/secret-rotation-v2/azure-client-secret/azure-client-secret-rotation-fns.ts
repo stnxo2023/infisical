@@ -258,12 +258,12 @@ export const azureClientSecretRotationFactory: TRotationFactory<
     try {
       await request.post(
         tokenEndpoint,
-        new URLSearchParams({
+        {
           grant_type: "client_credentials",
           client_id: activeClientId,
           client_secret: clientSecret,
           scope: "https://graph.microsoft.com/.default"
-        }).toString(),
+        },
         {
           headers: { "Content-Type": "application/x-www-form-urlencoded" }
         }

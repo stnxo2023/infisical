@@ -154,7 +154,7 @@ export const SecretRotationTableRow = ({
                     {isCheckingRotation ? <LoaderCircleIcon className="animate-spin" /> : <Check />}
                   </IconButton>
                 </TooltipTrigger>
-                <TooltipContent>Check Credentials</TooltipContent>
+                <TooltipContent>Validate Credentials</TooltipContent>
               </Tooltip>
             );
           }}
