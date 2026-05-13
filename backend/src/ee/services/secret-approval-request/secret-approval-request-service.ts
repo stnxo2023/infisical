@@ -337,16 +337,18 @@ export const secretApprovalRequestServiceFactory = ({
     const getHasSecretReadAccess = (environment: string, tags: { slug: string }[], secretPath?: string) => {
       const isReviewer = policy.approvers.some(({ userId }) => userId === actorId);
 
-      if (!isReviewer) {
-        const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-          environment,
-          secretPath: secretPath || "/",
-          secretTags: tags.map((i) => i.slug)
-        });
-        return canRead;
+      // Reviewers get temporary read access only while the request is open for review
+      if (isReviewer && secretApprovalRequest.status === RequestState.Open) {
+        return true;
       }
 
-      return true;
+      // Otherwise check actual read permissions
+      const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath: secretPath || "/",
+        secretTags: tags.map((i) => i.slug)
+      });
+      return canRead;
     };
 
     let secrets;
