@@ -272,7 +272,7 @@ export const pamWebAccessServiceFactory = ({
       );
       if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
 
-      const actorUser = await userDAL.findById(actor.id);
+      const actorUser = await requestMemoize(requestMemoKeys.userFindById(actor.id), () => userDAL.findById(actor.id));
       if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
       const org = await requestMemoize(requestMemoKeys.orgFindOrgById(project.orgId), () =>
@@ -497,7 +497,7 @@ export const pamWebAccessServiceFactory = ({
       });
 
       // 3. CREATE SESSION
-      const user = await userDAL.findById(userId);
+      const user = await requestMemoize(requestMemoKeys.userFindById(userId), () => userDAL.findById(userId));
       const expiresAt = new Date(Date.now() + DEFAULT_WEB_SESSION_DURATION_MS);
 
       session = await pamSessionDAL.create({

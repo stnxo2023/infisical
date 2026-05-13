@@ -867,7 +867,7 @@ export const pamAccountServiceFactory = ({
       }
     }
 
-    const actorUser = await userDAL.findById(actor.id);
+    const actorUser = await requestMemoize(requestMemoKeys.userFindById(actor.id), () => userDAL.findById(actor.id));
     if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
     // If no mfaSessionId is provided, create a new MFA session
@@ -955,7 +955,7 @@ export const pamAccountServiceFactory = ({
       }
     }
 
-    const user = await userDAL.findById(actor.id);
+    const user = await requestMemoize(requestMemoKeys.userFindById(actor.id), () => userDAL.findById(actor.id));
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
     if (resourceType === PamResource.AwsIam) {
@@ -1861,7 +1861,7 @@ export const pamAccountServiceFactory = ({
     if (!mfaSessionId && accountWithParent.requireMfa) {
       // actorOrgId equals project.orgId: getProjectPermission above guarantees project existence
       // and org membership, so no separate project lookup is needed to resolve the org ID.
-      const actorUser = await userDAL.findById(actorId);
+      const actorUser = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
       if (!actorUser) throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
 
       const org = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>
