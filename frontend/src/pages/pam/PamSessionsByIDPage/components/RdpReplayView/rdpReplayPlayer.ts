@@ -242,7 +242,10 @@ export class RdpReplayPlayer {
         // Server only sends PositionPointer for its own moves; drive cursor from input.
         if (ev.x !== undefined && ev.y !== undefined) {
           const count = this.decoder.move_pointer(ev.x, ev.y);
-          if (count > 0) this.blitDirtyRects(count);
+          // expandBounds=false: cursor composite rects can extend slightly
+          // past the framebuffer (sprite at the desktop edge). Cursor
+          // position shouldn't define the recording's desktop bounds.
+          if (count > 0) this.blitDirtyRects(count, false);
         }
         break;
       case "keyboard":
@@ -253,7 +256,7 @@ export class RdpReplayPlayer {
     }
   };
 
-  private blitDirtyRects = (count: number) => {
+  private blitDirtyRects = (count: number, expandBounds = true) => {
     // Re-view: wasm-bindgen may reallocate linear memory between calls.
     const ptr = this.decoder.buffer_ptr();
     const len = this.decoder.buffer_len();
@@ -267,15 +270,17 @@ export class RdpReplayPlayer {
       const r = this.decoder.dirty_rect(i);
       if (r) {
         this.ctx.putImageData(fullImage, 0, 0, r.x, r.y, r.w, r.h);
-        const right = r.x + r.w;
-        const bottom = r.y + r.h;
-        if (right > this.contentMaxX) {
-          this.contentMaxX = right;
-          boundsExpanded = true;
-        }
-        if (bottom > this.contentMaxY) {
-          this.contentMaxY = bottom;
-          boundsExpanded = true;
+        if (expandBounds) {
+          const right = r.x + r.w;
+          const bottom = r.y + r.h;
+          if (right > this.contentMaxX) {
+            this.contentMaxX = right;
+            boundsExpanded = true;
+          }
+          if (bottom > this.contentMaxY) {
+            this.contentMaxY = bottom;
+            boundsExpanded = true;
+          }
         }
         r.free();
       }
