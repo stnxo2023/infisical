@@ -4,6 +4,7 @@ import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { AwsElastiCacheDatabaseProvider } from "./aws-elasticache";
 import { AwsIamProvider } from "./aws-iam";
+import { AwsMemoryDbDatabaseProvider } from "./aws-memorydb";
 import { AzureEntraIDProvider } from "./azure-entra-id";
 import { AzureSqlDatabaseProvider } from "./azure-sql-database";
 import { CassandraProvider } from "./cassandra";
@@ -41,6 +42,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.AwsIam]: AwsIamProvider(),
   [DynamicSecretProviders.Redis]: RedisDatabaseProvider(),
   [DynamicSecretProviders.AwsElastiCache]: AwsElastiCacheDatabaseProvider(),
+  [DynamicSecretProviders.AwsMemoryDb]: AwsMemoryDbDatabaseProvider(),
   [DynamicSecretProviders.MongoAtlas]: MongoAtlasProvider(),
   [DynamicSecretProviders.MongoDB]: MongoDBProvider(),
   [DynamicSecretProviders.ElasticSearch]: ElasticSearchProvider(),
