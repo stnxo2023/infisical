@@ -36,6 +36,13 @@ import {
   TDatabricksServicePrincipalSecretRotationWithConnection
 } from "./databricks-service-principal-secret";
 import {
+  TDatadogApplicationKeySecretRotation,
+  TDatadogApplicationKeySecretRotationGeneratedCredentials,
+  TDatadogApplicationKeySecretRotationInput,
+  TDatadogApplicationKeySecretRotationListItem,
+  TDatadogApplicationKeySecretRotationWithConnection
+} from "./datadog-application-key-secret";
+import {
   TDbtServiceTokenRotation,
   TDbtServiceTokenRotationGeneratedCredentials,
   TDbtServiceTokenRotationInput,
@@ -149,7 +156,8 @@ export type TSecretRotationV2 =
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
   | THpIloRotation
-  | TSupabaseApiKeyRotation;
+  | TSupabaseApiKeyRotation
+  | TDatadogApplicationKeySecretRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -169,7 +177,8 @@ export type TSecretRotationV2WithConnection =
   | TWindowsLocalAccountRotationWithConnection
   | TOpenRouterApiKeyRotationWithConnection
   | THpIloRotationWithConnection
-  | TSupabaseApiKeyRotationWithConnection;
+  | TSupabaseApiKeyRotationWithConnection
+  | TDatadogApplicationKeySecretRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -185,7 +194,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TWindowsLocalAccountRotationGeneratedCredentials
   | TOpenRouterApiKeyRotationGeneratedCredentials
   | THpIloRotationGeneratedCredentials
-  | TSupabaseApiKeyRotationGeneratedCredentials;
+  | TSupabaseApiKeyRotationGeneratedCredentials
+  | TDatadogApplicationKeySecretRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -205,7 +215,8 @@ export type TSecretRotationV2Input =
   | TWindowsLocalAccountRotationInput
   | TOpenRouterApiKeyRotationInput
   | THpIloRotationInput
-  | TSupabaseApiKeyRotationInput;
+  | TSupabaseApiKeyRotationInput
+  | TDatadogApplicationKeySecretRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -225,7 +236,8 @@ export type TSecretRotationV2ListItem =
   | TWindowsLocalAccountRotationListItem
   | TOpenRouterApiKeyRotationListItem
   | THpIloRotationListItem
-  | TSupabaseApiKeyRotationListItem;
+  | TSupabaseApiKeyRotationListItem
+  | TDatadogApplicationKeySecretRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]

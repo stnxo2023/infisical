@@ -84,6 +84,8 @@ import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-
 import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
+import { ValidateDatadogConnectionCredentialsSchema } from "./datadog";
+import { datadogConnectionService } from "./datadog/datadog-connection-service";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
 import { dbtConnectionService } from "./dbt/dbt-connection-service";
 import { ValidateDevinConnectionCredentialsSchema } from "./devin";
@@ -240,7 +242,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
   [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
   [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema,
-  [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema
+  [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
+  [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1114,6 +1117,7 @@ export const appConnectionServiceFactory = ({
     northflank: northflankConnectionService(connectAppConnectionById),
     externalInfisical: externalInfisicalConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
+    datadog: datadogConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
