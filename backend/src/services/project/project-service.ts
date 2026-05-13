@@ -344,13 +344,18 @@ export const projectServiceFactory = ({
           tx
         );
       } catch (err) {
-        if (
-          err instanceof DatabaseError &&
-          (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
-        ) {
-          throw new BadRequestError({
-            message: `A project with the slug "${slug}" already exists in your organization. Please choose a different name or slug.`
-          });
+        if (err instanceof DatabaseError) {
+          const code = (err.error as { code?: string })?.code;
+          if (code === DatabaseErrorCode.UniqueViolation) {
+            throw new BadRequestError({
+              message: `A project with the slug "${slug}" already exists in your organization. Please choose a different name or slug.`
+            });
+          }
+          if (code === DatabaseErrorCode.StringDataRightTruncation) {
+            throw new BadRequestError({
+              message: "One or more fields exceed the allowed length. Please shorten and try again."
+            });
+          }
         }
         throw err;
       }
@@ -910,10 +915,18 @@ export const projectServiceFactory = ({
 
       return updatedProject;
     } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
-        throw new BadRequestError({
-          message: `Failed to update project. A project with the slug "${update.slug}" already exists in your organization. Please choose a different slug.`
-        });
+      if (err instanceof DatabaseError) {
+        const code = (err.error as { code?: string })?.code;
+        if (code === DatabaseErrorCode.UniqueViolation) {
+          throw new BadRequestError({
+            message: `Failed to update project. A project with the slug "${update.slug}" already exists in your organization. Please choose a different slug.`
+          });
+        }
+        if (code === DatabaseErrorCode.StringDataRightTruncation) {
+          throw new BadRequestError({
+            message: "One or more fields exceed the allowed length. Please shorten and try again."
+          });
+        }
       }
       throw err;
     }
