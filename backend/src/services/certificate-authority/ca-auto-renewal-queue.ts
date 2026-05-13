@@ -1,7 +1,7 @@
 /* eslint-disable no-continue, no-await-in-loop */
 import RE2 from "re2";
 
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -437,12 +437,12 @@ export const caAutoRenewalQueueFactory = ({
 
   const startDailyAutoRenewalJob = () => {
     cronJob.register({
-      name: "ca-daily-auto-renewal",
+      name: CronJobName.CaDailyAutoRenewal,
       pattern: "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
         await queueService.queue(QueueName.CaAutoRenewal, QueueJobs.CaDailyAutoRenewal, undefined as never, {
-          jobId: "ca-daily-auto-renewal"
+          jobId: CronJobName.CaDailyAutoRenewal
         });
       }
     });

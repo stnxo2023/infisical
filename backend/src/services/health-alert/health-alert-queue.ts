@@ -1,7 +1,7 @@
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
 type THealthAlertServiceFactoryDep = {
@@ -21,7 +21,7 @@ export const healthAlertServiceFactory = ({
 
   const init = () => {
     cronJob.register({
-      name: "health-alert",
+      name: CronJobName.HealthAlert,
       pattern: "*/5 * * * *",
       runHashTtlS: 60 * 60,
       enabled: !appCfg.isSecondaryInstance,

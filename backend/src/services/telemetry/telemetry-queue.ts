@@ -2,7 +2,7 @@ import { PostHog } from "posthog-node";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
 import { getServerCfg } from "../super-admin/super-admin-service";
@@ -41,7 +41,7 @@ export const telemetryQueueServiceFactory = ({
     if (appCfg.INFISICAL_CLOUD || !postHog) return;
 
     cronJob.register({
-      name: "telemetry-instance-stats",
+      name: CronJobName.TelemetryInstanceStats,
       pattern: "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
@@ -69,7 +69,7 @@ export const telemetryQueueServiceFactory = ({
     if (!postHog) return;
 
     cronJob.register({
-      name: "telemetry-aggregated-events",
+      name: CronJobName.TelemetryAggregatedEvents,
       pattern: "*/5 * * * *",
       runHashTtlS: 60 * 60,
       handler: async () => {

@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs } from "@app/queue";
 
@@ -27,7 +27,7 @@ export const certificateV3QueueServiceFactory = ({
 
   const init = () => {
     cronJob.register({
-      name: "certificate-v3-auto-renewal",
+      name: CronJobName.CertificateV3AutoRenewal,
       pattern: CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE,
       runHashTtlS: 3 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,

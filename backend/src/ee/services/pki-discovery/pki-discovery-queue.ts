@@ -1,6 +1,6 @@
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue/queue-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -104,12 +104,12 @@ export const pkiDiscoveryQueueFactory = ({
     });
 
     cronJob.register({
-      name: "pki-discovery-scheduled-scan",
+      name: CronJobName.PkiDiscoveryScheduledScan,
       pattern: "0 2 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
         await queueService.queue(QueueName.PkiDiscoveryScan, QueueJobs.PkiDiscoveryScheduledScan, undefined as never, {
-          jobId: "pki-discovery-scheduled-scan"
+          jobId: CronJobName.PkiDiscoveryScheduledScan
         });
       }
     });

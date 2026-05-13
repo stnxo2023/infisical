@@ -10,7 +10,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
@@ -1223,7 +1223,7 @@ export const secretSyncQueueFactory = ({
 
   const startDailySecretSyncRetryJob = () => {
     cronJob.register({
-      name: "daily-secret-sync-retry",
+      name: CronJobName.DailySecretSyncRetry,
       pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
@@ -1231,7 +1231,7 @@ export const secretSyncQueueFactory = ({
           QueueName.AppConnectionSecretSync,
           QueueJobs.DailySecretSyncRetry,
           undefined as never,
-          { jobId: "daily-secret-sync-retry" }
+          { jobId: CronJobName.DailySecretSyncRetry }
         );
       }
     });

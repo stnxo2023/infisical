@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -213,7 +213,7 @@ export const appConnectionCredentialRotationQueueFactory = async ({
   });
 
   cronJob.register({
-    name: "app-connection-credential-rotation-queue-rotations",
+    name: CronJobName.AppConnectionCredentialRotationQueueRotations,
     pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *",
     runHashTtlS: 3 * 24 * 60 * 60,
     handler: async () => {
@@ -221,7 +221,7 @@ export const appConnectionCredentialRotationQueueFactory = async ({
         QueueName.AppConnectionCredentialRotation,
         QueueJobs.AppConnectionCredentialRotationQueueRotations,
         undefined as never,
-        { jobId: "app-connection-credential-rotation-queue-rotations" }
+        { jobId: CronJobName.AppConnectionCredentialRotationQueueRotations }
       );
     }
   });

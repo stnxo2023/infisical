@@ -1,6 +1,6 @@
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue/queue-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -127,12 +127,12 @@ export const pamDiscoveryQueueFactory = ({
 
     // runs every day at 3:00 AM
     cronJob.register({
-      name: "pam-discovery-scheduled-scan",
+      name: CronJobName.PamDiscoveryScheduledScan,
       pattern: "0 3 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
         await queueService.queue(QueueName.PamDiscoveryScan, QueueJobs.PamDiscoveryScheduledScan, undefined as never, {
-          jobId: "pam-discovery-scheduled-scan"
+          jobId: CronJobName.PamDiscoveryScheduledScan
         });
       }
     });

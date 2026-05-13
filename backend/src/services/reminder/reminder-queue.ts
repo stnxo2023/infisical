@@ -1,4 +1,4 @@
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
 import { TReminderServiceFactory } from "./reminder-types";
@@ -16,7 +16,7 @@ export const dailyReminderQueueServiceFactory = ({
 }: TDailyReminderQueueServiceFactoryDep) => {
   const startDailyRemindersJob = () => {
     cronJob.register({
-      name: "daily-reminders",
+      name: CronJobName.DailyReminders,
       pattern: "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {

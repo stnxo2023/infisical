@@ -15,7 +15,7 @@ import {
   TSecretRotationSendNotificationJobPayload
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -184,7 +184,7 @@ export const secretRotationV2QueueServiceFactory = async ({
   });
 
   cronJob.register({
-    name: "secret-rotation-v2-queue-rotations",
+    name: CronJobName.SecretRotationV2QueueRotations,
     pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *",
     runHashTtlS: 3 * 24 * 60 * 60,
     handler: async () => {
@@ -192,7 +192,7 @@ export const secretRotationV2QueueServiceFactory = async ({
         QueueName.SecretRotationV2,
         QueueJobs.SecretRotationV2QueueRotations,
         undefined as never,
-        { jobId: "secret-rotation-v2-queue-rotations" }
+        { jobId: CronJobName.SecretRotationV2QueueRotations }
       );
     }
   });

@@ -4,7 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -153,7 +153,7 @@ export const certificateCleanupQueueFactory = ({
 
   const init = () => {
     cronJob.register({
-      name: "certificate-cleanup",
+      name: CronJobName.CertificateCleanup,
       pattern: "0 2 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,

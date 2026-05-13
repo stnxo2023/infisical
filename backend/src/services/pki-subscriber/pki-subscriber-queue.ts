@@ -1,5 +1,5 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
@@ -162,12 +162,12 @@ export const pkiSubscriberQueueServiceFactory = ({
 
   const startDailyAutoRenewalJob = () => {
     cronJob.register({
-      name: "pki-subscriber-daily-auto-renewal",
+      name: CronJobName.PkiSubscriberDailyAutoRenewal,
       pattern: "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
         await queueService.queue(QueueName.PkiSubscriber, QueueJobs.PkiSubscriberDailyAutoRenewal, undefined as never, {
-          jobId: "pki-subscriber-daily-auto-renewal"
+          jobId: CronJobName.PkiSubscriberDailyAutoRenewal
         });
       }
     });

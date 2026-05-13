@@ -1,6 +1,6 @@
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
 type TPamAccountRotationServiceFactoryDep = {
@@ -18,7 +18,7 @@ export const pamAccountRotationServiceFactory = ({
 
   const init = () => {
     cronJob.register({
-      name: "pam-account-rotation",
+      name: CronJobName.PamAccountRotation,
       pattern: "0 * * * *",
       runHashTtlS: 1 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,

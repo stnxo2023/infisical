@@ -1,5 +1,5 @@
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
@@ -55,7 +55,7 @@ export const pkiSyncCleanupQueueServiceFactory = ({
 
   const init = () => {
     cronJob.register({
-      name: "pki-sync-cleanup",
+      name: CronJobName.PkiSyncCleanup,
       pattern: "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,

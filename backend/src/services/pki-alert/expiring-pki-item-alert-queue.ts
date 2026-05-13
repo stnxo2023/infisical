@@ -1,4 +1,4 @@
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 
@@ -17,7 +17,7 @@ export const dailyExpiringPkiItemAlertQueueServiceFactory = ({
 }: TDailyExpiringPkiItemAlertQueueServiceFactoryDep) => {
   const startSendingAlerts = () => {
     cronJob.register({
-      name: "daily-expiring-pki-item-alert",
+      name: CronJobName.DailyExpiringPkiItemAlert,
       pattern: "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {

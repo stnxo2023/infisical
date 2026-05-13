@@ -6,6 +6,30 @@ import { Cluster, Redis } from "ioredis";
 import { logger } from "@app/lib/logger";
 import { ExecutionError, Redlock, ResourceLockedError } from "@app/lib/red-lock";
 
+// ── cron job name registry ────────────────────────────────────────────────────
+
+export const CronJobName = {
+  HealthAlert: "health-alert",
+  DailyReminders: "daily-reminders",
+  DailyResourceCleanup: "daily-resource-cleanup",
+  FrequentResourceCleanup: "frequent-resource-cleanup",
+  CertificateCleanup: "certificate-cleanup",
+  CertificateV3AutoRenewal: "certificate-v3-auto-renewal",
+  CaDailyAutoRenewal: "ca-daily-auto-renewal",
+  DailyExpiringPkiItemAlert: "daily-expiring-pki-item-alert",
+  DailyPkiAlertV2Processing: "daily-pki-alert-v2-processing",
+  PkiSyncCleanup: "pki-sync-cleanup",
+  PkiSubscriberDailyAutoRenewal: "pki-subscriber-daily-auto-renewal",
+  PkiDiscoveryScheduledScan: "pki-discovery-scheduled-scan",
+  PamDiscoveryScheduledScan: "pam-discovery-scheduled-scan",
+  PamAccountRotation: "pam-account-rotation",
+  DailySecretSyncRetry: "daily-secret-sync-retry",
+  SecretRotationV2QueueRotations: "secret-rotation-v2-queue-rotations",
+  AppConnectionCredentialRotationQueueRotations: "app-connection-credential-rotation-queue-rotations",
+  TelemetryInstanceStats: "telemetry-instance-stats",
+  TelemetryAggregatedEvents: "telemetry-aggregated-events"
+} as const;
+
 // ── tuning constants ──────────────────────────────────────────────────────────
 
 const PARTICIPANT_SLOTS = 5;

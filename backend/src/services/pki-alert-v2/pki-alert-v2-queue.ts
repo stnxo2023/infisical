@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
@@ -252,7 +252,7 @@ export const pkiAlertV2QueueServiceFactory = ({
     });
 
     cronJob.register({
-      name: "daily-pki-alert-v2-processing",
+      name: CronJobName.DailyPkiAlertV2Processing,
       pattern: "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,

@@ -5,7 +5,7 @@ import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { getConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { TUserNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 
@@ -20,9 +20,6 @@ import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-v
 import { TSecretSharingDALFactory } from "../secret-sharing/secret-sharing-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TServiceTokenServiceFactory } from "../service-token/service-token-service";
-
-const CRON_NAME_DAILY_CLEANUP = "daily-resource-cleanup";
-const CRON_NAME_FREQUENT_CLEANUP = "frequent-resource-cleanup";
 
 type TDailyResourceCleanUpQueueServiceFactoryDep = {
   auditLogDAL: Pick<TAuditLogDALFactory, "pruneAuditLog">;
@@ -79,12 +76,12 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
 
   const init = () => {
     cronJob.register({
-      name: CRON_NAME_DAILY_CLEANUP,
+      name: CronJobName.DailyResourceCleanup,
       pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
-        logger.info(`cron[${CRON_NAME_DAILY_CLEANUP}]: task started`);
+        logger.info(`cron[${CronJobName.DailyResourceCleanup}]: task started`);
         await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
         await secretSharingDAL.pruneExpiredSharedSecrets();
         await secretSharingDAL.pruneExpiredSecretRequests();
@@ -110,12 +107,12 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     });
 
     cronJob.register({
-      name: CRON_NAME_FREQUENT_CLEANUP,
+      name: CronJobName.FrequentResourceCleanup,
       pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *",
       runHashTtlS: 2 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
-        logger.info(`cron[${CRON_NAME_FREQUENT_CLEANUP}]: task started`);
+        logger.info(`cron[${CronJobName.FrequentResourceCleanup}]: task started`);
         await identityAccessTokenDAL.removeExpiredTokens();
       }
     });
