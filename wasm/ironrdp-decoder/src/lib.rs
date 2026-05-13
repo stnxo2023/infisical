@@ -127,8 +127,17 @@ impl RdpDecoder {
     // InclusiveRectangle: left/top/right/bottom inclusive.
     fn collect_dirty_rects(&mut self, outputs: Vec<ActiveStageOutput>) -> u32 {
         self.last_dirty.clear();
+        let fb_w = self.image.width();
+        let fb_h = self.image.height();
         for out in outputs {
             if let ActiveStageOutput::GraphicsUpdate(region) = out {
+                // Drop rects entirely outside the framebuffer — cursor-restore
+                // at the off-screen prime (0xffff, 0xffff) would otherwise leak
+                // u16::MAX into bounds tracking and shrink the canvas to a
+                // tiny box.
+                if region.left >= fb_w || region.top >= fb_h {
+                    continue;
+                }
                 self.last_dirty.push(DirtyRect {
                     x: region.left,
                     y: region.top,
