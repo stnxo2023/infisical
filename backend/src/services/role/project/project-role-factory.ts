@@ -1,4 +1,4 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import { v4 as uuidv4 } from "uuid";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
@@ -10,16 +10,12 @@ import {
   projectViewerPermission,
   sshHostBootstrapPermissions
 } from "@app/ee/services/permission/default-roles";
-import { assertPermissionBoundary } from "@app/ee/services/permission/permission-fns";
-import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   isCustomProjectRole,
   ProjectPermissionActions,
-  ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -56,19 +52,6 @@ export const newProjectRoleFactory = ({
       actorOrgId: dto.permission.orgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
-    if (dto.data.permissions) {
-      const packedPermissions =
-        typeof dto.data.permissions === "string" ? JSON.parse(dto.data.permissions) : dto.data.permissions;
-      const managedPermission = createMongoAbility<ProjectPermissionSet>(
-        buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: packedPermissions }]),
-        { conditionsMatcher }
-      );
-      assertPermissionBoundary(
-        permission,
-        managedPermission,
-        "Cannot grant role permissions exceeding your own privileges"
-      );
-    }
   };
 
   const onUpdateRoleGuard: TRoleScopeFactory["onUpdateRoleGuard"] = async (dto) => {
@@ -82,19 +65,6 @@ export const newProjectRoleFactory = ({
       actorOrgId: dto.permission.orgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
-    if (dto.data.permissions) {
-      const packedPermissions =
-        typeof dto.data.permissions === "string" ? JSON.parse(dto.data.permissions) : dto.data.permissions;
-      const managedPermission = createMongoAbility<ProjectPermissionSet>(
-        buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: packedPermissions }]),
-        { conditionsMatcher }
-      );
-      assertPermissionBoundary(
-        permission,
-        managedPermission,
-        "Cannot grant role permissions exceeding your own privileges"
-      );
-    }
   };
 
   const onDeleteRoleGuard: TRoleScopeFactory["onDeleteRoleGuard"] = async (dto) => {

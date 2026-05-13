@@ -1,18 +1,14 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
   orgNoAccessPermissions,
   OrgPermissionActions,
-  OrgPermissionSet,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
-import { assertPermissionBoundary } from "@app/ee/services/permission/permission-fns";
-import { buildOrgPermissionRules } from "@app/ee/services/permission/permission-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError } from "@app/lib/errors";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
@@ -47,19 +43,6 @@ export const newOrgRoleFactory = ({
       scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Role);
-    if (dto.data.permissions) {
-      const packedPermissions =
-        typeof dto.data.permissions === "string" ? JSON.parse(dto.data.permissions) : dto.data.permissions;
-      const managedPermission = createMongoAbility<OrgPermissionSet>(
-        buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: packedPermissions }]),
-        { conditionsMatcher }
-      );
-      assertPermissionBoundary(
-        permission,
-        managedPermission,
-        "Cannot grant role permissions exceeding your own privileges"
-      );
-    }
   };
 
   const onUpdateRoleGuard: TRoleScopeFactory["onUpdateRoleGuard"] = async (dto) => {
@@ -72,19 +55,6 @@ export const newOrgRoleFactory = ({
       scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Role);
-    if (dto.data.permissions) {
-      const packedPermissions =
-        typeof dto.data.permissions === "string" ? JSON.parse(dto.data.permissions) : dto.data.permissions;
-      const managedPermission = createMongoAbility<OrgPermissionSet>(
-        buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: packedPermissions }]),
-        { conditionsMatcher }
-      );
-      assertPermissionBoundary(
-        permission,
-        managedPermission,
-        "Cannot grant role permissions exceeding your own privileges"
-      );
-    }
   };
 
   const onDeleteRoleGuard: TRoleScopeFactory["onDeleteRoleGuard"] = async (dto) => {

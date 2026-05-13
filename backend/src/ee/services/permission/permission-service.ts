@@ -53,7 +53,7 @@ import {
 } from "./permission-service-types";
 import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./project-permission";
 
-export const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
+const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
   const rules = orgUserRoles
     .map(({ role, permissions }) => {
       switch (role) {
@@ -77,7 +77,7 @@ export const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) =>
   return rules;
 };
 
-export const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
+const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
   const rules = projectUserRoles
     .map(({ role, permissions }) => {
       switch (role) {
