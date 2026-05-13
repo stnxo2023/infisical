@@ -25,7 +25,8 @@ const DEFAULTS = {
   leaseDurationMs: 5 * 60_000,
   handlerTimeoutMs: 5 * 60_000,
   retryBackoffBaseMs: 30_000,
-  retryBackoffMaxMs: 5 * 60_000
+  retryBackoffMaxMs: 5 * 60_000,
+  drainTimeoutMs: 25_000
 } as const;
 
 // ── redis schema ──────────────────────────────────────────────────────────────
@@ -99,7 +100,8 @@ export const cronJobFactory = ({
   leaseDurationMs = DEFAULTS.leaseDurationMs,
   handlerTimeoutMs = DEFAULTS.handlerTimeoutMs,
   retryBackoffBaseMs = DEFAULTS.retryBackoffBaseMs,
-  retryBackoffMaxMs = DEFAULTS.retryBackoffMaxMs
+  retryBackoffMaxMs = DEFAULTS.retryBackoffMaxMs,
+  drainTimeoutMs = DEFAULTS.drainTimeoutMs
 }: {
   redis: Redis | Cluster;
   redlock: Redlock;
@@ -112,10 +114,12 @@ export const cronJobFactory = ({
   handlerTimeoutMs?: number;
   retryBackoffBaseMs?: number;
   retryBackoffMaxMs?: number;
+  drainTimeoutMs?: number;
 }) => {
   const workerId = randomUUID();
   const entries = new Map<string, CronEntry>();
   const lastEnqueuedAt = new Map<string, number>();
+  const inFlight = new Set<Promise<unknown>>();
   let slotTimer: ReturnType<typeof setInterval> | null = null;
   let enqueueTimer: ReturnType<typeof setInterval> | null = null;
   let processTimer: ReturnType<typeof setInterval> | null = null;
@@ -402,14 +406,21 @@ export const cronJobFactory = ({
       logger.info(`cron[${data.name}]: re-claiming stalled run [id=${id}] [previous_worker=${data.worker_id}]`);
     }
 
+    // Track the in-flight run so stop() can wait for it to settle before
+    // tearing down. Lock-contention rejections settle within a tick, so they
+    // don't measurably delay shutdown drain.
+    const tracked = redlock.using([LEASE_KEY(id)], leaseDurationMs, (signal) =>
+      executeUnderLease(entry, id, attempts + 1, signal as AbortSignal)
+    );
+    inFlight.add(tracked);
     try {
-      await redlock.using([LEASE_KEY(id)], leaseDurationMs, (signal) =>
-        executeUnderLease(entry, id, attempts + 1, signal as AbortSignal)
-      );
+      await tracked;
     } catch (err) {
       // ExecutionError / ResourceLockedError mean another pod owns the lease — expected contention, swallow.
       if (err instanceof ExecutionError || err instanceof ResourceLockedError) return;
       logger.error({ err }, `cron[${data.name}]: unexpected error acquiring lease [id=${id}]`);
+    } finally {
+      inFlight.delete(tracked);
     }
   };
 
@@ -451,12 +462,36 @@ export const cronJobFactory = ({
     safeTick("initial slot claim", claimOrRefreshSlot)();
   };
 
-  // Stops the timers and atomically releases the held slot (only if we still
-  // own it) so another pod can take over without waiting for the slot TTL.
+  // Stops the timers, drains in-flight handlers, and atomically releases the
+  // held slot (only if we still own it) so another pod can take over without
+  // waiting for the slot TTL.
+  //
+  // Drain semantics wait for the currently active runs to finish so destructive handlers (rotations, deletions)
+  // aren't aborted mid-execution and graceful redeploys don't leave runs
+  // stuck in `status='running'` until the lease TTL elapses.
   const stop = async () => {
     if (slotTimer) clearInterval(slotTimer);
     if (enqueueTimer) clearInterval(enqueueTimer);
     if (processTimer) clearInterval(processTimer);
+
+    if (inFlight.size > 0) {
+      logger.info(`cron: draining ${inFlight.size} in-flight run(s) [worker=${workerId}]`);
+      const drained = Promise.allSettled(Array.from(inFlight));
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      const timedOut = new Promise<"timeout">((resolve) => {
+        timeoutHandle = setTimeout(() => resolve("timeout"), drainTimeoutMs);
+      });
+      try {
+        const result = await Promise.race([drained, timedOut]);
+        if (result === "timeout") {
+          logger.warn(
+            `cron: drain timeout reached after ${drainTimeoutMs}ms with ${inFlight.size} run(s) still active — relying on lease TTL for recovery [worker=${workerId}]`
+          );
+        }
+      } finally {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+      }
+    }
     if (currentSlot !== null) {
       await redis.eval(RELEASE_SLOT_IF_MINE_LUA, 1, SLOT_KEY(currentSlot), workerId);
       logger.info(`cron: released slot ${currentSlot} [worker=${workerId}]`);

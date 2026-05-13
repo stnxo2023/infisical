@@ -266,7 +266,11 @@ describe("retry backoff and handler timeout", () => {
       processIntervalMs: 100,
       slotTtlMs: 200,
       leaseDurationMs: 1000,
-      handlerTimeoutMs: 200
+      handlerTimeoutMs: 200,
+      // Bound the test's stop() drain. The handler hangs forever and new ticks
+      // keep dispatching it, so without a short drainTimeoutMs the cleanup
+      // would block until the production default (25s) and time the test out.
+      drainTimeoutMs: 50
     });
     f.register({ name: "x", pattern: "* * * * *", handler, runHashTtlS: 3600, maxAttempts: 3 });
     f.start();
@@ -283,7 +287,10 @@ describe("retry backoff and handler timeout", () => {
     );
     expect(wroteTimeoutError).toBe(true);
 
-    await f.stop();
+    // Advance past drainTimeoutMs so stop() can resolve via the drain timeout.
+    const stopPromise = f.stop();
+    await vi.advanceTimersByTimeAsync(100);
+    await stopPromise;
   });
 });
 
@@ -330,6 +337,24 @@ describe("min-age gate", () => {
 });
 
 describe("stop", () => {
+  // Locally mirrored from the retry-backoff suite — `setupPendingRun` lives in
+  // that describe's scope, but the graceful-shutdown tests below need the same
+  // pending-run fixture without coupling the two suites.
+  const setupPendingRun = (redis: ReturnType<typeof makeRedis>, runIdScheduledAt: number) => {
+    redis.set.mockResolvedValue("OK");
+    redis.eval.mockResolvedValue(1);
+    redis.zrangebyscore.mockResolvedValue([`x:${runIdScheduledAt}`]);
+    redis.hgetall.mockResolvedValue({
+      name: "x",
+      status: "pending",
+      attempts: "0",
+      enqueued_at_ms: "0"
+    });
+  };
+
+  // Identifies the slot-release eval (only Lua script that contains `del`).
+  const isSlotReleaseEval = (call: unknown[]): boolean => typeof call[0] === "string" && call[0].includes("del");
+
   test("releases held slot atomically", async () => {
     const redis = makeRedis();
     redis.set.mockResolvedValue("OK");
@@ -342,5 +367,105 @@ describe("stop", () => {
     const lastEval = redis.eval.mock.calls.at(-1) as unknown[];
     expect(lastEval[0]).toContain("del");
     expect(String(lastEval[2])).toContain("cron:slot:");
+  });
+
+  // Regression guard for the BullMQ Worker.close() drain semantics: stop()
+  // must wait for in-flight handlers to settle before releasing the slot,
+  // otherwise destructive handlers (rotations, deletions) get torn down
+  // mid-flight and leases linger until their TTL elapses.
+  test("drains in-flight handler before releasing the slot", async () => {
+    vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
+    const redis = makeRedis();
+    setupPendingRun(redis, Date.parse("2024-01-01T00:00:00Z"));
+
+    // Deferred-style handler: the test resolves it manually so we can assert
+    // ordering between handler completion and slot release. Multiple ticks
+    // can fire while the handler is in-flight (status stays "pending" in the
+    // mock), so we collect every resolver to release them all together.
+    const pendingResolvers: Array<() => void> = [];
+    const handler = vi.fn().mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          pendingResolvers.push(resolve);
+        })
+    );
+    const redlock = makeRedlock();
+    const f = cronJobFactory({
+      redis: redis as never,
+      redlock: redlock as never,
+      slotRefreshMs: 50,
+      enqueueIntervalMs: 100,
+      processIntervalMs: 100,
+      slotTtlMs: 200,
+      leaseDurationMs: 1000,
+      handlerTimeoutMs: 60_000,
+      drainTimeoutMs: 5_000
+    });
+    f.register({ name: "x", pattern: "* * * * *", handler, runHashTtlS: 3600, maxAttempts: 3 });
+    f.start();
+
+    // Drive ticks until at least one handler is mid-execution.
+    await vi.advanceTimersByTimeAsync(300);
+    expect(handler).toHaveBeenCalled();
+    expect(pendingResolvers.length).toBeGreaterThan(0);
+    expect(redis.eval.mock.calls.some(isSlotReleaseEval)).toBe(false);
+
+    // Begin stop() but don't await yet — the drain race must keep it pending
+    // while handlers are still in flight.
+    const stopPromise = f.stop();
+
+    // Flush a couple of microtask cycles. clearInterval has fired, but the
+    // slot release must not yet have been issued.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(redis.eval.mock.calls.some(isSlotReleaseEval)).toBe(false);
+
+    // Release every in-flight handler. Once the chain
+    //   handler.resolve → markCompleted → redlock.using.resolve → inFlight.delete
+    // settles for all of them, drain wins the race and stop() proceeds to
+    // slot release.
+    pendingResolvers.forEach((resolve) => resolve());
+    await stopPromise;
+
+    expect(redis.eval.mock.calls.some(isSlotReleaseEval)).toBe(true);
+  });
+
+  // The orchestrator's grace period (e.g. Kubernetes' default 30s) caps how
+  // long shutdown can block. drainTimeoutMs guards against a single hung
+  // handler holding stop() open past that window — anything still in flight
+  // after the timeout falls back to lease-TTL crash recovery.
+  test("respects drainTimeoutMs when an in-flight handler hangs", async () => {
+    vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
+    const redis = makeRedis();
+    setupPendingRun(redis, Date.parse("2024-01-01T00:00:00Z"));
+
+    const handler = vi.fn().mockImplementation(() => new Promise<void>(() => {})); // never resolves
+    const redlock = makeRedlock();
+    const f = cronJobFactory({
+      redis: redis as never,
+      redlock: redlock as never,
+      slotRefreshMs: 50,
+      enqueueIntervalMs: 100,
+      processIntervalMs: 100,
+      slotTtlMs: 200,
+      leaseDurationMs: 1000,
+      // Long enough that handlerTimeoutMs doesn't naturally drain inFlight.
+      handlerTimeoutMs: 60_000,
+      drainTimeoutMs: 200
+    });
+    f.register({ name: "x", pattern: "* * * * *", handler, runHashTtlS: 3600, maxAttempts: 3 });
+    f.start();
+
+    await vi.advanceTimersByTimeAsync(300);
+    expect(handler).toHaveBeenCalled();
+
+    const stopPromise = f.stop();
+    // Advance past drainTimeoutMs so the timeout branch wins the race.
+    await vi.advanceTimersByTimeAsync(300);
+    await stopPromise;
+
+    // Slot is released even though the handler is still hung — recovery is
+    // delegated to the lease TTL on a replacement pod.
+    expect(redis.eval.mock.calls.some(isSlotReleaseEval)).toBe(true);
   });
 });

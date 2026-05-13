@@ -51,6 +51,10 @@ const makeFactory = (overrides?: Partial<Parameters<typeof cronJobFactory>[0]>) 
     retryBackoffMaxMs: 500,
     handlerTimeoutMs: 5_000,
     minProcessAgeMs: 0,
+    // Keep test cleanup snappy. Production default is 25s to fit Kubernetes'
+    // grace period; in tests we'd rather not stall afterEach if a handler
+    // happens to be in flight at shutdown.
+    drainTimeoutMs: 1_000,
     ...overrides
   });
 };
@@ -356,5 +360,87 @@ describe("min-age gate", () => {
     });
 
     expect(handler).toHaveBeenCalled();
+  }, 10_000);
+});
+
+// ── graceful shutdown ──────────────────────────────────────────────────────────
+
+describe("graceful shutdown", () => {
+  // End-to-end regression guard for the BullMQ Worker.close() drain semantics:
+  // stop() must wait for in-flight handlers to finish before releasing the
+  // slot. Without this, redeploys would tear down active handlers mid-flight
+  // (risking half-applied destructive operations like rotations) and leave
+  // run hashes stuck in `status='running'` until the lease TTL elapses.
+  test("stop() waits for in-flight handler to complete before resolving", async () => {
+    let releaseHandler: () => void = () => {};
+    let handlerStartedAt = 0;
+    const handler = vi.fn().mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          handlerStartedAt = Date.now();
+          releaseHandler = resolve;
+        })
+    );
+
+    const f = factory({ handlerTimeoutMs: 30_000, drainTimeoutMs: 5_000 });
+    f.register({ name: "drain-job", pattern: FAST_PATTERN, handler, runHashTtlS: 3600 });
+    f.start();
+
+    // Wait for the enqueue + process pipeline to dispatch the handler.
+    await new Promise((r) => {
+      setTimeout(r, 1500);
+    });
+    expect(handler).toHaveBeenCalled();
+    expect(handlerStartedAt).toBeGreaterThan(0);
+
+    // Begin stop() but don't await yet. The drain race must keep it pending
+    // until we release the handler.
+    let stopResolvedAt = 0;
+    const stopPromise = f.stop().then(() => {
+      stopResolvedAt = Date.now();
+    });
+
+    // Sample the still-pending state. stop() should not have resolved yet
+    // because the handler is still in flight.
+    await new Promise((r) => {
+      setTimeout(r, 200);
+    });
+    expect(stopResolvedAt).toBe(0);
+
+    // Release the handler and capture the completion timestamp.
+    const handlerCompletedAt = Date.now();
+    releaseHandler();
+    await stopPromise;
+
+    // stop() must resolve at-or-after handler completion, never before.
+    expect(stopResolvedAt).toBeGreaterThanOrEqual(handlerCompletedAt);
+  }, 10_000);
+
+  // Ensures a hung handler can't block shutdown past the orchestrator's
+  // grace window: stop() falls back to lease-TTL crash recovery once the
+  // drain timer expires.
+  test("stop() releases the slot even when an in-flight handler hangs past drainTimeoutMs", async () => {
+    const handler = vi.fn().mockImplementation(() => new Promise<void>(() => {})); // never resolves
+    const f = factory({ handlerTimeoutMs: 30_000, drainTimeoutMs: 300 });
+    f.register({ name: "hang-drain-job", pattern: FAST_PATTERN, handler, runHashTtlS: 3600 });
+    f.start();
+
+    await new Promise((r) => {
+      setTimeout(r, 1500);
+    });
+    expect(handler).toHaveBeenCalled();
+
+    const slotKeysBefore = await testRedis.keys("cron:slot:*");
+    expect(slotKeysBefore.length).toBeGreaterThan(0);
+
+    const startedAt = Date.now();
+    await f.stop();
+    const elapsed = Date.now() - startedAt;
+
+    // Drain timed out; stop() returned within drainTimeoutMs + buffer rather
+    // than blocking on the hung handler. The slot was released atomically.
+    expect(elapsed).toBeLessThan(2_000);
+    const slotKeysAfter = await testRedis.keys("cron:slot:*");
+    expect(slotKeysAfter.length).toBe(0);
   }, 10_000);
 });
