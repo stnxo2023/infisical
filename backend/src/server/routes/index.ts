@@ -525,7 +525,7 @@ export const registerRoutes = async (
 ) => {
   const appCfg = getConfig();
 
-  const redlock = new Redlock([redis as Redis], { retryCount: 0 });
+  const redlock = new Redlock([redis], { retryCount: 0 });
   const cronJob = cronJobFactory({ redis, redlock });
   cronJob.start();
 

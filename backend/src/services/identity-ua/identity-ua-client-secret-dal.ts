@@ -33,7 +33,7 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
     let numberOfRetryOnFailure = 0;
     let isRetrying = false;
 
-    logger.info(`daily-resource-cleanup: remove expired univesal auth client secret started`);
+    logger.info(`daily-resource-cleanup: remove expired universal auth client secret started`);
     do {
       try {
         const findExpiredClientSecretQuery = (tx || db)(TableName.IdentityUaClientSecret)
@@ -77,7 +77,7 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
       }
       isRetrying = numberOfRetryOnFailure > 0;
     } while (deletedClientSecret.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
-    logger.info(`daily-resource-cleanup: remove expired univesal auth client secret completed`);
+    logger.info(`daily-resource-cleanup: remove expired universal auth client secret completed`);
   };
 
   return { ...uaClientSecretOrm, incrementUsage, removeExpiredClientSecrets };

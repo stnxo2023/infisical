@@ -323,7 +323,7 @@ describe("ZSET cleanup", () => {
     });
 
     const pending = await testRedis.zrange("cron:pending", 0, -1);
-    expect(pending).not.toContain(expect.stringContaining("clean-job"));
+    expect(pending.filter((s) => s.startsWith("clean-job:"))).toEqual([]);
   }, 10_000);
 });
 

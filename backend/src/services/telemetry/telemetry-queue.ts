@@ -46,13 +46,13 @@ export const telemetryQueueServiceFactory = ({
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
         const { instanceId } = await getServerCfg();
-        const telemtryStats = await telemetryDAL.getTelemetryInstanceStats();
+        const telemetryStats = await telemetryDAL.getTelemetryInstanceStats();
         const numberOfSecretOperationsMade = parseInt(
           (await keyStore.getItem(TELEMETRY_SECRET_OPERATIONS_KEY)) || "0",
           10
         );
         const numberOfSecretProcessed = parseInt((await keyStore.getItem(TELEMETRY_SECRET_PROCESSED_KEY)) || "0", 10);
-        const stats = { ...telemtryStats, numberOfSecretProcessed, numberOfSecretOperationsMade };
+        const stats = { ...telemetryStats, numberOfSecretProcessed, numberOfSecretOperationsMade };
 
         postHog.capture({
           event: PostHogEventTypes.TelemetryInstanceStats,

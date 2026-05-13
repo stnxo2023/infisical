@@ -4,7 +4,7 @@ import { CronExpressionParser } from "cron-parser";
 import { Cluster, Redis } from "ioredis";
 
 import { logger } from "@app/lib/logger";
-import { Redlock } from "@app/lib/red-lock";
+import { ExecutionError, Redlock, ResourceLockedError } from "@app/lib/red-lock";
 
 // ── tuning constants ──────────────────────────────────────────────────────────
 
@@ -322,7 +322,13 @@ export const cronJobFactory = ({
     const ac = new AbortController();
     leaseSignal.addEventListener?.("abort", () => ac.abort());
 
-    await markRunning(id, attempt);
+    try {
+      await markRunning(id, attempt);
+    } catch (err) {
+      logger.error({ err }, `cron[${entry.name}]: failed to mark run as running [id=${id}]`);
+      return;
+    }
+
     const startMs = Date.now();
     logger.info(`cron[${entry.name}]: start (attempt ${attempt}/${entry.maxAttempts}) [id=${id}]`);
 
@@ -341,8 +347,15 @@ export const cronJobFactory = ({
       const fitsBeforeNextFire = nextAttemptAt + NEXT_FIRE_BUFFER_MS < nextFireMs(entry.pattern);
       const final = attempt >= entry.maxAttempts || !fitsBeforeNextFire;
 
-      if (final) await markFailedFinal(id, err);
-      else await markPendingRetry(id, err, nextAttemptAt);
+      try {
+        if (final) await markFailedFinal(id, err);
+        else await markPendingRetry(id, err, nextAttemptAt);
+      } catch (stateErr) {
+        logger.error(
+          { err: stateErr, originalErr: err },
+          `cron[${entry.name}]: failed to mark run state after attempt ${attempt} [id=${id}]`
+        );
+      }
 
       logger.error(
         { err },
@@ -393,8 +406,10 @@ export const cronJobFactory = ({
       await redlock.using([LEASE_KEY(id)], leaseDurationMs, (signal) =>
         executeUnderLease(entry, id, attempts + 1, signal as AbortSignal)
       );
-    } catch {
-      // Lock contention — another pod is executing this run; move on.
+    } catch (err) {
+      // ExecutionError / ResourceLockedError mean another pod owns the lease — expected contention, swallow.
+      if (err instanceof ExecutionError || err instanceof ResourceLockedError) return;
+      logger.error({ err }, `cron[${data.name}]: unexpected error acquiring lease [id=${id}]`);
     }
   };
 
@@ -411,27 +426,29 @@ export const cronJobFactory = ({
     shuffleInPlace(ids);
 
     for (const id of ids) {
-      // eslint-disable-next-line no-await-in-loop
-      await processCandidate(id);
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await processCandidate(id);
+      } catch (err) {
+        logger.error({ err, id }, "cron: processCandidate failed");
+      }
     }
   };
 
   // ── lifecycle ───────────────────────────────────────────────────────────────
 
+  const safeTick = (label: string, fn: () => Promise<void>) => () => {
+    fn().catch((err: unknown) => logger.error({ err }, `cron: ${label} failed`));
+  };
+
   // Starts the slot-refresh, enqueue, and process timers, and claims a slot
   // immediately so the pod doesn't wait a full `slotRefreshMs` before
   // participating.
   const start = () => {
-    slotTimer = setInterval(() => {
-      void claimOrRefreshSlot();
-    }, slotRefreshMs);
-    enqueueTimer = setInterval(() => {
-      void enqueueTick();
-    }, enqueueIntervalMs);
-    processTimer = setInterval(() => {
-      void processTick();
-    }, processIntervalMs);
-    void claimOrRefreshSlot();
+    slotTimer = setInterval(safeTick("slot refresh", claimOrRefreshSlot), slotRefreshMs);
+    enqueueTimer = setInterval(safeTick("enqueue tick", enqueueTick), enqueueIntervalMs);
+    processTimer = setInterval(safeTick("process tick", processTick), processIntervalMs);
+    safeTick("initial slot claim", claimOrRefreshSlot)();
   };
 
   // Stops the timers and atomically releases the held slot (only if we still

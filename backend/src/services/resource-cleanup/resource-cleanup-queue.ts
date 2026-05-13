@@ -21,6 +21,9 @@ import { TSecretSharingDALFactory } from "../secret-sharing/secret-sharing-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TServiceTokenServiceFactory } from "../service-token/service-token-service";
 
+const CRON_NAME_DAILY_CLEANUP = "daily-resource-cleanup";
+const CRON_NAME_FREQUENT_CLEANUP = "frequent-resource-cleanup";
+
 type TDailyResourceCleanUpQueueServiceFactoryDep = {
   auditLogDAL: Pick<TAuditLogDALFactory, "pruneAuditLog">;
   auditLogService: Pick<TAuditLogServiceFactory, "checkPostgresAuditLogVolumeMigrationAlert">;
@@ -76,12 +79,12 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
 
   const init = () => {
     cronJob.register({
-      name: "daily-resource-cleanup",
+      name: CRON_NAME_DAILY_CLEANUP,
       pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
-        logger.info("cron[daily-resource-cleanup]: task started");
+        logger.info(`cron[${CRON_NAME_DAILY_CLEANUP}]: task started`);
         await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
         await secretSharingDAL.pruneExpiredSharedSecrets();
         await secretSharingDAL.pruneExpiredSecretRequests();
@@ -107,12 +110,12 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     });
 
     cronJob.register({
-      name: "frequent-resource-cleanup",
+      name: CRON_NAME_FREQUENT_CLEANUP,
       pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *",
       runHashTtlS: 2 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
-        logger.info("cron[frequent-resource-cleanup]: task started");
+        logger.info(`cron[${CRON_NAME_FREQUENT_CLEANUP}]: task started`);
         await identityAccessTokenDAL.removeExpiredTokens();
       }
     });
