@@ -45,8 +45,8 @@ gateway:
   pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
 
 # Persistent storage for gateway credentials (enrollment flow only).
-# Required when enrollMethod=token so credentials survive pod restarts.
-# Optional when enrollMethod=aws since it re-authenticates via STS on every start.
+# Required when enrollment.method=token so credentials survive pod restarts.
+# Optional when enrollment.method=aws since it re-authenticates via STS on every start.
 persistence:
   enabled: true
   storageClass: ""
