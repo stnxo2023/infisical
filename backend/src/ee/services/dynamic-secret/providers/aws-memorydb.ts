@@ -173,9 +173,7 @@ export const AwsMemoryDbDatabaseProvider = (): TDynamicProviderFns => {
   }) => {
     const { inputs, expireAt, usernameTemplate, identity, dynamicSecret } = data;
     const providerInputs = await validateProviderInputs(inputs);
-    if (!(await validateConnection(providerInputs))) {
-      throw new BadRequestError({ message: "Failed to establish connection" });
-    }
+    await validateConnection(providerInputs);
 
     const credentials = $getAwsCredentials(providerInputs);
 
