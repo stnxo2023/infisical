@@ -38,34 +38,19 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findActiveRevocationsForToken = async ({
-    tokenId,
-    identityId,
-    scopes
-  }: {
-    tokenId: string;
-    identityId: string;
-    scopes: string[];
-  }): Promise<TRevocationRow[]> => {
+  // Returns every active revocation row for the identity. Per-token / identity-wide /
+  // scoped matching is done in the service so the query stays a single (identityId,
+  // expiresAt) index range — no OR predicates that the planner could decompose into
+  // a sequential scan based on `scope` selectivity stats.
+  const findActiveRevocationsForIdentity = async (identityId: string): Promise<TRevocationRow[]> => {
     try {
-      return (
-        (await db
-          .replicaNode()(TableName.IdentityAccessTokenRevocation)
-          .select("id", "identityId", "revokedAt", "createdAt", "scope")
-          .where("expiresAt", ">", db.fn.now())
-          .where("identityId", identityId)
-          // Both halves of the OR must be equality predicates so the planner can
-          // serve `id IN (...)` from the PK and the `scope IN (...)` filter stays
-          // selective. `scope IS NOT NULL` would force a non-sargable scan.
-          .andWhere((qb) => {
-            void qb.whereIn("id", [tokenId, identityId]);
-            if (scopes.length > 0) {
-              void qb.orWhereIn("scope", scopes);
-            }
-          })) as TRevocationRow[]
-      );
+      return (await db
+        .replicaNode()(TableName.IdentityAccessTokenRevocation)
+        .select("id", "identityId", "revokedAt", "createdAt", "scope")
+        .where("expiresAt", ">", db.fn.now())
+        .where("identityId", identityId)) as TRevocationRow[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "IdentityAccessTokenRevocationFindActiveForToken" });
+      throw new DatabaseError({ error, name: "IdentityAccessTokenRevocationFindActiveForIdentity" });
     }
   };
 
@@ -79,7 +64,7 @@ export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
 
   return {
     insertRevocation,
-    findActiveRevocationsForToken,
+    findActiveRevocationsForIdentity,
     removeExpiredRevocations
   };
 };

@@ -104,15 +104,7 @@ export const identityAccessTokenServiceFactory = ({
     authMethod?: string;
     messagePrefix?: "Failed to authorize" | "Cannot renew";
   }) => {
-    const scopes: string[] = [];
-    if (clientSecretId) scopes.push(clientSecretId);
-    if (authMethod) scopes.push(authMethod);
-
-    const activeRevocations = await identityAccessTokenRevocationDAL.findActiveRevocationsForToken({
-      tokenId,
-      identityId,
-      scopes
-    });
+    const activeRevocations = await identityAccessTokenRevocationDAL.findActiveRevocationsForIdentity(identityId);
 
     for (const revocation of activeRevocations) {
       // Legacy markers have scope=null and key off polymorphic `id`.

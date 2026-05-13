@@ -54,7 +54,7 @@ const createService = ({
     setItemWithExpiry: vi.fn()
   };
   const identityAccessTokenRevocationDAL = {
-    findActiveRevocationsForToken: vi.fn().mockResolvedValue(activeRevocations),
+    findActiveRevocationsForIdentity: vi.fn().mockResolvedValue(activeRevocations),
     insertRevocation: vi.fn()
   };
   const identityDAL = {
