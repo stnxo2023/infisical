@@ -119,7 +119,9 @@ export const newOrgMembershipUserFactory = ({
 
     const actorDetails =
       dto.permission.type === ActorType.USER
-        ? await userDAL.findById(dto.permission.id)
+        ? await requestMemoize(requestMemoKeys.userFindById(dto.permission.id), () =>
+            userDAL.findById(dto.permission.id)
+          )
         : {
             firstName: "Platform Identity",
             email: "identity"

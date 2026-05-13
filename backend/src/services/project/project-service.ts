@@ -2421,7 +2421,9 @@ export const projectServiceFactory = ({
     }
 
     const org = await orgDAL.findOne({ id: permission.orgId });
-    const userDetails = await userDAL.findById(permission.id);
+    const userDetails = await requestMemoize(requestMemoKeys.userFindById(permission.id), () =>
+      userDAL.findById(permission.id)
+    );
     const appCfg = getConfig();
 
     let projectTypeUrl = project.type;
