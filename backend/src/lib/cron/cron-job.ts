@@ -82,8 +82,14 @@ const RELEASE_SLOT_IF_MINE_LUA = `if redis.call('get', KEYS[1]) == ARGV[1] then 
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
-type Handler = (signal: AbortSignal) => Promise<void>;
+type Handler = () => Promise<void>;
 type CronEntry = { name: string; pattern: string; maxAttempts: number; handler: Handler; runHashTtlS: number };
+class HandlerTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "HandlerTimeoutError";
+  }
+}
 
 export type TCronJobFactory = ReturnType<typeof cronJobFactory>;
 
@@ -139,22 +145,23 @@ export const cronJobFactory = ({
     }
   };
 
-  // Races `task` against a timeout. If the timeout wins, aborts `ac` (so
-  // well-behaved handlers can short-circuit network calls) and rejects with a
-  // descriptive error. Used for HANG recovery — see executeUnderLease for the
-  // two-knob recovery model that justifies racing on top of redlock.using.
-  const withTimeout = async (task: (signal: AbortSignal) => Promise<void>, ac: AbortController, timeoutMs: number) => {
+  // Races `task` against a timeout. If the timeout wins, throws a
+  // HandlerTimeoutError so executeUnderLease's catch can mark the run
+  // failed-final (rather than pending-retry) and prevent another pod from
+  // running the handler concurrently with the still-executing zombie.
+  const withTimeout = async (task: () => Promise<void>, timeoutMs: number) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
-        ac.abort();
-        reject(new Error(`handler exceeded ${timeoutMs}ms`));
+        reject(new HandlerTimeoutError(`handler exceeded ${timeoutMs}ms`));
       }, timeoutMs);
     });
+    const taskPromise = task();
     try {
-      await Promise.race([task(ac.signal), timeout]);
+      await Promise.race([taskPromise, timeout]);
     } finally {
       if (timer) clearTimeout(timer);
+      taskPromise.catch(() => {});
     }
   };
 
@@ -307,25 +314,17 @@ export const cronJobFactory = ({
 
   // ── process ─────────────────────────────────────────────────────────────────
 
-  // Executes one attempt of `entry` under an already-acquired redlock. Wires
-  // up the AbortController, writes the running state, races the handler
-  // against handlerTimeoutMs, and branches into success / retry / final
-  // failure on completion.
+  // Executes one attempt of `entry` under an already-acquired redlock. Writes
+  // the running state, races the handler against handlerTimeoutMs, and
+  // branches into success / retry / final failure on completion.
   //
   // Two-knob recovery model:
   //   leaseDurationMs  → governs CRASH recovery. When the holder pod dies,
   //                      its lease key TTLs out and other pods see the run as
   //                      stalled via the isStalled path in processCandidate.
-  //   handlerTimeoutMs → governs HANG recovery. When a handler wedges in a
-  //                      live pod, redlock would auto-extend the lease
-  //                      forever. The withTimeout race fires ac.abort() after
-  //                      handlerTimeoutMs and rejects, so the catch runs,
-  //                      status flips back to pending, and redlock.using
-  //                      releases the lease on return.
-  const executeUnderLease = async (entry: CronEntry, id: string, attempt: number, leaseSignal: AbortSignal) => {
-    const ac = new AbortController();
-    leaseSignal.addEventListener?.("abort", () => ac.abort());
-
+  //   handlerTimeoutMs → bounds the LEASE for HANG recovery. On timeout we release the lease and
+  //                      mark the run failed-final — a retry would race with the still-running zombie handler. The next scheduled fire is the natural retry.
+  const executeUnderLease = async (entry: CronEntry, id: string, attempt: number) => {
     try {
       await markRunning(id, attempt);
     } catch (err) {
@@ -337,10 +336,12 @@ export const cronJobFactory = ({
     logger.info(`cron[${entry.name}]: start (attempt ${attempt}/${entry.maxAttempts}) [id=${id}]`);
 
     try {
-      await withTimeout((sig) => entry.handler(sig), ac, handlerTimeoutMs);
+      await withTimeout(() => entry.handler(), handlerTimeoutMs);
       await markCompleted(id);
       logger.info(`cron[${entry.name}]: complete [id=${id}] [duration_ms=${Date.now() - startMs}]`);
     } catch (err) {
+      const isHandlerTimeout = err instanceof HandlerTimeoutError;
+
       // Exponential backoff: 1×, 2×, 4× ... capped at retryBackoffMaxMs.
       const backoffMs = Math.min(retryBackoffBaseMs * 2 ** (attempt - 1), retryBackoffMaxMs);
       const nextAttemptAt = Date.now() + backoffMs;
@@ -349,7 +350,7 @@ export const cronJobFactory = ({
       // Avoids overlapping attempts of the same cron and avoids squashing
       // backoff to ~0 near the end of an interval.
       const fitsBeforeNextFire = nextAttemptAt + NEXT_FIRE_BUFFER_MS < nextFireMs(entry.pattern);
-      const final = attempt >= entry.maxAttempts || !fitsBeforeNextFire;
+      const final = isHandlerTimeout || attempt >= entry.maxAttempts || !fitsBeforeNextFire;
 
       try {
         if (final) await markFailedFinal(id, err);
@@ -363,7 +364,11 @@ export const cronJobFactory = ({
 
       logger.error(
         { err },
-        `cron[${entry.name}]: attempt ${attempt} failed (${final ? "giving up" : "will retry"}) [id=${id}]`
+        `cron[${entry.name}]: attempt ${attempt} ${
+          isHandlerTimeout
+            ? "timed out (no retry, wait for next fire)"
+            : `failed (${final ? "giving up" : "will retry"})`
+        } [id=${id}]`
       );
     }
   };
@@ -409,9 +414,7 @@ export const cronJobFactory = ({
     // Track the in-flight run so stop() can wait for it to settle before
     // tearing down. Lock-contention rejections settle within a tick, so they
     // don't measurably delay shutdown drain.
-    const tracked = redlock.using([LEASE_KEY(id)], leaseDurationMs, (signal) =>
-      executeUnderLease(entry, id, attempts + 1, signal as AbortSignal)
-    );
+    const tracked = redlock.using([LEASE_KEY(id)], leaseDurationMs, () => executeUnderLease(entry, id, attempts + 1));
     inFlight.add(tracked);
     try {
       await tracked;

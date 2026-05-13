@@ -250,7 +250,7 @@ describe("retry backoff and handler timeout", () => {
     await stop();
   });
 
-  test("hung handler is aborted after handlerTimeoutMs and last_error includes 'exceeded'", async () => {
+  test("hung handler is marked failed-final (not pending-retry) to prevent zombie concurrency", async () => {
     vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
     const redis = makeRedis();
     setupPendingRun(redis, Date.parse("2024-01-01T00:00:00Z"));
@@ -286,6 +286,16 @@ describe("retry backoff and handler timeout", () => {
       (c as unknown[]).some((arg) => typeof arg === "string" && arg.includes("exceeded"))
     );
     expect(wroteTimeoutError).toBe(true);
+
+    // Regression guard: handlerTimeoutMs must mark the run failed-final so a
+    // retry doesn't race with the still-running zombie. zrem (failed-final
+    // path) must fire; zadd (pending-retry path) must NOT.
+    const wroteFailed = redis.hset.mock.calls.some((c) =>
+      (c as unknown[]).some((arg, i, arr) => arg === "status" && arr[i + 1] === "failed")
+    );
+    expect(wroteFailed).toBe(true);
+    expect(redis.zrem).toHaveBeenCalled();
+    expect(redis.zadd).not.toHaveBeenCalled();
 
     // Advance past drainTimeoutMs so stop() can resolve via the drain timeout.
     const stopPromise = f.stop();

@@ -217,8 +217,11 @@ describe("retry", () => {
 // ── handler timeout ────────────────────────────────────────────────────────────
 
 describe("handler timeout", () => {
-  test("hung handler is aborted after handlerTimeoutMs and run flips to pending with timeout error", async () => {
-    // Handler never resolves — simulates a wedged network call.
+  test("hung handler is marked failed-final (no retry on same fire) to prevent zombie concurrency", async () => {
+    // Handler never resolves — simulates a wedged network call. After
+    // handlerTimeoutMs fires, the zombie is still running in this process,
+    // so the run must NOT be re-picked-up by this or another pod — the next
+    // scheduled fire (separate id) is the natural retry.
     const handler = vi.fn().mockImplementation(() => new Promise<void>(() => {}));
     const f = factory({
       handlerTimeoutMs: 500,
@@ -229,17 +232,25 @@ describe("handler timeout", () => {
     f.start();
 
     // Enqueue (~500ms) + first attempt hangs for handlerTimeoutMs (500ms) +
-    // backoff (100ms) + second attempt window. Wait long enough to observe
-    // the timeout-driven retry without burning all attempts.
+    // generous post-timeout window. The next minute boundary is well past
+    // 2500ms of real time, so no second fire is expected within this window.
     await new Promise((r) => {
       setTimeout(r, 2500);
     });
 
-    expect(handler.mock.calls.length).toBeGreaterThanOrEqual(2);
+    // Exactly one handler invocation: timeout marks the run failed-final, so
+    // no retry can be scheduled for this id.
+    expect(handler).toHaveBeenCalledTimes(1);
+
     const keys = await testRedis.keys("cron:run:hang-job:*");
     expect(keys.length).toBe(1);
     const run = await testRedis.hgetall(keys[0]);
+    expect(run.status).toBe("failed");
     expect(run.last_error).toContain("exceeded");
+
+    // The id is removed from the pending zset so no further tick can re-process it.
+    const pending = await testRedis.zrange("cron:pending", 0, -1);
+    expect(pending.filter((s) => s.startsWith("hang-job:"))).toEqual([]);
   }, 10_000);
 });
 
