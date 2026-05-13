@@ -1035,41 +1035,41 @@ export const honeyTokenServiceFactory = ({
       if (updatedToken) {
         void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata: parsed.data });
         void telemetryService
-        .sendPostHogEvents({
-          event: PostHogEventTypes.HoneyTokenTriggered,
-          distinctId: `honey-token-${honeyToken.id}`,
-          organizationId: honeyTokenWithOrg.orgId,
-          properties: {
-            honeyTokenId: honeyToken.id,
-            type: honeyToken.type,
-            projectId: honeyToken.projectId
-          }
-        })
-        .catch(() => {});
+          .sendPostHogEvents({
+            event: PostHogEventTypes.HoneyTokenTriggered,
+            distinctId: `honey-token-${honeyToken.id}`,
+            organizationId: honeyTokenWithOrg.orgId,
+            properties: {
+              honeyTokenId: honeyToken.id,
+              type: honeyToken.type,
+              projectId: honeyToken.projectId
+            }
+          })
+          .catch(() => {});
 
         void auditLogService
-        .createAuditLog({
-          actor: {
-            type: ActorType.UNKNOWN_USER,
-            metadata: {}
-          },
-          orgId: honeyTokenWithOrg.orgId,
-          projectId: honeyToken.projectId,
-          event: {
-            type: EventType.TRIGGER_HONEY_TOKEN,
-            metadata: {
-              honeyTokenId: honeyToken.id,
-              name: honeyToken.name,
-              type: honeyToken.type as HoneyTokenType,
-              projectId: honeyToken.projectId,
-              eventName: parsed.data.eventName,
-              eventTime: parsed.data.eventTime,
-              sourceIp: parsed.data.sourceIp ?? "Unknown",
-              awsRegion: parsed.data.awsRegion
+          .createAuditLog({
+            actor: {
+              type: ActorType.UNKNOWN_USER,
+              metadata: {}
+            },
+            orgId: honeyTokenWithOrg.orgId,
+            projectId: honeyToken.projectId,
+            event: {
+              type: EventType.TRIGGER_HONEY_TOKEN,
+              metadata: {
+                honeyTokenId: honeyToken.id,
+                name: honeyToken.name,
+                type: honeyToken.type as HoneyTokenType,
+                projectId: honeyToken.projectId,
+                eventName: parsed.data.eventName,
+                eventTime: parsed.data.eventTime,
+                sourceIp: parsed.data.sourceIp ?? "Unknown",
+                awsRegion: parsed.data.awsRegion
+              }
             }
-          }
-        })
-        .catch(() => {});
+          })
+          .catch(() => {});
       }
     }
     /* eslint-enable no-continue */
