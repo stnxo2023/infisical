@@ -108,7 +108,13 @@ export enum PostHogEventTypes {
   PamRotationRuleDeleted = "PAM Rotation Rule Deleted",
 
   ResourceAuthMethodLogin = "Resource Auth Method Login",
-  ResourceAuthMethodUpdated = "Resource Auth Method Updated"
+  ResourceAuthMethodUpdated = "Resource Auth Method Updated",
+
+  HoneyTokenCreated = "Honey Token Created",
+  HoneyTokenUpdated = "Honey Token Updated",
+  HoneyTokenRevoked = "Honey Token Revoked",
+  HoneyTokenReset = "Honey Token Reset",
+  HoneyTokenTriggered = "Honey Token Triggered"
 }
 
 export type TSecretModifiedEvent = {
@@ -836,7 +842,68 @@ export type TResourceAuthMethodEvent = {
   };
 };
 
-export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
+export type THoneyTokenCreatedEvent = {
+  event: PostHogEventTypes.HoneyTokenCreated;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type THoneyTokenUpdatedEvent = {
+  event: PostHogEventTypes.HoneyTokenUpdated;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenRevokedEvent = {
+  event: PostHogEventTypes.HoneyTokenRevoked;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenResetEvent = {
+  event: PostHogEventTypes.HoneyTokenReset;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenTriggeredEvent = {
+  event: PostHogEventTypes.HoneyTokenTriggered;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type TPostHogEvent = {
+  distinctId: string;
+  organizationId?: string;
+  organizationName?: string;
+  /**
+   * When true, the event is captured without creating or updating a PostHog
+   * person record (`$process_person_profile: false`). Use for events fired
+   * from unauthenticated, single-shot interactions where the distinctId is
+   * synthesised per-request (e.g. anonymous public secret shares) and there
+   * is no real user/identity to attribute the event to. The event itself is
+   * still recorded so funnels and breakdowns continue to work — only the
+   * person record is suppressed.
+   */
+  anonymous?: boolean;
+} & (
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent
@@ -907,4 +974,9 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TPamRotationRuleCreatedEvent
   | TPamRotationRuleDeletedEvent
   | TResourceAuthMethodEvent
+  | THoneyTokenCreatedEvent
+  | THoneyTokenUpdatedEvent
+  | THoneyTokenRevokedEvent
+  | THoneyTokenResetEvent
+  | THoneyTokenTriggeredEvent
 );
