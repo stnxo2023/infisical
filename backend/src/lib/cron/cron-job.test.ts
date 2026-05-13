@@ -74,7 +74,7 @@ describe("register", () => {
     const { register } = makeFactory();
     register({ name: "x", pattern: "0 0 * * *", handler: vi.fn(), runHashTtlS: 3600 });
     expect(() => register({ name: "x", pattern: "0 0 * * *", handler: vi.fn(), runHashTtlS: 3600 })).toThrow(
-      /already registered/
+      "already registered"
     );
   });
 
