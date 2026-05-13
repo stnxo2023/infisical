@@ -10,10 +10,11 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
+import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -80,7 +81,8 @@ const DEFAULT_SECRET_SYNC_RETRY_CONFIG = {
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
 type TSecretSyncQueueFactoryDep = {
-  queueService: Pick<TQueueServiceFactory, "queue" | "start" | "upsertJobScheduler">;
+  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
+  cronJob: TCronJobFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
@@ -142,6 +144,7 @@ const getRequeueDelay = (failureCount?: number) => {
 
 export const secretSyncQueueFactory = ({
   queueService,
+  cronJob,
   kmsService,
   appConnectionDAL,
   keyStore,
@@ -1218,13 +1221,20 @@ export const secretSyncQueueFactory = ({
     }
   });
 
-  const startDailySecretSyncRetryJob = async () => {
-    await queueService.upsertJobScheduler(
-      QueueName.AppConnectionSecretSync,
-      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailySecretSyncRetry}`,
-      { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *" },
-      { name: QueueJobs.DailySecretSyncRetry }
-    );
+  const startDailySecretSyncRetryJob = () => {
+    cronJob.register({
+      name: "daily-secret-sync-retry",
+      pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handler: async () => {
+        await queueService.queue(
+          QueueName.AppConnectionSecretSync,
+          QueueJobs.DailySecretSyncRetry,
+          undefined as never,
+          { jobId: "daily-secret-sync-retry" }
+        );
+      }
+    });
   };
 
   return {

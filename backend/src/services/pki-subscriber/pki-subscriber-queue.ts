@@ -1,6 +1,7 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -13,6 +14,7 @@ import { PkiSubscriberStatus, SubscriberOperationStatus } from "./pki-subscriber
 
 type TPkiSubscriberQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
+  cronJob: TCronJobFactory;
   pkiSubscriberDAL: TPkiSubscriberDALFactory;
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory;
@@ -23,6 +25,7 @@ type TPkiSubscriberQueueServiceFactoryDep = {
 
 export const pkiSubscriberQueueServiceFactory = ({
   queueService,
+  cronJob,
   pkiSubscriberDAL,
   certificateAuthorityDAL,
   certificateAuthorityQueue,
@@ -157,14 +160,17 @@ export const pkiSubscriberQueueServiceFactory = ({
     }
   });
 
-  // we do a repeat cron job in utc timezone at 12 Midnight each day
-  const startDailyAutoRenewalJob = async () => {
-    await queueService.upsertJobScheduler(
-      QueueName.PkiSubscriber,
-      `${JOB_SCHEDULER_PREFIX}:${QueueName.PkiSubscriber}`,
-      { pattern: "0 0 * * *" },
-      { name: QueueJobs.PkiSubscriberDailyAutoRenewal, opts: { delay: 5000 } }
-    );
+  const startDailyAutoRenewalJob = () => {
+    cronJob.register({
+      name: "pki-subscriber-daily-auto-renewal",
+      pattern: "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handler: async () => {
+        await queueService.queue(QueueName.PkiSubscriber, QueueJobs.PkiSubscriberDailyAutoRenewal, undefined as never, {
+          jobId: "pki-subscriber-daily-auto-renewal"
+        });
+      }
+    });
   };
 
   queueService.listen(QueueName.PkiSubscriber, "failed", (_, err) => {

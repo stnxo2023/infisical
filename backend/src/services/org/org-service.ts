@@ -35,7 +35,6 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { QueueName } from "@app/queue";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -1228,7 +1227,7 @@ export const orgServiceFactory = ({
    * Re-send emails to users who haven't accepted an invite yet
    */
   const notifyInvitedUsers = async () => {
-    logger.info(`${QueueName.DailyResourceCleanUp}: notify invited users started`);
+    logger.info(`daily-resource-cleanup: notify invited users started`);
 
     const invitedUsers = await orgMembershipDAL.findRecentInvitedMemberships();
     const appCfg = getConfig();
@@ -1272,7 +1271,7 @@ export const orgServiceFactory = ({
             });
             notifiedUsers.push(invitedUser.id);
           } catch (err) {
-            logger.error(err, `${QueueName.DailyResourceCleanUp}: notify invited users failed to send email`);
+            logger.error(err, `daily-resource-cleanup: notify invited users failed to send email`);
           }
         }
       })
@@ -1280,7 +1279,7 @@ export const orgServiceFactory = ({
 
     await orgMembershipDAL.updateLastInvitedAtByIds(notifiedUsers);
 
-    logger.info(`${QueueName.DailyResourceCleanUp}: notify invited users completed`);
+    logger.info(`daily-resource-cleanup: notify invited users completed`);
   };
 
   return {
