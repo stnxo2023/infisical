@@ -3,7 +3,7 @@
     {{- fail "persistence.enabled must be true when gateway.enrollment.method is 'token'. The enrollment token is single-use and credentials must persist across pod restarts." }}
   {{- end }}
   {{- if not (or .Values.gateway.enrollment.token.value .Values.gateway.enrollment.token.existingSecretRef) }}
-    {{- fail "gateway.enrollment.token.value or gateway.enrollment.token.existingSecret is required when gateway.enrollment.method is 'token'." }}
+    {{- fail "gateway.enrollment.token.value or gateway.enrollment.token.existingSecretRef is required when gateway.enrollment.method is 'token'." }}
   {{- end }}
 {{- end }}
 apiVersion: apps/v1
