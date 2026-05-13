@@ -2076,8 +2076,10 @@ export type TProjectPermissionV2Schema = z.infer<typeof ProjectPermissionV2Schem
 
 export const buildServiceTokenProjectPermission = (
   scopes: Array<{ secretPath: string; environment: string }>,
-  permission: string[]
+  permission: string[],
+  options: { useLegacyRead?: boolean } = {}
 ) => {
+  const { useLegacyRead = true } = options;
   const canWrite = permission.includes("write");
   const canRead = permission.includes("read");
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
@@ -2102,11 +2104,24 @@ export const buildServiceTokenProjectPermission = (
           });
         }
         if (canRead) {
-          can(ProjectPermissionActions.Read, subject, {
-            // @ts-expect-error type
-            secretPath: { $glob: secretPath },
-            environment
-          });
+          if (useLegacyRead) {
+            can(ProjectPermissionActions.Read, subject, {
+              // @ts-expect-error type
+              secretPath: { $glob: secretPath },
+              environment
+            });
+          } else {
+            can(ProjectPermissionSecretActions.ReadValue, subject, {
+              // @ts-expect-error type
+              secretPath: { $glob: secretPath },
+              environment
+            });
+            can(ProjectPermissionSecretActions.DescribeSecret, subject, {
+              // @ts-expect-error type
+              secretPath: { $glob: secretPath },
+              environment
+            });
+          }
         }
       }
     );

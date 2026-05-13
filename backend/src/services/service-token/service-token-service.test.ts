@@ -1,0 +1,369 @@
+import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
+
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { conditionsMatcher } from "@app/lib/casl";
+import { crypto } from "@app/lib/crypto";
+
+import { serviceTokenServiceFactory } from "./service-token-service";
+
+vi.mock("@app/lib/config/env", () => ({
+  getConfig: () => ({
+    SALT_ROUNDS: 1
+  })
+}));
+
+vi.mock("@app/lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn()
+  }
+}));
+
+const PROJECT_ID = "project-id";
+const ACTOR_ID = "actor-id";
+const ACTOR_ORG_ID = "org-id";
+const ENV_SLUG = "dev";
+
+type AbilityFn = (builder: AbilityBuilder<MongoAbility<ProjectPermissionSet>>) => void;
+
+const buildAbility = (configure: AbilityFn) => {
+  const builder = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+  configure(builder);
+  return builder.build({ conditionsMatcher });
+};
+
+const grantServiceTokenCreate = (b: AbilityBuilder<MongoAbility<ProjectPermissionSet>>) => {
+  b.can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
+};
+
+// Wrapper that lets us pass partial-shape conditions (e.g., $eq via plain string for secretPath) without
+// fighting CASL's strict per-action condition schema. Mirrors the @ts-expect-error pattern used in
+// `buildServiceTokenProjectPermission`.
+const canWithConditions = (
+  b: AbilityBuilder<MongoAbility<ProjectPermissionSet>>,
+  action: string,
+  subj: string,
+  conditions: Record<string, unknown>
+) => {
+  // @ts-expect-error CASL's per-action condition schema is too narrow for our test inputs.
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+  b.can(action, subj, conditions);
+};
+
+const createService = (permission: MongoAbility<ProjectPermissionSet>) => {
+  const permissionService = {
+    getProjectPermission: vi.fn().mockResolvedValue({
+      permission,
+      memberships: [],
+      hasRole: () => false,
+      hasProjectEnforcement: () => undefined
+    })
+  };
+
+  const projectEnvDAL = {
+    findBySlugs: vi
+      .fn()
+      .mockImplementation((_projectId: string, slugs: string[]) =>
+        Promise.resolve(slugs.map((slug) => ({ slug, id: `${slug}-id` })))
+      )
+  };
+
+  const serviceTokenDAL = {
+    create: vi
+      .fn()
+      .mockImplementation((row: Record<string, unknown>) => Promise.resolve({ ...row, id: "stub-service-token-id" })),
+    findById: vi.fn(),
+    deleteById: vi.fn(),
+    find: vi.fn(),
+    findExpiringTokens: vi.fn(),
+    update: vi.fn()
+  };
+
+  const orgDAL = { findById: vi.fn() };
+  const projectDAL = { findById: vi.fn() };
+  const userDAL = { findById: vi.fn() };
+  const accessTokenQueue = { updateServiceTokenStatus: vi.fn() };
+  const smtpService = { sendMail: vi.fn() };
+
+  const service = serviceTokenServiceFactory({
+    serviceTokenDAL: serviceTokenDAL as never,
+    userDAL: userDAL as never,
+    permissionService: permissionService as never,
+    projectEnvDAL: projectEnvDAL as never,
+    projectDAL: projectDAL as never,
+    accessTokenQueue: accessTokenQueue as never,
+    smtpService: smtpService as never,
+    orgDAL: orgDAL as never
+  });
+
+  return { service, serviceTokenDAL, permissionService };
+};
+
+const callCreate = ({
+  service,
+  scopes,
+  permissions
+}: {
+  service: ReturnType<typeof createService>["service"];
+  scopes: Array<{ environment: string; secretPath: string }>;
+  permissions: ("read" | "write")[];
+}) =>
+  service.createServiceToken({
+    actor: "user" as never,
+    actorId: ACTOR_ID,
+    actorOrgId: ACTOR_ORG_ID,
+    actorAuthMethod: undefined as never,
+    projectId: PROJECT_ID,
+    name: "test-token",
+    scopes,
+    permissions,
+    encryptedKey: "ek",
+    iv: "iv",
+    tag: "tag",
+    expiresIn: null
+  });
+
+describe("createServiceToken authorization", () => {
+  beforeAll(async () => {
+    process.env.FIPS_ENABLED = "false";
+    await crypto.initialize({} as never, {} as never, {} as never);
+  });
+
+  afterAll(() => {
+    delete process.env.FIPS_ENABLED;
+  });
+
+  describe("read capability — legacy umbrella vs granular halves", () => {
+    test("legacy umbrella role can mint a read token", async () => {
+      const permission = buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        // Legacy: a single rule granting `Read` (= DescribeAndReadValue) on the secret subjects
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            b.can(ProjectPermissionActions.Read, subj);
+            b.can(ProjectPermissionSecretActions.Create, subj);
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({ service, scopes: [{ environment: ENV_SLUG, secretPath: "/" }], permissions: ["read"] })
+      ).resolves.toBeDefined();
+      expect(serviceTokenDAL.create).toHaveBeenCalledTimes(1);
+    });
+
+    test("granular pair (ReadValue + DescribeSecret) can mint a read token", async () => {
+      const permission = buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            b.can(ProjectPermissionSecretActions.ReadValue, subj);
+            b.can(ProjectPermissionSecretActions.DescribeSecret, subj);
+            b.can(ProjectPermissionSecretActions.Create, subj);
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({ service, scopes: [{ environment: ENV_SLUG, secretPath: "/" }], permissions: ["read"] })
+      ).resolves.toBeDefined();
+      expect(serviceTokenDAL.create).toHaveBeenCalledTimes(1);
+    });
+
+    test("only ReadValue (no DescribeSecret) is rejected", async () => {
+      const permission = buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            b.can(ProjectPermissionSecretActions.ReadValue, subj);
+            b.can(ProjectPermissionSecretActions.Create, subj);
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({ service, scopes: [{ environment: ENV_SLUG, secretPath: "/" }], permissions: ["read"] })
+      ).rejects.toThrow();
+      expect(serviceTokenDAL.create).not.toHaveBeenCalled();
+    });
+
+    test("only DescribeSecret (no ReadValue) is rejected", async () => {
+      const permission = buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            b.can(ProjectPermissionSecretActions.DescribeSecret, subj);
+            b.can(ProjectPermissionSecretActions.Create, subj);
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({ service, scopes: [{ environment: ENV_SLUG, secretPath: "/" }], permissions: ["read"] })
+      ).rejects.toThrow();
+      expect(serviceTokenDAL.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("write capability", () => {
+    test("caller with Edit + Delete + Create can mint a write token", async () => {
+      const permission = buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            b.can(ProjectPermissionSecretActions.Create, subj);
+            b.can(ProjectPermissionSecretActions.Edit, subj);
+            b.can(ProjectPermissionSecretActions.Delete, subj);
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({ service, scopes: [{ environment: ENV_SLUG, secretPath: "/" }], permissions: ["write"] })
+      ).resolves.toBeDefined();
+      expect(serviceTokenDAL.create).toHaveBeenCalledTimes(1);
+    });
+
+    test("create-only caller cannot mint write or read+write token (action escalation, the original CVE)", async () => {
+      const permission = buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            b.can(ProjectPermissionSecretActions.Create, subj);
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({
+          service,
+          scopes: [{ environment: ENV_SLUG, secretPath: "/" }],
+          permissions: ["read", "write"]
+        })
+      ).rejects.toThrow();
+      expect(serviceTokenDAL.create).not.toHaveBeenCalled();
+    });
+
+    test("caller with Edit but no Delete is rejected for a write token", async () => {
+      const permission = buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            b.can(ProjectPermissionSecretActions.Create, subj);
+            b.can(ProjectPermissionSecretActions.Edit, subj);
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({ service, scopes: [{ environment: ENV_SLUG, secretPath: "/" }], permissions: ["write"] })
+      ).rejects.toThrow();
+      expect(serviceTokenDAL.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("scope widening (boundary check)", () => {
+    test("caller with $eq:'/apps/foo' cannot mint token with secretPath='/apps/**' (eq → glob)", async () => {
+      const conditions = { secretPath: "/apps/foo", environment: ENV_SLUG };
+      const permission = buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            canWithConditions(b, ProjectPermissionSecretActions.Create, subj, conditions);
+            canWithConditions(b, ProjectPermissionSecretActions.Edit, subj, conditions);
+            canWithConditions(b, ProjectPermissionSecretActions.Delete, subj, conditions);
+            canWithConditions(b, ProjectPermissionSecretActions.ReadValue, subj, conditions);
+            canWithConditions(b, ProjectPermissionSecretActions.DescribeSecret, subj, conditions);
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({
+          service,
+          scopes: [{ environment: ENV_SLUG, secretPath: "/apps/**" }],
+          permissions: ["read", "write"]
+        })
+      ).rejects.toThrow();
+      expect(serviceTokenDAL.create).not.toHaveBeenCalled();
+    });
+
+    test("caller with $eq:'/apps/foo' can mint token with the literal secretPath='/apps/foo' (no widening)", async () => {
+      const conditions = { secretPath: "/apps/foo", environment: ENV_SLUG };
+      const permission = buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            canWithConditions(b, ProjectPermissionSecretActions.Create, subj, conditions);
+            canWithConditions(b, ProjectPermissionSecretActions.Edit, subj, conditions);
+            canWithConditions(b, ProjectPermissionSecretActions.Delete, subj, conditions);
+            canWithConditions(b, ProjectPermissionSecretActions.ReadValue, subj, conditions);
+            canWithConditions(b, ProjectPermissionSecretActions.DescribeSecret, subj, conditions);
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({
+          service,
+          scopes: [{ environment: ENV_SLUG, secretPath: "/apps/foo" }],
+          permissions: ["read", "write"]
+        })
+      ).resolves.toBeDefined();
+      expect(serviceTokenDAL.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("admin-equivalent role (full unconditioned permissions)", () => {
+    test("can mint read+write token with recursive scope (regression for happy path)", async () => {
+      const permission = buildAbility((b) => {
+        grantServiceTokenCreate(b);
+        [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
+          (subj) => {
+            b.can(ProjectPermissionActions.Read, subj);
+            b.can(ProjectPermissionSecretActions.ReadValue, subj);
+            b.can(ProjectPermissionSecretActions.DescribeSecret, subj);
+            b.can(ProjectPermissionSecretActions.Create, subj);
+            b.can(ProjectPermissionSecretActions.Edit, subj);
+            b.can(ProjectPermissionSecretActions.Delete, subj);
+          }
+        );
+      });
+
+      const { service, serviceTokenDAL } = createService(permission);
+
+      await expect(
+        callCreate({
+          service,
+          scopes: [{ environment: ENV_SLUG, secretPath: "/**" }],
+          permissions: ["read", "write"]
+        })
+      ).resolves.toBeDefined();
+      expect(serviceTokenDAL.create).toHaveBeenCalledTimes(1);
+    });
+  });
+});
