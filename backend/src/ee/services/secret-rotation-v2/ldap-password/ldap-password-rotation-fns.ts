@@ -2,6 +2,7 @@ import ldap, { Client, SearchOptions } from "@infisical/ldapjs";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -525,10 +526,17 @@ export const ldapPasswordRotationFactory: TRotationFactory<
     return secrets;
   };
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TLdapPasswordRotationGeneratedCredentials
+  > = async ({ dn: activeDn, password }) => {
+    await $verifyCredentials({ dn: activeDn, password });
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

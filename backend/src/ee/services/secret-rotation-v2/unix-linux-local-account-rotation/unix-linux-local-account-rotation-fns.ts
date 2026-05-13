@@ -2,6 +2,7 @@ import { Client, ClientChannel } from "ssh2";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -487,10 +488,17 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     ];
   };
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TUnixLinuxLocalAccountRotationGeneratedCredentials
+  > = async ({ username: activeUsername, password }) => {
+    await $verifyCredentials(activeUsername, password);
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };

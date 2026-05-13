@@ -3221,6 +3221,9 @@ export const SecretRotations = {
   RECONCILE: {
     rotationId: "The ID of the SSH Password Rotation to reconcile credentials for."
   },
+  CHECK_CREDENTIALS: (type: SecretRotation) => ({
+    rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to check active credentials for.`
+  }),
   PARAMETERS: {
     SQL_CREDENTIALS: {
       username1:

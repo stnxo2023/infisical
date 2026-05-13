@@ -1,5 +1,6 @@
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -164,10 +165,17 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     ];
   };
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TWindowsLocalAccountRotationGeneratedCredentials
+  > = async ({ username: activeUsername, password }) => {
+    await $verifyCredentials(activeUsername, password);
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };
