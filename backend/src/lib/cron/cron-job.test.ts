@@ -95,7 +95,7 @@ describe("slot election", () => {
     start();
     // Let the immediate claimOrRefreshSlot call in start() complete
     await Promise.resolve();
-    expect(redis.set).toHaveBeenCalledWith("cron:slot:0", expect.any(String), "PX", expect.any(Number), "NX");
+    expect(redis.set).toHaveBeenCalledWith("{cron}:slot:0", expect.any(String), "PX", expect.any(Number), "NX");
     await stop();
   });
 
@@ -105,8 +105,8 @@ describe("slot election", () => {
     const { start, stop } = makeFactory({ redis });
     start();
     await Promise.resolve();
-    expect(redis.set).toHaveBeenNthCalledWith(1, "cron:slot:0", expect.any(String), "PX", expect.any(Number), "NX");
-    expect(redis.set).toHaveBeenNthCalledWith(2, "cron:slot:1", expect.any(String), "PX", expect.any(Number), "NX");
+    expect(redis.set).toHaveBeenNthCalledWith(1, "{cron}:slot:0", expect.any(String), "PX", expect.any(Number), "NX");
+    expect(redis.set).toHaveBeenNthCalledWith(2, "{cron}:slot:1", expect.any(String), "PX", expect.any(Number), "NX");
     await stop();
   });
 
@@ -177,6 +177,57 @@ describe("claim and execute", () => {
     vi.advanceTimersByTime(300);
     await Promise.resolve();
     expect(redlock.using).not.toHaveBeenCalled();
+    await stop();
+  });
+});
+
+// Multi-key Lua scripts (currently just ENQUEUE_RUN_LUA) must pass keys that
+// hash to the same Redis Cluster slot, otherwise the server returns CROSSSLOT
+// in cluster mode and every enqueue tick fails silently. This invariant test
+// guards the {cron} hash-tag convention against future regressions, mirroring
+// the per-queue {<name>} pattern that queue-service.ts already uses for BullMQ.
+describe("redis cluster compatibility", () => {
+  // Extracts the Redis Cluster hash tag (text between the first `{` and `}`)
+  // from a key, or undefined if the key isn't tagged. Two keys hash to the
+  // same slot iff this returns a non-empty equal value for both.
+  const hashTagOf = (key: unknown): string | undefined => {
+    const s = String(key);
+    const start = s.indexOf("{");
+    if (start < 0) return undefined;
+    const end = s.indexOf("}", start + 1);
+    if (end <= start + 1) return undefined;
+    return s.slice(start + 1, end);
+  };
+
+  test("multi-key Lua EVAL passes keys that share a Cluster hash tag", async () => {
+    vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
+    const redis = makeRedis();
+    redis.set.mockResolvedValue("OK");
+    redis.eval.mockResolvedValue(1);
+
+    const { register, start, stop } = makeFactory({ redis });
+    register({ name: "x", pattern: "* * * * *", handler: vi.fn(), runHashTtlS: 3600 });
+    start();
+
+    // Drive at least one enqueue tick (enqueueIntervalMs=100 in makeFactory).
+    await vi.advanceTimersByTimeAsync(150);
+
+    // ENQUEUE_RUN_LUA is the only multi-key script (KEYS[1]=run, KEYS[2]=pending).
+    // Identify its eval call by numKeys === 2 (RELEASE_SLOT_IF_MINE_LUA uses 1).
+    const multiKeyEvalCalls = redis.eval.mock.calls.filter((c) => c[1] === 2);
+    expect(multiKeyEvalCalls.length).toBeGreaterThan(0);
+
+    for (const call of multiKeyEvalCalls) {
+      const numKeys = Number(call[1]);
+      const keys = (call as unknown[]).slice(2, 2 + numKeys);
+      const tags = keys.map(hashTagOf);
+      // Every key in a multi-key EVAL must carry a non-empty hash tag and
+      // every tag must match — that's the precondition for Redis Cluster to
+      // accept the command without returning CROSSSLOT.
+      expect(tags.every((t) => t && t.length > 0)).toBe(true);
+      expect(new Set(tags).size).toBe(1);
+    }
+
     await stop();
   });
 });
@@ -376,7 +427,7 @@ describe("stop", () => {
     await stop();
     const lastEval = redis.eval.mock.calls.at(-1) as unknown[];
     expect(lastEval[0]).toContain("del");
-    expect(String(lastEval[2])).toContain("cron:slot:");
+    expect(String(lastEval[2])).toContain("{cron}:slot:");
   });
 
   // Regression guard for the BullMQ Worker.close() drain semantics: stop()

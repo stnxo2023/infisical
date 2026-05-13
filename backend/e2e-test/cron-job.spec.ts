@@ -68,6 +68,20 @@ const factory = (overrides?: Partial<Parameters<typeof cronJobFactory>[0]>) => {
   return f;
 };
 
+// FAST_PATTERN fires every minute, so a test that waits ~5s and asserts
+// "exactly one fire happened" will spuriously see two when the wait crosses a
+// minute boundary. This helper pads beforeEach to start the test at least
+// MIN_HEADROOM_MS away from the next boundary, so no test wait can straddle it.
+const MIN_HEADROOM_MS = 10_000;
+const waitForFreshMinute = async () => {
+  const msUntilNext = 60_000 - (Date.now() % 60_000);
+  if (msUntilNext < MIN_HEADROOM_MS) {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, msUntilNext + 200);
+    });
+  }
+};
+
 beforeAll(() => {
   initLogger();
 });
@@ -76,6 +90,7 @@ beforeEach(async () => {
   await testRedis.flushdb();
   allFactories.length = 0;
   lockManager.clear();
+  await waitForFreshMinute();
 });
 
 afterEach(async () => {
@@ -99,7 +114,7 @@ describe("single pod", () => {
     });
 
     expect(handler).toHaveBeenCalled();
-    const keys = await testRedis.keys("cron:run:test-job:*");
+    const keys = await testRedis.keys("{cron}:run:test-job:*");
     expect(keys.length).toBe(1);
     const run = await testRedis.hgetall(keys[0]);
     expect(run.status).toBe("completed");
@@ -122,7 +137,7 @@ describe("multi-pod single fire", () => {
       setTimeout(r, 4000);
     });
 
-    const keys = await testRedis.keys("cron:run:shared-job:*");
+    const keys = await testRedis.keys("{cron}:run:shared-job:*");
     expect(keys.length).toBe(1);
     const run = await testRedis.hgetall(keys[0]);
     expect(run.status).toBe("completed");
@@ -144,7 +159,7 @@ describe("slot exhaustion", () => {
       setTimeout(r, 2000);
     });
 
-    const slotKeys = await testRedis.keys("cron:slot:*");
+    const slotKeys = await testRedis.keys("{cron}:slot:*");
     expect(slotKeys.length).toBeLessThanOrEqual(5);
   }, 8_000);
 });
@@ -160,12 +175,12 @@ describe("slot handover", () => {
     await new Promise((r) => {
       setTimeout(r, 2000);
     });
-    const slotsBefore = await testRedis.keys("cron:slot:*");
+    const slotsBefore = await testRedis.keys("{cron}:slot:*");
     expect(slotsBefore.length).toBeLessThanOrEqual(5);
 
     // Stop all — this releases slots
     await Promise.all(factories.map((f) => f.stop()));
-    const slotsAfter = await testRedis.keys("cron:slot:*");
+    const slotsAfter = await testRedis.keys("{cron}:slot:*");
     expect(slotsAfter.length).toBe(0);
   }, 8_000);
 });
@@ -187,7 +202,7 @@ describe("retry", () => {
       setTimeout(r, 4000);
     });
 
-    const keys = await testRedis.keys("cron:run:retry-job:*");
+    const keys = await testRedis.keys("{cron}:run:retry-job:*");
     expect(keys.length).toBe(1);
     const run = await testRedis.hgetall(keys[0]);
     // After first failure + retry success, should be completed
@@ -205,7 +220,7 @@ describe("retry", () => {
       setTimeout(r, 5000);
     });
 
-    const keys = await testRedis.keys("cron:run:fail-job:*");
+    const keys = await testRedis.keys("{cron}:run:fail-job:*");
     expect(keys.length).toBe(1);
     const run = await testRedis.hgetall(keys[0]);
     expect(run.status).toBe("failed");
@@ -242,14 +257,14 @@ describe("handler timeout", () => {
     // no retry can be scheduled for this id.
     expect(handler).toHaveBeenCalledTimes(1);
 
-    const keys = await testRedis.keys("cron:run:hang-job:*");
+    const keys = await testRedis.keys("{cron}:run:hang-job:*");
     expect(keys.length).toBe(1);
     const run = await testRedis.hgetall(keys[0]);
     expect(run.status).toBe("failed");
     expect(run.last_error).toContain("exceeded");
 
     // The id is removed from the pending zset so no further tick can re-process it.
-    const pending = await testRedis.zrange("cron:pending", 0, -1);
+    const pending = await testRedis.zrange("{cron}:pending", 0, -1);
     expect(pending.filter((s) => s.startsWith("hang-job:"))).toEqual([]);
   }, 10_000);
 });
@@ -290,10 +305,10 @@ describe("retry backoff", () => {
       setTimeout(r, 2_000);
     });
 
-    const keys = await testRedis.keys("cron:run:score-job:*");
+    const keys = await testRedis.keys("{cron}:run:score-job:*");
     expect(keys.length).toBe(1);
-    const id = keys[0].replace("cron:run:", "");
-    const score = await testRedis.zscore("cron:pending", id);
+    const id = keys[0].replace("{cron}:run:", "");
+    const score = await testRedis.zscore("{cron}:pending", id);
     expect(score).not.toBeNull();
     expect(Number(score)).toBeGreaterThan(Date.now());
     expect(handler).toHaveBeenCalledTimes(1);
@@ -316,7 +331,7 @@ describe("next-fire guard", () => {
     });
 
     expect(handler).toHaveBeenCalledTimes(1);
-    const keys = await testRedis.keys("cron:run:guard-job:*");
+    const keys = await testRedis.keys("{cron}:run:guard-job:*");
     expect(keys.length).toBe(1);
     const run = await testRedis.hgetall(keys[0]);
     expect(run.status).toBe("failed");
@@ -327,7 +342,7 @@ describe("next-fire guard", () => {
 // ── ZSET cleared on success ────────────────────────────────────────────────────
 
 describe("ZSET cleanup", () => {
-  test("cron:pending ZSET is empty after successful execution", async () => {
+  test("{cron}:pending ZSET is empty after successful execution", async () => {
     const handler = vi.fn().mockResolvedValue(undefined);
     const f = factory();
     f.register({ name: "clean-job", pattern: FAST_PATTERN, handler, runHashTtlS: 3600 });
@@ -337,7 +352,7 @@ describe("ZSET cleanup", () => {
       setTimeout(r, 3000);
     });
 
-    const pending = await testRedis.zrange("cron:pending", 0, -1);
+    const pending = await testRedis.zrange("{cron}:pending", 0, -1);
     expect(pending.filter((s) => s.startsWith("clean-job:"))).toEqual([]);
   }, 10_000);
 });
@@ -360,7 +375,7 @@ describe("min-age gate", () => {
       setTimeout(r, 700);
     });
 
-    const keys = await testRedis.keys("cron:run:age-gate-job:*");
+    const keys = await testRedis.keys("{cron}:run:age-gate-job:*");
     expect(keys.length).toBe(1); // run is in Redis
     expect(handler).not.toHaveBeenCalled(); // but age gate is holding it back
 
@@ -441,7 +456,7 @@ describe("graceful shutdown", () => {
     });
     expect(handler).toHaveBeenCalled();
 
-    const slotKeysBefore = await testRedis.keys("cron:slot:*");
+    const slotKeysBefore = await testRedis.keys("{cron}:slot:*");
     expect(slotKeysBefore.length).toBeGreaterThan(0);
 
     const startedAt = Date.now();
@@ -451,7 +466,7 @@ describe("graceful shutdown", () => {
     // Drain timed out; stop() returned within drainTimeoutMs + buffer rather
     // than blocking on the hung handler. The slot was released atomically.
     expect(elapsed).toBeLessThan(2_000);
-    const slotKeysAfter = await testRedis.keys("cron:slot:*");
+    const slotKeysAfter = await testRedis.keys("{cron}:slot:*");
     expect(slotKeysAfter.length).toBe(0);
   }, 10_000);
 });

@@ -31,10 +31,11 @@ const DEFAULTS = {
 
 // ── redis schema ──────────────────────────────────────────────────────────────
 
-const SLOT_KEY = (i: number) => `cron:slot:${i}`;
-const RUN_KEY = (id: string) => `cron:run:${id}`;
-const LEASE_KEY = (id: string) => `cron:lease:${id}`;
-const PENDING_ZSET = "cron:pending";
+const KEY_HASH_TAG = "{cron}";
+const SLOT_KEY = (i: number) => `${KEY_HASH_TAG}:slot:${i}`;
+const RUN_KEY = (id: string) => `${KEY_HASH_TAG}:run:${id}`;
+const LEASE_KEY = (id: string) => `${KEY_HASH_TAG}:lease:${id}`;
+const PENDING_ZSET = `${KEY_HASH_TAG}:pending`;
 
 // Run-hash status values. Stored as plain strings in the hash so we don't
 // break Redis tooling, but referenced through this object to avoid drift.
