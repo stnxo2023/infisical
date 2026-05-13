@@ -1028,6 +1028,7 @@ export const honeyTokenServiceFactory = ({
         .sendPostHogEvents({
           event: PostHogEventTypes.HoneyTokenTriggered,
           distinctId: "anonymous-honey-token-trigger",
+          anonymous: true,
           properties: {
             type: honeyToken.type
           }
