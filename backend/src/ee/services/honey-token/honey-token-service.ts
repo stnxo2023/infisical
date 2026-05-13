@@ -1030,22 +1030,23 @@ export const honeyTokenServiceFactory = ({
         TRIGGER_NOTIFICATION_COOLDOWN_MS
       );
 
+      void telemetryService
+        .sendPostHogEvents({
+          event: PostHogEventTypes.HoneyTokenTriggered,
+          distinctId: `honey-token-${honeyToken.id}`,
+          organizationId: honeyTokenWithOrg.orgId,
+          properties: {
+            honeyTokenId: honeyToken.id,
+            type: honeyToken.type,
+            projectId: honeyToken.projectId
+          }
+        })
+        .catch(() => {});
+
       // This block only is executed once per token trigger. So, even if we get 100 events
       // this will run only once.
       if (updatedToken) {
         void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata: parsed.data });
-        void telemetryService
-          .sendPostHogEvents({
-            event: PostHogEventTypes.HoneyTokenTriggered,
-            distinctId: `honey-token-${honeyToken.id}`,
-            organizationId: honeyTokenWithOrg.orgId,
-            properties: {
-              honeyTokenId: honeyToken.id,
-              type: honeyToken.type,
-              projectId: honeyToken.projectId
-            }
-          })
-          .catch(() => {});
 
         void auditLogService
           .createAuditLog({
