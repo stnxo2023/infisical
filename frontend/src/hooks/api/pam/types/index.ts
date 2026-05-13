@@ -13,6 +13,7 @@ import { TKubernetesAccount, TKubernetesResource } from "./kubernetes-resource";
 import { TMongoDBAccount, TMongoDBResource } from "./mongodb-resource";
 import { TMsSQLAccount, TMsSQLResource } from "./mssql-resource";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
+import { TOracleDBAccount, TOracleDBResource } from "./oracledb-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 import { TRedisAccount, TRedisResource } from "./redis-resource";
 import { TSSHAccount, TSSHResource } from "./ssh-resource";
@@ -23,6 +24,7 @@ export * from "./kubernetes-resource";
 export * from "./mongodb-resource";
 export * from "./mssql-resource";
 export * from "./mysql-resource";
+export * from "./oracledb-resource";
 export * from "./postgres-resource";
 export * from "./redis-resource";
 export * from "./ssh-resource";
@@ -37,7 +39,8 @@ export type TPamResource =
   | TSSHResource
   | TAwsIamResource
   | TKubernetesResource
-  | TWindowsResource;
+  | TWindowsResource
+  | TOracleDBResource;
 
 export type TPamAccount =
   | TPostgresAccount
@@ -48,7 +51,8 @@ export type TPamAccount =
   | TSSHAccount
   | TAwsIamAccount
   | TKubernetesAccount
-  | TWindowsAccount;
+  | TWindowsAccount
+  | TOracleDBAccount;
 
 export type TPamFolder = {
   id: string;
@@ -144,19 +148,21 @@ export type TListPamResourcesDTO = {
 
 export type TCreatePamResourceDTO = Pick<
   TPamResource,
-  "name" | "connectionDetails" | "resourceType" | "gatewayId" | "projectId"
+  "name" | "connectionDetails" | "resourceType" | "projectId"
 > & {
+  gatewayId?: string;
+  gatewayPoolId?: string;
   domainId?: string | null;
   metadata?: { key: string; value: string }[];
 };
 
 export type { TSessionSummaryConfig };
 
-export type TUpdatePamResourceDTO = Partial<
-  Pick<TPamResource, "name" | "connectionDetails" | "gatewayId">
-> & {
+export type TUpdatePamResourceDTO = Partial<Pick<TPamResource, "name" | "connectionDetails">> & {
   resourceId: string;
   resourceType: PamResourceType;
+  gatewayId?: string;
+  gatewayPoolId?: string;
   domainId?: string | null;
   metadata?: { key: string; value: string }[];
   rotationAccountCredentials?: { username: string; password: string } | null;

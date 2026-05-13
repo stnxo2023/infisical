@@ -29,6 +29,8 @@ import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { HoneyTokenConfigStatus } from "../honey-token-config/honey-token-config-enums";
@@ -106,6 +108,7 @@ export type THoneyTokenServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 type TSendTriggerNotificationInput = {
@@ -146,7 +149,8 @@ export const honeyTokenServiceFactory = ({
   folderCommitService,
   resourceMetadataDAL,
   snapshotService,
-  secretQueueService
+  secretQueueService,
+  telemetryService
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({
     honeyTokenDAL,
@@ -169,7 +173,8 @@ export const honeyTokenServiceFactory = ({
     folderCommitService,
     resourceMetadataDAL,
     snapshotService,
-    secretQueueService
+    secretQueueService,
+    telemetryService
   });
 
   const create = async (
@@ -954,12 +959,12 @@ export const honeyTokenServiceFactory = ({
       })
       .find((accessKeyId): accessKeyId is string => Boolean(accessKeyId));
     if (!firstAccessKeyId) {
-      throw new UnauthorizedError({ message: "Could not infer honey token organization from payload" });
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
     const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(firstAccessKeyId);
     if (!honeyTokenWithOrg) {
-      throw new UnauthorizedError({ message: "Could not infer honey token organization from payload" });
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
     const config = await honeyTokenConfigDAL.findOne({
@@ -968,7 +973,7 @@ export const honeyTokenServiceFactory = ({
       status: HoneyTokenConfigStatus.Complete
     });
     if (!config?.encryptedConfig) {
-      throw new NotFoundError({ message: "No honey token configuration found for this organization" });
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -989,7 +994,7 @@ export const honeyTokenServiceFactory = ({
       expectedBuf.byteLength !== receivedBuf.byteLength ||
       !crypto.nativeCrypto.timingSafeEqual(expectedBuf, receivedBuf)
     ) {
-      throw new UnauthorizedError({ message: "Invalid webhook signature" });
+      throw new UnauthorizedError({ message: "Invalid webhook request" });
     }
 
     /* eslint-disable no-continue */
@@ -1019,6 +1024,16 @@ export const honeyTokenServiceFactory = ({
         parsed.data.accessKeyId,
         TRIGGER_NOTIFICATION_COOLDOWN_MS
       );
+      void telemetryService
+        .sendPostHogEvents({
+          event: PostHogEventTypes.HoneyTokenTriggered,
+          distinctId: "anonymous-honey-token-trigger",
+          anonymous: true,
+          properties: {
+            type: honeyToken.type
+          }
+        })
+        .catch(() => {});
       if (updatedToken) {
         void $sendTriggerNotification({ orgId: honeyTokenWithOrg.orgId, honeyToken, eventMetadata: parsed.data });
       }

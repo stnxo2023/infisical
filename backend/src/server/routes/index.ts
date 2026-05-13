@@ -227,6 +227,7 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import {
@@ -849,6 +850,8 @@ export const registerRoutes = async (
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
 
+  const announcementService = announcementServiceFactory({ userDAL, keyStore });
+
   const clickhouseAuditLogDAL = clickhouse
     ? clickhouseAuditLogDALFactory(clickhouse, db, envConfig.CLICKHOUSE_AUDIT_LOG_TABLE_NAME)
     : undefined;
@@ -1079,7 +1082,8 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
-    totpConfigDAL
+    totpConfigDAL,
+    keyStore
   });
 
   const accountRecoveryService = accountRecoveryServiceFactory({
@@ -1324,6 +1328,7 @@ export const registerRoutes = async (
 
   const pamResourceDAL = pamResourceDALFactory(db);
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+  const pamDomainDAL = pamDomainDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
 
   const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
@@ -1507,7 +1512,13 @@ export const registerRoutes = async (
     gatewayV2Service,
     permissionService,
     licenseService,
-    identityKubernetesAuthDAL
+    identityKubernetesAuthDAL,
+    pkiDiscoveryConfigDAL,
+    pamDomainDAL,
+    pamResourceDAL,
+    pamDiscoverySourceDAL,
+    appConnectionDAL,
+    dynamicSecretDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -1536,6 +1547,7 @@ export const registerRoutes = async (
     licenseService,
     gatewayService,
     gatewayV2Service,
+    gatewayPoolService,
     notificationService,
     projectSlackConfigDAL,
     projectMicrosoftTeamsConfigDAL,
@@ -2152,7 +2164,8 @@ export const registerRoutes = async (
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
     gatewayService,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -2180,6 +2193,7 @@ export const registerRoutes = async (
     kmsService,
     gatewayDAL,
     gatewayV2DAL,
+    gatewayPoolService,
     resourceMetadataDAL
   });
 
@@ -2338,6 +2352,7 @@ export const registerRoutes = async (
     licenseService,
     gatewayService,
     gatewayV2Service,
+    gatewayPoolService,
     gatewayDAL,
     gatewayV2DAL,
     projectDAL,
@@ -2375,7 +2390,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     snapshotService,
     secretQueueService,
-    appConnectionService
+    appConnectionService,
+    telemetryService
   });
 
   const webhookService = webhookServiceFactory({
@@ -2440,7 +2456,8 @@ export const registerRoutes = async (
     queueService,
     appConnectionDAL,
     gatewayService,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const insightsService = insightsServiceFactory({
@@ -2471,7 +2488,8 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     certificateSyncDAL,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
@@ -2568,7 +2586,8 @@ export const registerRoutes = async (
     pkiSyncQueue,
     certificateRequestDAL,
     resourceMetadataDAL,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -2652,7 +2671,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     resourceMetadataDAL,
     pkiAlertV2Queue,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
@@ -2848,7 +2868,8 @@ export const registerRoutes = async (
     kmsService,
     queueService,
     gatewayV2Service,
-    gatewayV2DAL
+    gatewayV2DAL,
+    gatewayPoolService
   });
 
   const pkiDiscoveryService = pkiDiscoveryServiceFactory({
@@ -2856,6 +2877,8 @@ export const registerRoutes = async (
     pkiDiscoveryScanHistoryDAL,
     permissionService,
     gatewayV2DAL,
+    gatewayPoolDAL,
+    gatewayPoolService,
     queuePkiDiscoveryScan: pkiDiscoveryQueue.queuePkiDiscoveryScan
   });
 
@@ -2936,7 +2959,6 @@ export const registerRoutes = async (
   });
 
   const pamFolderDAL = pamFolderDALFactory(db);
-  const pamDomainDAL = pamDomainDALFactory(db);
   const pamResourceFavoriteDAL = pamResourceFavoriteDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamAccountPolicyDAL = pamAccountPolicyDALFactory(db);
@@ -2988,6 +3010,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     gatewayV2Service,
+    gatewayPoolService,
     resourceMetadataDAL,
     appConnectionDAL,
     pamProjectRecordingConfigDAL
@@ -2999,6 +3022,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     gatewayV2Service,
+    gatewayPoolService,
     resourceMetadataDAL
   });
 
@@ -3041,6 +3065,7 @@ export const registerRoutes = async (
     pamAccountPolicyDAL,
     pamResourceRotationRulesDAL,
     gatewayV2Service,
+    gatewayPoolService,
     kmsService,
     pamResourceDAL,
     pamSessionDAL,
@@ -3097,6 +3122,7 @@ export const registerRoutes = async (
     pamSessionDAL,
     pamSessionExpirationService,
     gatewayV2Service,
+    gatewayPoolService,
     kmsService,
     userDAL,
     mfaSessionService,
@@ -3119,7 +3145,8 @@ export const registerRoutes = async (
     kmsService,
     queueService,
     gatewayV2Service,
-    gatewayV2DAL
+    gatewayV2DAL,
+    gatewayPoolService
   });
 
   const pamDiscoverySourceService = pamDiscoverySourceServiceFactory({
@@ -3135,6 +3162,7 @@ export const registerRoutes = async (
     kmsService,
     gatewayV2DAL,
     gatewayV2Service,
+    gatewayPoolService,
     pamDiscoveryQueue
   });
 
@@ -3181,7 +3209,8 @@ export const registerRoutes = async (
     externalMigrationConfigDAL,
     secretService,
     auditLogService,
-    gatewayV2Service
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   // setup the communication with license key server
@@ -3374,6 +3403,7 @@ export const registerRoutes = async (
     projectEvents: projectEventsService,
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
+    announcement: announcementService,
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
     pamDomain: pamDomainService,

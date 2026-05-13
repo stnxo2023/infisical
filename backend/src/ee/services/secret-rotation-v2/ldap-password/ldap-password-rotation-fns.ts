@@ -110,17 +110,30 @@ export const ldapPasswordRotationFactory: TRotationFactory<
   TLdapPasswordRotationWithConnection,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, gatewayService, gatewayV2Service) => {
+> = (secretRotation, appConnectionDAL, kmsService, gatewayService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
 
   const { dn, passwordRequirements } = parameters;
+
+  let resolvedConnection: typeof connection | undefined;
+  const getResolvedConnection = async () => {
+    if (!resolvedConnection) {
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: connection.gatewayId,
+        gatewayPoolId: connection.gatewayPoolId
+      });
+      resolvedConnection = { ...connection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
+    }
+    return resolvedConnection;
+  };
 
   const $verifyCredentials = async (
     verifyOpts: Pick<TLdapConnection["credentials"], "dn" | "password"> & { url?: string }
   ) => {
     try {
+      const conn = await getResolvedConnection();
       await executeWithPotentialGateway(
-        { ...connection, credentials: { ...connection.credentials, ...verifyOpts } },
+        { ...conn, credentials: { ...conn.credentials, ...verifyOpts } },
         gatewayV2Service,
         async () => {}
       );
@@ -211,9 +224,10 @@ export const ldapPasswordRotationFactory: TRotationFactory<
       // referral error here so we can re-throw it after the proxy's catch block.
       let capturedReferralError: LdapReferralError | undefined;
 
+      const conn = await getResolvedConnection();
       try {
         await executeWithPotentialGateway(
-          { ...connection, credentials: targetCredentials },
+          { ...conn, credentials: targetCredentials },
           gatewayV2Service,
           async (client) => {
             let userDn: string;

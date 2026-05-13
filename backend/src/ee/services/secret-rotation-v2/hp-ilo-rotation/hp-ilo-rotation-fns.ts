@@ -203,7 +203,7 @@ export const hpIloRotationFactory: TRotationFactory<
   THpIloRotationWithConnection,
   THpIloRotationGeneratedCredentials,
   THpIloRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service) => {
+> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = HpIloRotationMethod.LoginAsRoot } = parameters;
 
@@ -222,6 +222,22 @@ export const hpIloRotationFactory: TRotationFactory<
     if (username === connection.credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
+<<<<<<< HEAD
+=======
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+
+    const sshConfig: TSshConnectionConfig = {
+      method: connection.method,
+      app: connection.app,
+      orgId: connection.orgId,
+      gatewayId: effectiveGatewayId,
+      credentials: connection.credentials
+    } as TSshConnectionConfig;
+
+>>>>>>> main
     if (isSelfRotation && currentPassword) {
       await rotateIloPasswordAsTarget(sshConfig, gatewayV2Service, username, currentPassword, newPassword);
     } else {
