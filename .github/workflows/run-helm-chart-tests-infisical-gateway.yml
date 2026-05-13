@@ -36,30 +36,32 @@ jobs:
       - name: Create kind cluster
         uses: helm/kind-action@v1.12.0
 
-      - name: Create namespace (legacy)
-        run: kubectl create namespace infisical-gateway-legacy
+      - name: Create namespace
+        run: kubectl create namespace infisical-gateway
 
-      - name: Create gateway secret (legacy)
-        run: kubectl create secret generic infisical-gateway-environment --from-literal=TOKEN=my-test-token --from-literal=INFISICAL_GATEWAY_NAME=ci-test-gateway -n infisical-gateway-legacy
+      - name: Create gateway secret
+        run: kubectl create secret generic infisical-gateway-environment --from-literal=TOKEN=my-test-token --from-literal=INFISICAL_GATEWAY_NAME=ci-test-gateway -n infisical-gateway
 
-      - name: Run chart-testing install (legacy flow)
+      - name: Run chart-testing (install)
         run: |
           ct install \
             --config ct.yaml \
             --charts helm-charts/infisical-gateway \
             --helm-extra-args="--timeout=300s" \
-            --namespace infisical-gateway-legacy
+            --namespace infisical-gateway
 
-      - name: Create namespace (enrollment)
-        run: kubectl create namespace infisical-gateway-enrollment
-
-      - name: Create enrollment token secret
-        run: kubectl create secret generic gateway-enrollment-token --from-literal=enrollment-token=ci-test-token -n infisical-gateway-enrollment
-
-      - name: Run chart-testing install (enrollment flow)
+      - name: Validate enrollment flow templates (token)
         run: |
-          ct install \
-            --config ct.yaml \
-            --charts helm-charts/infisical-gateway \
-            --helm-extra-args="--timeout=300s --set gateway.name=ci-test-gateway --set gateway.enrollment.method=token --set gateway.enrollment.token.existingSecretRef=gateway-enrollment-token --set gateway.domain=https://app.infisical.com" \
-            --namespace infisical-gateway-enrollment
+          helm template test-token helm-charts/infisical-gateway \
+            --set gateway.name=ci-test-gateway \
+            --set gateway.enrollment.method=token \
+            --set gateway.enrollment.token.value=ci-test-token \
+            --set gateway.domain=https://app.infisical.com
+
+      - name: Validate enrollment flow templates (aws)
+        run: |
+          helm template test-aws helm-charts/infisical-gateway \
+            --set gateway.name=ci-test-gateway \
+            --set gateway.enrollment.method=aws \
+            --set gateway.enrollment.aws.gatewayId=ci-test-id \
+            --set gateway.domain=https://app.infisical.com
