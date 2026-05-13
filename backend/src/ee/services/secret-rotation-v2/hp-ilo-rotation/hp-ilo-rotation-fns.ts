@@ -207,13 +207,19 @@ export const hpIloRotationFactory: TRotationFactory<
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = HpIloRotationMethod.LoginAsRoot } = parameters;
 
-  const sshConfig: TSshConnectionConfig = {
-    method: connection.method,
-    app: connection.app,
-    orgId: connection.orgId,
-    gatewayId: connection.gatewayId,
-    credentials: connection.credentials
-  } as TSshConnectionConfig;
+  const getRotationSshConfig = async (): Promise<TSshConnectionConfig> => {
+    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+    return {
+      method: connection.method,
+      app: connection.app,
+      orgId: connection.orgId,
+      gatewayId: effectiveGatewayId,
+      credentials: connection.credentials
+    } as TSshConnectionConfig;
+  };
 
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
     const newPassword = generatePassword(passwordRequirements ?? HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS);
@@ -222,18 +228,7 @@ export const hpIloRotationFactory: TRotationFactory<
     if (username === connection.credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
-    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-      gatewayId: connection.gatewayId,
-      gatewayPoolId: connection.gatewayPoolId
-    });
-
-    const sshConfig: TSshConnectionConfig = {
-      method: connection.method,
-      app: connection.app,
-      orgId: connection.orgId,
-      gatewayId: effectiveGatewayId,
-      credentials: connection.credentials
-    } as TSshConnectionConfig;
+    const sshConfig = await getRotationSshConfig();
 
     if (isSelfRotation && currentPassword) {
       await rotateIloPasswordAsTarget(sshConfig, gatewayV2Service, username, currentPassword, newPassword);
@@ -285,6 +280,7 @@ export const hpIloRotationFactory: TRotationFactory<
     username: activeUsername,
     password
   }) => {
+    const sshConfig = await getRotationSshConfig();
     await verifyIloPassword(sshConfig, gatewayV2Service, activeUsername, password);
   };
 

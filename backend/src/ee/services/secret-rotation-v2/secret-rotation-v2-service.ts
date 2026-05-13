@@ -1553,7 +1553,8 @@ export const secretRotationV2ServiceFactory = ({
       appConnectionDAL,
       kmsService,
       gatewayService,
-      gatewayV2Service
+      gatewayV2Service,
+      gatewayPoolService
     );
 
     if (!rotationFactory.checkActiveCredentials)
