@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import {
   TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -156,10 +157,28 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
     { key: secretsMapping.applicationKey, value: generatedCredentials.applicationKey }
   ];
 
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TDatadogApplicationKeySecretRotationGeneratedCredentials
+  > = async ({ applicationKey }) => {
+    const baseUrl = await getDatadogBaseUrl(connection);
+
+    try {
+      await request.get(`${baseUrl}/api/v2/permissions`, {
+        headers: { "DD-API-KEY": connection.credentials.apiKey, "DD-APPLICATION-KEY": applicationKey }
+      });
+    } catch (error: unknown) {
+      if (error instanceof BadRequestError) throw error;
+      throw new BadRequestError({
+        message: `Datadog application key verification failed: ${getDatadogErrorMessage(error)}`
+      });
+    }
+  };
+
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
-    getSecretsPayload
+    getSecretsPayload,
+    checkActiveCredentials
   };
 };
