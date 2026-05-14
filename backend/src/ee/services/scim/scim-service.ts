@@ -841,11 +841,10 @@ export const scimServiceFactory = ({
       [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
     });
 
-    if (!membership)
-      throw new ScimRequestError({
-        detail: "User not found",
-        status: 404
-      });
+    // Return success even if user not found (idempotent delete per SCIM RFC 7644)
+    if (!membership) {
+      return {};
+    }
 
     if (!membership.scimEnabled) {
       throw new ScimRequestError({
@@ -1342,10 +1341,16 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const updatedGroup = await $replaceGroupDAL(groupId, orgId, {
-      displayName,
-      members,
-      shouldFailOnMissingMembers: false
+    const updatedGroup = await groupDAL.transaction(async (tx) => {
+      // Acquire advisory lock to serialize concurrent SCIM PUT requests for the same group
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ScimGroupUpdate(groupId)]);
+
+      return $replaceGroupDAL(groupId, orgId, {
+        displayName,
+        members,
+        shouldFailOnMissingMembers: false,
+        tx
+      });
     });
 
     await scimEventsDAL.create({
@@ -1476,11 +1481,9 @@ export const scimServiceFactory = ({
       orgId
     });
 
+    // Return success even if group not found (idempotent delete per SCIM RFC 7644)
     if (!group) {
-      throw new ScimRequestError({
-        detail: "Group Not Found",
-        status: 404
-      });
+      return {};
     }
 
     await scimEventsDAL.create({
@@ -1491,7 +1494,7 @@ export const scimServiceFactory = ({
       }
     });
 
-    return {}; // intentionally return empty object upon success
+    return {};
   };
 
   const fnValidateScimToken: TScimServiceFactory["fnValidateScimToken"] = async (token) => {
