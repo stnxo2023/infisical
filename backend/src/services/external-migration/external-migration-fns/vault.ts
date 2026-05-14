@@ -296,11 +296,11 @@ const vaultFactory = (
     if (gatewayId) {
       const url = new URL(baseUrl);
 
-      const { protocol, hostname } = url;
+      const { port, protocol, hostname } = url;
       const cleanedProtocol = protocol.slice(0, -1);
 
       const defaultPort = cleanedProtocol === "https" ? 443 : 80;
-      const targetPort = defaultPort;
+      const targetPort = port ? Number(port) : defaultPort;
 
       data = await $gatewayProxyWrapper(
         {
