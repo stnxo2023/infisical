@@ -823,7 +823,8 @@ export enum EventType {
   // Honey Tokens
   CREATE_HONEY_TOKEN = "create-honey-token",
   UPDATE_HONEY_TOKEN = "update-honey-token",
-  REVOKE_HONEY_TOKEN = "revoke-honey-token"
+  REVOKE_HONEY_TOKEN = "revoke-honey-token",
+  TRIGGER_HONEY_TOKEN = "trigger-honey-token"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -6576,6 +6577,20 @@ interface RevokeHoneyTokenEvent {
   };
 }
 
+interface TriggerHoneyTokenEvent {
+  type: EventType.TRIGGER_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    projectId: string;
+    eventName: string;
+    eventTime: string;
+    sourceIp: string;
+    awsRegion: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -7159,6 +7174,7 @@ export type Event =
   | CreateHoneyTokenEvent
   | UpdateHoneyTokenEvent
   | RevokeHoneyTokenEvent
+  | TriggerHoneyTokenEvent
   | CreateGroupEvent
   | UpdateGroupEvent
   | DeleteGroupEvent
