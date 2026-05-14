@@ -484,7 +484,10 @@ export const useMoveSecrets = ({
 };
 
 export const createSecret = async (dto: TCreateSecretsV3DTO) => {
-  const { data } = await apiRequest.post(`/api/v4/secrets/${encodeURIComponent(dto.secretKey)}`, dto);
+  const { data } = await apiRequest.post(
+    `/api/v4/secrets/${encodeURIComponent(dto.secretKey)}`,
+    dto
+  );
   return data;
 };
 
