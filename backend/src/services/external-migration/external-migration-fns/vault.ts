@@ -296,15 +296,18 @@ const vaultFactory = (
     if (gatewayId) {
       const url = new URL(baseUrl);
 
-      const { port, protocol, hostname } = url;
+      const { protocol, hostname } = url;
       const cleanedProtocol = protocol.slice(0, -1);
+
+      const defaultPort = cleanedProtocol === "https:" ? 443 : 80;
+      const targetPort = defaultPort;
 
       data = await $gatewayProxyWrapper(
         {
           gatewayId,
           targetProtocol: cleanedProtocol,
           targetHostname: hostname,
-          targetPort: port ? Number(port) : 8200 // 8200, default port for Vault self-hosted/dedicated
+          targetPort
         },
         getData
       );
