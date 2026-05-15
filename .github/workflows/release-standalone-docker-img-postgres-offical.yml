@@ -65,6 +65,10 @@ jobs:
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
                       DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
                       DD_GIT_COMMIT_SHA=${{ github.sha }}
+                  secrets: |
+                      contentful_space_id=${{ secrets.CONTENTFUL_SPACE_ID }}
+                      contentful_delivery_token=${{ secrets.CONTENTFUL_DELIVERY_TOKEN }}
+                      contentful_environment=${{ vars.CONTENTFUL_ENVIRONMENT }}
             - name: Snyk to check Docker image for vulnerabilities
               continue-on-error: true 
               uses: snyk/actions/docker@9cf6ca713d71123d2d229cc3d7f145b96ea3c518 # master @ 2026-05-05
@@ -126,6 +130,10 @@ jobs:
                   build-args: |
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+                  secrets: |
+                      contentful_space_id=${{ secrets.CONTENTFUL_SPACE_ID }}
+                      contentful_delivery_token=${{ secrets.CONTENTFUL_DELIVERY_TOKEN }}
+                      contentful_environment=${{ vars.CONTENTFUL_ENVIRONMENT }}
     trigger-binary-release:
       runs-on: ubuntu-latest
       needs: [infisical-tests]
